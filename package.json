@@ -1,0 +1,19 @@
+{
+  "name": "vehiclefinance",
+  "version": "0.0.1",
+  "private": true,
+  "description": "WhatsApp-based vehicle finance origination and fulfilment platform",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@8.15.0"
+}

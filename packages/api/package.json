@@ -1,0 +1,13 @@
+{
+  "name": "@vehiclefinance/api",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Supabase Edge Functions and database migrations",
+  "scripts": {
+    "dev": "supabase start",
+    "functions:serve": "supabase functions serve",
+    "db:push": "supabase db push",
+    "db:reset": "supabase db reset",
+    "gen:types": "supabase gen types typescript --local > ../shared/src/types/database.ts"
+  }
+}

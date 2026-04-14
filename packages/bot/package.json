@@ -1,0 +1,20 @@
+{
+  "name": "@vehiclefinance/bot",
+  "version": "0.0.1",
+  "private": true,
+  "description": "WhatsApp bot handler logic — WhatsApp Cloud API integration",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vehiclefinance/shared": "workspace:*",
+    "@supabase/supabase-js": "^2.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.3"
+  }
+}
