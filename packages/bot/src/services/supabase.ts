@@ -4,116 +4,183 @@
  * Uses the service-role key (bypasses RLS) since the bot runs server-side.
  *
  * Environment variables required:
- *   SUPABASE_URL         — project URL, e.g. https://xyz.supabase.co
- *   SUPABASE_SERVICE_KEY — service-role secret key
+ *   SUPABASE_URL              — project URL, e.g. https://xyz.supabase.co
+ *   SUPABASE_SERVICE_ROLE_KEY — service-role secret key
  */
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { DealStatus } from '../types/index.js';
 
-const log = (level: 'info' | 'error', msg: string, data?: unknown) => {
-  const entry = { ts: new Date().toISOString(), service: 'supabase', level, msg, data };
-  if (level === 'error') {
-    console.error(JSON.stringify(entry));
-  } else {
-    console.log(JSON.stringify(entry));
-  }
-};
-
-// ---------------------------------------------------------------------------
-// Client singleton
-// ---------------------------------------------------------------------------
-
-let _supabase: SupabaseClient | null = null;
+let _client: SupabaseClient | null = null;
 
 export function getSupabaseClient(): SupabaseClient {
-  if (_supabase) return _supabase;
-
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_KEY;
-
-  if (!url || !key) {
-    throw new Error('Missing required env vars: SUPABASE_URL, SUPABASE_SERVICE_KEY');
+  if (!_client) {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY env vars are required');
+    }
+    _client = createClient(url, key, {
+      auth: { persistSession: false },
+    });
   }
-
-  _supabase = createClient(url, key, {
-    auth: { persistSession: false },
-  });
-
-  return _supabase;
+  return _client;
 }
 
-// ---------------------------------------------------------------------------
-// Deal helpers
-// ---------------------------------------------------------------------------
+// ── Deal helpers ─────────────────────────────────────────────────────────────
 
-export interface Deal {
-  id: string;
-  status: DealStatus;
-  buyer_phone: string;
-  seller_phone: string | null;
-  vehicle_id: string | null;
-  created_at: string;
-  updated_at: string;
-  [key: string]: unknown;
-}
-
-/**
- * Fetch a deal by its primary key.
- *
- * @param dealId - UUID of the deal
- * @returns The deal record, or null if not found
- */
-export async function getDeal(dealId: string): Promise<Deal | null> {
-  log('info', 'getDeal', { dealId });
-  const supabase = getSupabaseClient();
-
-  const { data, error } = await supabase
+export async function getDealByBuyerPhone(phone: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
     .from('deals')
-    .select('*')
-    .eq('id', dealId)
-    .maybeSingle();
-
-  if (error) {
-    log('error', 'getDeal failed', { dealId, error });
-    throw error;
-  }
-
-  return data as Deal | null;
+    .select('*, buyers(*), sellers(*), vehicles(*)')
+    .eq('buyer_phone', phone)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
 }
 
-/**
- * Update the status of a deal and record the updated_at timestamp.
- *
- * @param dealId - UUID of the deal
- * @param status - New deal status
- */
-export async function updateDealStatus(dealId: string, status: DealStatus): Promise<void> {
-  log('info', 'updateDealStatus', { dealId, status });
-  const supabase = getSupabaseClient();
+export async function getDealBySellerPhone(phone: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('deals')
+    .select('*, buyers(*), sellers(*), vehicles(*)')
+    .eq('seller_phone', phone)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
 
-  const { error } = await supabase
+export async function getDealById(dealId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('deals')
+    .select('*, buyers(*), sellers(*), vehicles(*)')
+    .eq('id', dealId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+/** Alias for getDealById — used by the flow-based webhook handler. */
+export async function getDeal(dealId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb.from('deals').select('*').eq('id', dealId).maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateDealStatus(dealId: string, status: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
     .from('deals')
     .update({ status, updated_at: new Date().toISOString() })
-    .eq('id', dealId);
-
-  if (error) {
-    log('error', 'updateDealStatus failed', { dealId, status, error });
-    throw error;
-  }
+    .eq('id', dealId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
-// ---------------------------------------------------------------------------
-// Audit log helpers
-// ---------------------------------------------------------------------------
+// ── Document helpers ──────────────────────────────────────────────────────────
+
+export async function storeDocument(record: {
+  deal_id: string;
+  party_type: 'buyer' | 'seller';
+  document_type: string;
+  storage_path: string;
+  original_filename?: string;
+  mime_type?: string;
+}) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('documents')
+    .insert({ ...record, status: 'uploaded', created_at: new Date().toISOString() })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getDocumentById(documentId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb.from('documents').select('*').eq('id', documentId).single();
+  if (error) throw error;
+  return data;
+}
+
+export async function updateDocumentExtraction(
+  documentId: string,
+  extractedData: Record<string, unknown>,
+  confidence: Record<string, number>,
+) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('documents')
+    .update({
+      extracted_data: extractedData,
+      confidence_scores: confidence,
+      status: 'extracted',
+      extracted_at: new Date().toISOString(),
+    })
+    .eq('id', documentId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ── Vehicle photo helpers ─────────────────────────────────────────────────────
+
+export async function storeVehiclePhoto(record: {
+  deal_id: string;
+  angle: string;
+  storage_path: string;
+  original_filename?: string;
+}) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('vehicle_photos')
+    .upsert(
+      { ...record, status: 'received', created_at: new Date().toISOString() },
+      { onConflict: 'deal_id,angle' },
+    )
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getVehiclePhotos(dealId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb.from('vehicle_photos').select('*').eq('deal_id', dealId);
+  if (error) throw error;
+  return data ?? [];
+}
+
+// ── Audit log ────────────────────────────────────────────────────────────────
+
+export async function logAuditEvent(record: {
+  deal_id?: string;
+  phone?: string;
+  event_type: string;
+  description: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const sb = getSupabaseClient();
+  const { error } = await sb.from('audit_logs').insert({
+    ...record,
+    created_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
 
 /**
  * Append an immutable audit event for a deal.
- *
- * @param dealId    - UUID of the deal
- * @param eventType - Short descriptive identifier, e.g. "doc_uploaded", "quote_sent"
- * @param actor     - Who triggered the event: phone number, system identifier, or "bot"
- * @param details   - Arbitrary JSON payload with event context
+ * Alias used by the flow-based webhook handler.
  */
 export async function createAuditEvent(
   dealId: string,
@@ -121,55 +188,171 @@ export async function createAuditEvent(
   actor: string,
   details?: Record<string, unknown>,
 ): Promise<void> {
-  log('info', 'createAuditEvent', { dealId, eventType, actor });
-  const supabase = getSupabaseClient();
-
-  const { error } = await supabase.from('audit_events').insert({
+  const sb = getSupabaseClient();
+  const { error } = await sb.from('audit_events').insert({
     deal_id: dealId,
     event_type: eventType,
     actor,
     details: details ?? {},
     created_at: new Date().toISOString(),
   });
-
-  if (error) {
-    log('error', 'createAuditEvent failed', { dealId, eventType, error });
-    throw error;
-  }
+  if (error) throw error;
 }
 
-// ---------------------------------------------------------------------------
-// Storage helpers
-// ---------------------------------------------------------------------------
+// ── Ops tasks ────────────────────────────────────────────────────────────────
 
-/**
- * Upload a file buffer to Supabase Storage and return the public URL.
- *
- * @param bucket   - Storage bucket name, e.g. "deal-documents"
- * @param path     - Object path within the bucket, e.g. "deals/uuid/id_doc.pdf"
- * @param buffer   - File bytes
- * @param mimeType - MIME type, e.g. "application/pdf"
- * @returns Public URL of the uploaded file
- */
+export async function createOpsTask(record: {
+  deal_id?: string;
+  task_type: string;
+  description: string;
+  priority?: 'low' | 'normal' | 'high' | 'urgent';
+  assigned_to?: string;
+  metadata?: Record<string, unknown>;
+}) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('ops_tasks')
+    .insert({
+      ...record,
+      status: 'pending',
+      priority: record.priority ?? 'normal',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ── Extraction tasks ─────────────────────────────────────────────────────────
+
+export async function createExtractionTask(documentId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('extraction_tasks')
+    .insert({
+      document_id: documentId,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function getExtractionResult(documentId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('documents')
+    .select('extracted_data, confidence_scores, status')
+    .eq('id', documentId)
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ── Seller details ───────────────────────────────────────────────────────────
+
+export async function storeSellerDetails(
+  dealId: string,
+  details: {
+    name: string;
+    phone: string;
+    vehicle_make?: string;
+    vehicle_model?: string;
+    vehicle_year?: number;
+    vehicle_price?: number;
+  },
+) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('deals')
+    .update({
+      seller_name: details.name,
+      seller_phone: details.phone,
+      vehicle_make: details.vehicle_make,
+      vehicle_model: details.vehicle_model,
+      vehicle_year: details.vehicle_year,
+      vehicle_price: details.vehicle_price,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', dealId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ── Quote helpers ────────────────────────────────────────────────────────────
+
+export async function getLatestQuote(dealId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('quotes')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+export async function recordQuoteResponse(quoteId: string, response: 'accepted' | 'declined') {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('quotes')
+    .update({
+      buyer_response: response,
+      responded_at: new Date().toISOString(),
+    })
+    .eq('id', quoteId)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+// ── Contract helpers ─────────────────────────────────────────────────────────
+
+export async function getContract(dealId: string) {
+  const sb = getSupabaseClient();
+  const { data, error } = await sb
+    .from('contracts')
+    .select('*')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single();
+  if (error && error.code !== 'PGRST116') throw error;
+  return data;
+}
+
+// ── Storage helpers ──────────────────────────────────────────────────────────
+
+export async function uploadFileToStorage(
+  bucket: string,
+  path: string,
+  buffer: Buffer,
+  contentType: string,
+): Promise<string> {
+  const sb = getSupabaseClient();
+  const { error } = await sb.storage.from(bucket).upload(path, buffer, {
+    contentType,
+    upsert: true,
+  });
+  if (error) throw error;
+  const { data } = sb.storage.from(bucket).getPublicUrl(path);
+  return data.publicUrl;
+}
+
+/** Alias for uploadFileToStorage — used by the flow-based webhook handler. */
 export async function uploadFile(
   bucket: string,
   path: string,
   buffer: Buffer,
   mimeType: string,
 ): Promise<string> {
-  log('info', 'uploadFile', { bucket, path });
-  const supabase = getSupabaseClient();
-
-  const { error } = await supabase.storage.from(bucket).upload(path, buffer, {
-    contentType: mimeType,
-    upsert: true,
-  });
-
-  if (error) {
-    log('error', 'uploadFile failed', { bucket, path, error });
-    throw error;
-  }
-
-  const { data } = supabase.storage.from(bucket).getPublicUrl(path);
-  return data.publicUrl;
+  return uploadFileToStorage(bucket, path, buffer, mimeType);
 }

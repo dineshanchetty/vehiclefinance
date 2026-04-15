@@ -6,6 +6,7 @@
  * Environment variables required:
  *   SENDGRID_API_KEY    — SendGrid API key (starts with 'SG.')
  *   SENDGRID_FROM_EMAIL — verified sender address, e.g. "noreply@vehiclefinance.co.za"
+ *   SENDGRID_FROM_NAME  — optional sender display name (default: "Vehicle Finance")
  */
 
 import sgMail from '@sendgrid/mail';
@@ -25,10 +26,10 @@ function initClient(): void {
   sgMail.setApiKey(apiKey);
 }
 
-function senderAddress(): string {
-  const from = process.env.SENDGRID_FROM_EMAIL;
-  if (!from) throw new Error('Missing required env var: SENDGRID_FROM_EMAIL');
-  return from;
+function sender(): { email: string; name: string } {
+  const email = process.env.SENDGRID_FROM_EMAIL ?? 'noreply@vehiclefinance.co.za';
+  const name = process.env.SENDGRID_FROM_NAME ?? 'Vehicle Finance';
+  return { email, name };
 }
 
 /**
@@ -51,7 +52,7 @@ export async function sendEmail(
   try {
     await sgMail.send({
       to,
-      from: senderAddress(),
+      from: sender(),
       subject,
       html: htmlBody,
       ...(textBody ? { text: textBody } : {}),
@@ -81,7 +82,7 @@ export async function sendTemplateEmail(
   try {
     await sgMail.send({
       to,
-      from: senderAddress(),
+      from: sender(),
       templateId,
       dynamicTemplateData: dynamicData,
     });

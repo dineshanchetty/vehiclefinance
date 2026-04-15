@@ -1,17 +1,18 @@
 /**
- * Main Dialog360 webhook handler.
+ * Dialog360 webhook handlers.
  *
- * Responsibilities:
- *  1. Parse and validate the incoming Dialog360 webhook payload
- *  2. Identify buyer vs. seller by phone number lookup
- *  3. Download and store any media attachments in Supabase Storage
- *  4. Create document records in the database
- *  5. Route the message through the appropriate conversation flow
- *  6. Persist updated conversation state
- *  7. Dispatch bot responses via Dialog360
- *  8. Trigger extraction pipeline (placeholder)
+ * This file exports two handler families:
+ *
+ * Flow-based (state-machine approach):
+ *   - handleWebhook        — processes messages through buyer/seller conversation flows
+ *   - verifyWebhook        — handles GET verification challenge from Dialog360
+ *
+ * Agent-based (Claude SDK approach):
+ *   - handleDialog360Webhook — routes messages to the Claude agent
+ *   - handleStatusWebhook    — handles delivery status updates
  */
 
+import { Request, Response } from 'express';
 import {
   sendTextMessage,
   sendInteractiveMessage,
@@ -27,6 +28,7 @@ import {
 } from '../services/supabase.js';
 import { handleBuyerMessage, newBuyerState } from '../flows/buyer-flow.js';
 import { handleSellerMessage, newSellerState } from '../flows/seller-flow.js';
+import { agent } from '../agent/agent.js';
 import type {
   BotResponse,
   ConversationState,
@@ -49,7 +51,7 @@ const log = (level: 'info' | 'warn' | 'error', msg: string, data?: unknown) => {
 };
 
 // ---------------------------------------------------------------------------
-// Media handling
+// Media handling (flow-based)
 // ---------------------------------------------------------------------------
 
 const MIME_TO_EXT: Record<string, string> = {
@@ -62,12 +64,6 @@ const MIME_TO_EXT: Record<string, string> = {
 /**
  * Download a media attachment, store it in Supabase Storage, and create a
  * document record.  Returns the public URL of the stored file.
- *
- * @param mediaId   - Dialog360 media ID
- * @param mimeType  - MIME type from the message
- * @param dealId    - Associated deal UUID (may be null for pre-deal uploads)
- * @param docType   - Classification of the document
- * @param phone     - Uploader's phone number (for audit trail)
  */
 async function storeMediaAttachment(
   mediaId: string,
@@ -76,7 +72,7 @@ async function storeMediaAttachment(
   docType: DocumentType,
   phone: string,
 ): Promise<string> {
-  const buffer = await downloadMedia(mediaId);
+  const { buffer } = await downloadMedia(mediaId);
   const ext = MIME_TO_EXT[mimeType] ?? 'bin';
   const timestamp = Date.now();
   const storagePath = dealId
@@ -112,11 +108,6 @@ async function storeMediaAttachment(
 // Extraction trigger (placeholder)
 // ---------------------------------------------------------------------------
 
-/**
- * Placeholder — trigger the async document extraction pipeline.
- * Replace with an actual HTTP call to the extraction service, Supabase Edge
- * Function, or message queue publish when the extraction service is built.
- */
 async function triggerExtraction(
   dealId: string,
   docType: DocumentType,
@@ -124,23 +115,17 @@ async function triggerExtraction(
 ): Promise<void> {
   log('info', 'triggerExtraction (placeholder)', { dealId, docType, storagePath });
   // TODO: invoke extraction service
-  // e.g. await fetch(`${process.env.EXTRACTION_SERVICE_URL}/extract`, { method: 'POST', body: JSON.stringify({ dealId, docType, storagePath }) })
 }
 
 // ---------------------------------------------------------------------------
-// Party type resolution
+// Party type resolution (flow-based)
 // ---------------------------------------------------------------------------
 
-/**
- * Determine whether an incoming phone number belongs to a buyer or seller
- * by looking up active deals.  Returns the party type and deal ID if found.
- */
 async function resolveParty(
   phone: string,
 ): Promise<{ partyType: PartyType; dealId: string | null }> {
   const supabase = getSupabaseClient();
 
-  // Check if phone is a buyer on any active deal
   const { data: buyerDeals } = await supabase
     .from('deals')
     .select('id')
@@ -153,7 +138,6 @@ async function resolveParty(
     return { partyType: 'buyer', dealId: buyerDeals[0].id as string };
   }
 
-  // Check if phone is a seller on any active deal
   const { data: sellerDeals } = await supabase
     .from('deals')
     .select('id')
@@ -166,12 +150,11 @@ async function resolveParty(
     return { partyType: 'seller', dealId: sellerDeals[0].id as string };
   }
 
-  // Unknown number — treat as new buyer
   return { partyType: 'buyer', dealId: null };
 }
 
 // ---------------------------------------------------------------------------
-// Determine document type from flow step
+// Document type from flow step
 // ---------------------------------------------------------------------------
 
 function getDocumentType(state: ConversationState): DocumentType {
@@ -192,7 +175,7 @@ function getDocumentType(state: ConversationState): DocumentType {
 }
 
 // ---------------------------------------------------------------------------
-// Response dispatcher
+// Response dispatcher (flow-based)
 // ---------------------------------------------------------------------------
 
 async function dispatchResponses(phone: string, responses: BotResponse[]): Promise<void> {
@@ -210,33 +193,22 @@ async function dispatchResponses(phone: string, responses: BotResponse[]): Promi
 }
 
 // ---------------------------------------------------------------------------
-// Main webhook handler
+// Flow-based webhook handler
 // ---------------------------------------------------------------------------
 
-/**
- * Process a single inbound message from the Dialog360 webhook.
- *
- * @param message - Parsed D360Message from the webhook payload
- * @param phone   - Sender's E.164 phone number (no '+')
- */
 async function processMessage(message: D360Message, phone: string): Promise<void> {
   log('info', 'processMessage', { phone, type: message.type });
 
-  // 1. Load or initialise conversation state
   let state = await getState(phone);
   let { partyType, dealId } = state
     ? { partyType: state.party_type, dealId: state.deal_id }
     : await resolveParty(phone);
 
   if (!state) {
-    state =
-      partyType === 'seller'
-        ? newSellerState(phone)
-        : newBuyerState(phone);
+    state = partyType === 'seller' ? newSellerState(phone) : newBuyerState(phone);
     if (dealId) state.deal_id = dealId;
   }
 
-  // 2. Handle media uploads before routing to flow
   if (['image', 'document'].includes(message.type) && state.current_step !== 'DONE') {
     const mediaContent = message.image ?? message.document;
     if (mediaContent?.id) {
@@ -252,24 +224,16 @@ async function processMessage(message: D360Message, phone: string): Promise<void
         );
         log('info', 'media stored', { phone, docType, publicUrl });
 
-        // Trigger extraction for document types that need it
-        if (
-          docType !== 'vehicle_photo' &&
-          dealId
-        ) {
-          const storagePath = dealId
-            ? `deals/${dealId}/${docType}/${Date.now()}.${mimeType.split('/')[1] ?? 'bin'}`
-            : publicUrl;
+        if (docType !== 'vehicle_photo' && dealId) {
+          const storagePath = `deals/${dealId}/${docType}/${Date.now()}.${mimeType.split('/')[1] ?? 'bin'}`;
           await triggerExtraction(dealId, docType, storagePath);
         }
       } catch (mediaErr) {
         log('error', 'media handling failed', { phone, error: mediaErr });
-        // Don't block flow on media errors — continue routing
       }
     }
   }
 
-  // 3. Route to appropriate flow
   let result: FlowResult;
   try {
     if (partyType === 'seller') {
@@ -279,14 +243,10 @@ async function processMessage(message: D360Message, phone: string): Promise<void
     }
   } catch (flowErr) {
     log('error', 'flow handler threw', { phone, error: flowErr });
-    await sendTextMessage(
-      phone,
-      "I'm sorry, something went wrong. Please try again in a moment.",
-    );
+    await sendTextMessage(phone, "I'm sorry, something went wrong. Please try again in a moment.");
     return;
   }
 
-  // 4. Handle deal updates
   if (result.dealUpdate && dealId) {
     const supabase = getSupabaseClient();
     const { error: updateErr } = await supabase
@@ -296,7 +256,6 @@ async function processMessage(message: D360Message, phone: string): Promise<void
     if (updateErr) log('warn', 'deal update failed', { dealId, error: updateErr });
   }
 
-  // 5. If seller_phone returned from buyer flow, create deal and invite seller
   const sellerPhoneFromFlow = (result.dealUpdate as Record<string, unknown> | undefined)
     ?.seller_phone as string | undefined;
   if (sellerPhoneFromFlow && !dealId) {
@@ -319,25 +278,14 @@ async function processMessage(message: D360Message, phone: string): Promise<void
     }
   }
 
-  // 6. Persist updated conversation state
-  const contextPatch = result.dealUpdate
-    ? (result.dealUpdate as Record<string, unknown>)
-    : {};
-
+  const contextPatch = result.dealUpdate ? (result.dealUpdate as Record<string, unknown>) : {};
   await setState(phone, result.nextStep, partyType, dealId, contextPatch);
-
-  // 7. Dispatch responses
   await dispatchResponses(phone, result.responses);
 }
 
 /**
- * Handle the full Dialog360 webhook payload.
- *
- * This is the entry point called by the HTTP server (e.g. Express or Hono
- * route handler). It extracts all messages from all entries and processes
- * them sequentially (Dialog360 typically sends one message per webhook call).
- *
- * @param payload - Raw parsed JSON from the POST body
+ * Handle the full Dialog360 webhook payload (flow-based).
+ * Entry point called by the HTTP server for the state-machine approach.
  */
 export async function handleWebhook(payload: D360WebhookPayload): Promise<void> {
   log('info', 'handleWebhook', { entries: payload.entry?.length });
@@ -353,7 +301,6 @@ export async function handleWebhook(payload: D360WebhookPayload): Promise<void> 
           await processMessage(message, phone);
         } catch (err) {
           log('error', 'processMessage failed', { phone, error: err });
-          // Don't re-throw — we don't want Dialog360 to retry healthy webhooks
         }
       }
     }
@@ -362,20 +309,140 @@ export async function handleWebhook(payload: D360WebhookPayload): Promise<void> 
 
 /**
  * Handle the Dialog360 webhook verification challenge (GET request).
- *
- * @param mode      - hub.mode query param (must be 'subscribe')
- * @param token     - hub.verify_token query param
- * @param challenge - hub.challenge query param to echo back
- * @returns The challenge string if valid, null if invalid
  */
 export function verifyWebhook(
   mode: string | undefined,
   token: string | undefined,
   challenge: string | undefined,
 ): string | null {
-  const verifyToken = process.env.DIALOG360_WEBHOOK_TOKEN;
+  const verifyToken = process.env.DIALOG360_WEBHOOK_VERIFY_TOKEN;
   if (mode === 'subscribe' && token === verifyToken) {
     return challenge ?? '';
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// Agent-based webhook handlers (Claude SDK approach)
+// ---------------------------------------------------------------------------
+
+interface D360MessageEntry {
+  messaging_product: string;
+  metadata?: { display_phone_number: string; phone_number_id: string };
+  contacts?: Array<{ profile: { name: string }; wa_id: string }>;
+  messages?: Array<{
+    from: string;
+    id: string;
+    timestamp: string;
+    type: 'text' | 'image' | 'document' | 'video' | 'audio' | 'location' | 'interactive';
+    text?: { body: string };
+    image?: { id: string; mime_type: string; sha256: string; caption?: string };
+    document?: {
+      id: string;
+      mime_type: string;
+      sha256: string;
+      filename?: string;
+      caption?: string;
+    };
+    video?: { id: string; mime_type: string };
+    interactive?: {
+      type: string;
+      button_reply?: { id: string; title: string };
+      list_reply?: { id: string; title: string; description?: string };
+    };
+  }>;
+  statuses?: Array<{
+    id: string;
+    recipient_id: string;
+    status: 'sent' | 'delivered' | 'read' | 'failed';
+    timestamp: string;
+    errors?: Array<{ code: number; title: string }>;
+  }>;
+}
+
+interface AgentWebhookPayload {
+  object: string;
+  entry?: Array<{ id: string; changes: Array<{ value: D360MessageEntry; field: string }> }>;
+}
+
+/**
+ * POST /webhook/dialog360 (agent-based)
+ * Receives incoming WhatsApp messages and routes them to the Claude agent.
+ * Responds 200 immediately and processes asynchronously.
+ */
+export async function handleDialog360Webhook(req: Request, res: Response): Promise<void> {
+  res.sendStatus(200);
+
+  const payload = req.body as AgentWebhookPayload;
+  if (!payload?.entry) return;
+
+  for (const entry of payload.entry) {
+    for (const change of entry.changes) {
+      const value = change.value;
+      if (!value.messages?.length) continue;
+
+      for (const msg of value.messages) {
+        const phone = msg.from;
+        let messageText = '';
+        let mediaId: string | undefined;
+
+        switch (msg.type) {
+          case 'text':
+            messageText = msg.text?.body ?? '';
+            break;
+          case 'image':
+            mediaId = msg.image?.id;
+            messageText = msg.image?.caption ?? '';
+            break;
+          case 'document':
+            mediaId = msg.document?.id;
+            messageText = msg.document?.caption ?? msg.document?.filename ?? '';
+            break;
+          case 'video':
+            mediaId = msg.video?.id;
+            break;
+          case 'interactive':
+            if (msg.interactive?.button_reply) {
+              messageText = msg.interactive.button_reply.title;
+            } else if (msg.interactive?.list_reply) {
+              messageText = msg.interactive.list_reply.title;
+            }
+            break;
+          default:
+            console.log(`[webhook] Unsupported message type: ${msg.type} from ${phone}`);
+            continue;
+        }
+
+        agent.processMessage(phone, messageText, mediaId).catch((err) => {
+          console.error(`[webhook] Failed to process message from ${phone}:`, err);
+        });
+      }
+    }
+  }
+}
+
+/**
+ * POST /webhook/status
+ * Receives delivery status updates (sent, delivered, read, failed).
+ */
+export async function handleStatusWebhook(req: Request, res: Response): Promise<void> {
+  res.sendStatus(200);
+
+  const payload = req.body as AgentWebhookPayload;
+  if (!payload?.entry) return;
+
+  for (const entry of payload.entry) {
+    for (const change of entry.changes) {
+      const value = change.value;
+      if (!value.statuses?.length) continue;
+
+      for (const status of value.statuses) {
+        console.log(
+          `[status] Message ${status.id} to ${status.recipient_id}: ${status.status}`,
+          status.errors ? `Errors: ${JSON.stringify(status.errors)}` : '',
+        );
+        // TODO: persist delivery status to database for analytics
+      }
+    }
+  }
 }

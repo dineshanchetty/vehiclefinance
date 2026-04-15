@@ -10,6 +10,7 @@
  */
 
 import axios, { AxiosInstance } from 'axios';
+import { uploadFileToStorage } from './supabase.js';
 
 const log = (level: 'info' | 'error', msg: string, data?: unknown) => {
   const entry = { ts: new Date().toISOString(), service: 'dialog360', level, msg, data };
@@ -49,6 +50,11 @@ function client(): AxiosInstance {
 // Public API
 // ---------------------------------------------------------------------------
 
+export interface Button {
+  id: string;
+  title: string;
+}
+
 /**
  * Send a plain text WhatsApp message.
  *
@@ -83,7 +89,7 @@ export async function sendTextMessage(phone: string, message: string): Promise<v
 export async function sendInteractiveMessage(
   phone: string,
   body: string,
-  buttons: Array<{ id: string; title: string }>,
+  buttons: Button[],
   header?: string,
   footer?: string,
 ): Promise<void> {
@@ -185,28 +191,46 @@ export async function sendDocumentMessage(
 /**
  * Download a media file by its Dialog360 media ID.
  *
- * Flow: GET /media/{mediaId} → retrieve download URL → GET URL → Buffer
+ * Flow: GET /media/{mediaId} → retrieve download URL → GET URL → Buffer + MIME type
  *
  * @param mediaId - The `id` field from an inbound media message
- * @returns Raw file bytes as a Buffer
+ * @returns Raw file bytes as a Buffer and the MIME type
  */
-export async function downloadMedia(mediaId: string): Promise<Buffer> {
+export async function downloadMedia(
+  mediaId: string,
+): Promise<{ buffer: Buffer; mimeType: string }> {
   log('info', 'downloadMedia', { mediaId });
   try {
     // Step 1: resolve the download URL
     const metaRes = await client().get<{ url: string; mime_type: string; file_size: number }>(
       `/media/${mediaId}`,
     );
-    const downloadUrl = metaRes.data.url;
+    const { url: downloadUrl, mime_type: mimeType } = metaRes.data;
 
     // Step 2: download the binary
     const fileRes = await client().get<ArrayBuffer>(downloadUrl, {
       responseType: 'arraybuffer',
     });
 
-    return Buffer.from(fileRes.data);
+    return { buffer: Buffer.from(fileRes.data), mimeType: mimeType ?? 'application/octet-stream' };
   } catch (err) {
     log('error', 'downloadMedia failed', { mediaId, err });
     throw err;
   }
+}
+
+/**
+ * Download a media file and upload it to Supabase Storage.
+ *
+ * @param mediaId     - Dialog360 media ID
+ * @param storagePath - Destination path within the storage bucket
+ * @returns Public URL and MIME type of the stored file
+ */
+export async function downloadAndStoreMedia(
+  mediaId: string,
+  storagePath: string,
+): Promise<{ publicUrl: string; mimeType: string }> {
+  const { buffer, mimeType } = await downloadMedia(mediaId);
+  const publicUrl = await uploadFileToStorage('documents', storagePath, buffer, mimeType);
+  return { publicUrl, mimeType };
 }
