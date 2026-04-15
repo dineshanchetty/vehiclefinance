@@ -2,15 +2,19 @@
   "name": "@vehiclefinance/bot",
   "version": "0.0.1",
   "private": true,
-  "description": "WhatsApp bot handler logic — WhatsApp Cloud API integration",
+  "description": "WhatsApp bot handler logic — Dialog360 integration with BulkSMS and SendGrid",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@sendgrid/mail": "^8.1.0",
+    "@supabase/supabase-js": "^2.39.0",
     "@vehiclefinance/shared": "workspace:*",
-    "@supabase/supabase-js": "^2.39.0"
+    "axios": "^1.6.5"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
