@@ -1,0 +1,4 @@
+SYNTHETIC TEST PLACEHOLDER IMAGE
+This file stands in for a real document image in unit tests.
+The test suite stubs the HTTP call to the edge function so no real file download occurs.
+DO NOT replace with real document images containing PII.

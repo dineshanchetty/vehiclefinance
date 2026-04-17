@@ -1,0 +1,9 @@
+{
+  "_comment": "Synthetic fixture — no real PII. SA ID number below is deliberately invalid (Luhn check fails).",
+  "full_name":        { "value": "SYNTHNAME TESTUSER ONE", "confidence": 0.96 },
+  "id_number":        { "value": "0001010000000",          "confidence": 0.99 },
+  "date_of_birth":    { "value": "2000-01-01",             "confidence": 0.92 },
+  "gender":           { "value": "M",                      "confidence": 0.98 },
+  "nationality":      { "value": "RSA",                    "confidence": 0.95 },
+  "country_of_birth": { "value": "ZA",                     "confidence": 0.82 }
+}

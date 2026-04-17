@@ -1,0 +1,9 @@
+{
+  "_comment": "Synthetic fixture for low-confidence scenario — triggers Q_MISMATCH_REVIEW.",
+  "full_name":        { "value": "BLURRY UNREADABLE",  "confidence": 0.41 },
+  "id_number":        { "value": null,                  "confidence": 0.30 },
+  "date_of_birth":    { "value": null,                  "confidence": 0.35 },
+  "gender":           { "value": "M",                   "confidence": 0.52 },
+  "nationality":      { "value": "RSA",                 "confidence": 0.58 },
+  "country_of_birth": { "value": null,                  "confidence": 0.28 }
+}

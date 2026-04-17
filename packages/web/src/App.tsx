@@ -9,6 +9,7 @@ import { DealDetail } from './pages/DealDetail'
 import { QueuePage } from './pages/QueuePage'
 import { AuditLog } from './pages/AuditLog'
 import { LoginPage } from './pages/LoginPage'
+import { ExtractionReview } from './pages/ExtractionReview'
 import { supabase } from './lib/supabase'
 
 // ── Top bar with user info and logout ─────────────────────────────────────────
@@ -117,6 +118,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <AuditLog />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/extraction/:documentId"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ExtractionReview />
             </Layout>
           </ProtectedRoute>
         }

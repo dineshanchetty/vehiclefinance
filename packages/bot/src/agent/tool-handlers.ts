@@ -92,20 +92,78 @@ export async function handle_store_document(input: ToolInput): Promise<ToolResul
 
 export async function handle_trigger_extraction(input: ToolInput): Promise<ToolResult> {
   const { document_id } = input as { document_id: string };
+
+  // Create the pending task row first so get_extraction_results can poll it.
   const task = await createExtractionTask(document_id);
-  // In production, this would publish to a queue. For now, it creates a pending task.
-  return { success: true, task_id: task.id, message: 'Extraction task created. Check results in a moment.' };
+
+  // Invoke the extract-document edge function asynchronously.
+  // SUPABASE_URL is available in the bot's server environment.
+  const edgeFnUrl = process.env.SUPABASE_URL
+    ? `${process.env.SUPABASE_URL}/functions/v1/extract-document`
+    : null;
+
+  if (edgeFnUrl) {
+    // Fire-and-forget — the edge function updates the document/task rows itself.
+    fetch(edgeFnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY ?? ''}`,
+      },
+      body: JSON.stringify({ document_id }),
+    }).catch((err: unknown) => {
+      // Log but do not surface to the bot conversation — the task status will
+      // reflect failure and the operator can retry from the review UI.
+      console.error('[trigger_extraction] edge function call failed:', err);
+    });
+  } else {
+    console.warn('[trigger_extraction] SUPABASE_URL not set — edge function NOT called. Task created in pending state.');
+  }
+
+  return {
+    success: true,
+    task_id: task.id,
+    message: 'Extraction started. Check results in 10–20 seconds using get_extraction_results.',
+  };
 }
 
 export async function handle_get_extraction_results(input: ToolInput): Promise<ToolResult> {
   const { document_id } = input as { document_id: string };
+
+  // Fetch document extraction status
   const result = await getExtractionResult(document_id);
   if (!result) {
     return { success: false, error: 'Document not found' };
   }
+
   if (result.status !== 'extracted') {
-    return { success: true, status: result.status ?? 'pending', message: 'Extraction still in progress. Please try again in a moment.' };
+    // Also check extraction_tasks for a more descriptive status / error message
+    const { getSupabaseClient } = await import('../services/supabase.js');
+    const sb = getSupabaseClient();
+    const { data: taskRow } = await sb
+      .from('extraction_tasks')
+      .select('status, error_message, created_at')
+      .eq('document_id', document_id)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const taskStatus = taskRow?.status ?? result.status ?? 'pending';
+    if (taskStatus === 'failed') {
+      return {
+        success: false,
+        status: 'failed',
+        error: taskRow?.error_message ?? 'Extraction failed. Please try again or contact support.',
+      };
+    }
+
+    return {
+      success: true,
+      status: taskStatus,
+      message: 'Extraction still in progress. Please try again in a moment.',
+    };
   }
+
   return {
     success: true,
     status: 'extracted',

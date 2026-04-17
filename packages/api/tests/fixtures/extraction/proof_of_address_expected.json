@@ -1,0 +1,12 @@
+{
+  "_comment": "Synthetic fixture — no real PII.",
+  "account_holder_name": { "value": "SYNTHNAME TESTUSER ONE", "confidence": 0.91 },
+  "address_line_1":      { "value": "1 Synthetic Street",     "confidence": 0.88 },
+  "address_line_2":      { "value": null,                     "confidence": 0.70 },
+  "suburb":              { "value": "Testville",              "confidence": 0.85 },
+  "city":                { "value": "Cape Town",              "confidence": 0.93 },
+  "postal_code":         { "value": "8001",                   "confidence": 0.96 },
+  "province":            { "value": "Western Cape",           "confidence": 0.87 },
+  "document_date":       { "value": "2026-03-15",             "confidence": 0.90 },
+  "issuer_name":         { "value": "City of Cape Town",      "confidence": 0.88 }
+}
