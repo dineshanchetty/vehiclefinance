@@ -9,7 +9,10 @@
  *   FRONT_VIEW, REAR_VIEW, LEFT_SIDE, RIGHT_SIDE, FRONT_LEFT_ANGLE,
  *   FRONT_RIGHT_ANGLE, ODOMETER, INTERIOR_DASHBOARD, VIN_CHASSIS
  *
- * Reminder schedule (handled externally by the reminder scheduler):
+ * CONTRACT: every state handler MUST persist conversation_state before returning.
+ * Persistence is handled via advance / saveState from state/conversation.ts.
+ *
+ * Reminder schedule (handled externally by the reminder/escalation scheduler):
  *   2h idle → first reminder
  *  24h idle → second reminder
  *  48h idle → final reminder / escalation
@@ -25,15 +28,20 @@ import type {
   VehiclePhotoAngle,
 } from '../types/index.js';
 import { MANDATORY_VEHICLE_ANGLES } from '../types/index.js';
+import { STRINGS } from './strings.js';
+import { advance, incrementMalformed, saveState } from '../state/conversation.js';
+import { createOpsTask } from '../services/supabase.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Build a text BotResponse. */
 function text(body: string): BotResponse {
   return { type: 'text', text: body };
 }
 
+/** Build an interactive button BotResponse. */
 function buttons(
   body: string,
   opts: Array<{ id: string; title: string }>,
@@ -41,6 +49,7 @@ function buttons(
   return { type: 'interactive', body, buttons: opts };
 }
 
+/** Extract plain text from any inbound message. */
 function extractText(msg: D360Message): string | null {
   if (msg.type === 'text' && msg.text) return msg.text.body.trim();
   if (msg.type === 'interactive' && msg.interactive) {
@@ -54,6 +63,7 @@ function extractText(msg: D360Message): string | null {
   return null;
 }
 
+/** Extract the button reply ID. */
 function extractButtonId(msg: D360Message): string | null {
   if (msg.type === 'interactive' && msg.interactive?.button_reply) {
     return msg.interactive.button_reply.id;
@@ -62,6 +72,7 @@ function extractButtonId(msg: D360Message): string | null {
   return null;
 }
 
+/** True if the message carries an image or document attachment. */
 function hasMedia(msg: D360Message): boolean {
   return ['image', 'document'].includes(msg.type);
 }
@@ -93,7 +104,7 @@ function buildPhotoPrompt(received: VehiclePhotoAngle[]): string {
   );
 }
 
-/** Infer which angle the caption or context indicates (simple keyword matching). */
+/** Infer which angle the caption indicates (simple keyword matching). */
 function inferAngleFromCaption(caption: string | undefined): VehiclePhotoAngle | null {
   if (!caption) return null;
   const c = caption.toLowerCase();
@@ -109,34 +120,63 @@ function inferAngleFromCaption(caption: string | undefined): VehiclePhotoAngle |
   return null;
 }
 
+/**
+ * Create a Q_HUMAN_ESCALATION ops task and advance state to DONE.
+ * Called when malformed_count reaches 3.
+ */
+async function escalateToHuman(
+  state: ConversationState,
+): Promise<FlowResult> {
+  try {
+    await createOpsTask({
+      deal_id: state.deal_id ?? undefined,
+      task_type: 'Q_HUMAN_ESCALATION',
+      description: `Seller ${state.phone} sent 3 consecutive unrecognised inputs at step ${state.current_step}. Human agent required.`,
+      priority: 'high',
+    });
+  } catch {
+    console.warn(`[seller-flow] Failed to create escalation task for ${state.phone}`);
+  }
+
+  return {
+    nextStep: 'DONE',
+    responses: [text(STRINGS.ESCALATED_TO_HUMAN)],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // State handlers
 // ---------------------------------------------------------------------------
 
+/**
+ * WELCOME
+ * Triggered on the very first message from a new seller contact.
+ * Always advances to CONSENT — no input validation needed.
+ */
 async function handleWelcome(
   _msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
+  await advance(state.phone, 'CONSENT', 'seller', state.deal_id);
   return {
     nextStep: 'CONSENT',
     responses: [
-      text(
-        "Welcome to VehicleFinance! 🚗\n\nA buyer has requested vehicle finance and has provided your WhatsApp number as the seller.\n\nWe need to collect some documentation from you to proceed with the transaction.",
-      ),
-      buttons(
-        'Do you consent to our Terms of Service and Privacy Policy, and agree for us to process your personal information for the purposes of this vehicle sale transaction?',
-        [
-          { id: 'consent_yes', title: 'Yes, I agree' },
-          { id: 'consent_no', title: 'No, decline' },
-        ],
-      ),
+      text(STRINGS.SELLER.WELCOME_INTRO),
+      buttons(STRINGS.SELLER.WELCOME_CONSENT_QUESTION, [
+        { id: 'consent_yes', title: STRINGS.SELLER.WELCOME_CONSENT_YES },
+        { id: 'consent_no', title: STRINGS.SELLER.WELCOME_CONSENT_NO },
+      ]),
     ],
   };
 }
 
+/**
+ * CONSENT
+ * Capture yes/no consent response.
+ */
 async function handleConsent(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   const id = extractButtonId(msg);
   const txt = (extractText(msg) ?? '').toLowerCase();
@@ -146,77 +186,98 @@ async function handleConsent(
     txt.includes('yes') ||
     txt.includes('agree');
 
-  if (!agreed) {
-    return {
-      nextStep: 'CONSENT',
-      responses: [
-        text(
-          "No problem. The buyer will be notified that the seller has declined to participate. If you change your mind, feel free to message us again.",
-        ),
-      ],
-    };
-  }
+  const declined =
+    id === 'consent_no' ||
+    txt.includes('no') ||
+    txt.includes('decline');
 
-  return {
-    nextStep: 'ID_UPLOAD',
-    responses: [
-      text(
-        "Thank you! ✅\n\n*Step 1 of 3 — Identity Document*\n\nPlease send a clear photo or PDF of your South African ID document (green bar-coded ID, Smart ID card, or Passport).",
-      ),
-    ],
-  };
-}
-
-async function handleIdUpload(
-  msg: D360Message,
-  _state: ConversationState,
-): Promise<FlowResult> {
-  if (!hasMedia(msg)) {
+  if (agreed) {
+    await advance(state.phone, 'ID_UPLOAD', 'seller', state.deal_id, { consented: true });
     return {
       nextStep: 'ID_UPLOAD',
-      responses: [
-        text(
-          "Please send your ID document as a *photo* or *PDF file*. Make sure all four corners are visible and the text is legible.",
-        ),
-      ],
+      responses: [text(STRINGS.SELLER.CONSENT_ACCEPTED_ID_PROMPT)],
     };
   }
 
+  if (declined) {
+    await saveState(state.phone, 'DONE', 'seller', state.deal_id, {}, 0, false);
+    return {
+      nextStep: 'DONE',
+      responses: [text(STRINGS.SELLER.CONSENT_DECLINED)],
+    };
+  }
+
+  const count = await incrementMalformed(state.phone);
+  if (count >= 3) return escalateToHuman(state);
+
   return {
-    nextStep: 'VEHICLE_DOC_UPLOAD',
+    nextStep: 'CONSENT',
     responses: [
-      text(
-        "ID document received! ✅\n\n*Step 2 of 3 — Vehicle Documentation*\n\nPlease send the vehicle's *Registration Certificate (RC1/natis)* as a photo or PDF.",
-      ),
+      buttons(STRINGS.SELLER.WELCOME_CONSENT_QUESTION, [
+        { id: 'consent_yes', title: STRINGS.SELLER.WELCOME_CONSENT_YES },
+        { id: 'consent_no', title: STRINGS.SELLER.WELCOME_CONSENT_NO },
+      ]),
     ],
   };
 }
 
-async function handleVehicleDocUpload(
+/**
+ * ID_UPLOAD
+ * Wait for an image or document containing the seller's ID.
+ */
+async function handleIdUpload(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   if (!hasMedia(msg)) {
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
     return {
-      nextStep: 'VEHICLE_DOC_UPLOAD',
-      responses: [
-        text(
-          "Please send the vehicle's *Registration Certificate (natis/RC1)* as a *photo* or *PDF file*.",
-        ),
-      ],
+      nextStep: 'ID_UPLOAD',
+      responses: [text(STRINGS.SELLER.ID_UPLOAD_PROMPT)],
     };
   }
 
+  await advance(state.phone, 'VEHICLE_DOC_UPLOAD', 'seller', state.deal_id);
   return {
-    nextStep: 'VEHICLE_PHOTOS',
-    responses: [
-      text(
-        `Vehicle document received! ✅\n\n*Step 3 of 3 — Vehicle Photos*\n\nWe need *9 photos* of the vehicle to complete the inspection.\n\nRequired photos:\n${MANDATORY_VEHICLE_ANGLES.map((a, i) => `${i + 1}. ${ANGLE_LABELS[a]}`).join('\n')}\n\nPlease send each photo one at a time. Start with: *${ANGLE_LABELS['FRONT_VIEW']}*`,
-      ),
-    ],
+    nextStep: 'VEHICLE_DOC_UPLOAD',
+    responses: [text(STRINGS.SELLER.ID_UPLOAD_RECEIVED)],
   };
 }
 
+/**
+ * VEHICLE_DOC_UPLOAD
+ * Wait for the vehicle registration certificate (natis/RC1).
+ */
+async function handleVehicleDocUpload(
+  msg: D360Message,
+  state: ConversationState,
+): Promise<FlowResult> {
+  if (!hasMedia(msg)) {
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
+    return {
+      nextStep: 'VEHICLE_DOC_UPLOAD',
+      responses: [text(STRINGS.SELLER.VEHICLE_DOC_PROMPT)],
+    };
+  }
+
+  await advance(state.phone, 'VEHICLE_PHOTOS', 'seller', state.deal_id, {
+    photos_received: [],
+  });
+
+  const angleList = MANDATORY_VEHICLE_ANGLES.map((a, i) => `${i + 1}. ${ANGLE_LABELS[a]}`).join('\n');
+  return {
+    nextStep: 'VEHICLE_PHOTOS',
+    responses: [text(STRINGS.SELLER.VEHICLE_DOC_RECEIVED(angleList))],
+  };
+}
+
+/**
+ * VEHICLE_PHOTOS
+ * Collect all 9 mandatory vehicle photos.
+ * Infers angle from image caption; falls back to sequential ordering.
+ */
 async function handleVehiclePhotos(
   msg: D360Message,
   state: ConversationState,
@@ -226,23 +287,21 @@ async function handleVehiclePhotos(
 
   if (!hasMedia(msg)) {
     const prompt = buildPhotoPrompt(received);
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
     return {
       nextStep: 'VEHICLE_PHOTOS',
-      responses: [text(prompt || 'Please send the next vehicle photo.')],
+      responses: [text(prompt || STRINGS.SELLER.PHOTO_PROMPT_GENERIC)],
     };
   }
 
-  // Determine which angle this photo represents
   const caption =
     msg.image?.caption ?? msg.document?.caption ?? undefined;
   const inferredAngle = inferAngleFromCaption(caption);
-
-  // If we can infer the angle, record it; otherwise record the next expected angle
   const nextExpected = MANDATORY_VEHICLE_ANGLES.find((a) => !received.includes(a));
   const angleToRecord = inferredAngle ?? nextExpected ?? null;
 
-  let updatedReceived = [...received];
-
+  const updatedReceived = [...received];
   if (angleToRecord && !updatedReceived.includes(angleToRecord)) {
     updatedReceived.push(angleToRecord);
   }
@@ -250,14 +309,13 @@ async function handleVehiclePhotos(
   const remaining = MANDATORY_VEHICLE_ANGLES.filter((a) => !updatedReceived.includes(a));
 
   if (remaining.length === 0) {
-    // All 9 photos received
+    await advance(state.phone, 'DATA_CONFIRMATION', 'seller', state.deal_id, {
+      photos_received: updatedReceived,
+      photos_complete: true,
+    });
     return {
       nextStep: 'DATA_CONFIRMATION',
-      responses: [
-        text(
-          "All 9 vehicle photos received! ✅\n\nI am now extracting the vehicle details from your documents. Please hold on for a moment...",
-        ),
-      ],
+      responses: [text(STRINGS.SELLER.ALL_PHOTOS_RECEIVED)],
       dealUpdate: { photos_complete: true } as never,
     };
   }
@@ -265,17 +323,30 @@ async function handleVehiclePhotos(
   const nextAngle = remaining[0];
   const countDone = updatedReceived.length;
 
+  await advance(state.phone, 'VEHICLE_PHOTOS', 'seller', state.deal_id, {
+    photos_received: updatedReceived,
+  });
+
   return {
     nextStep: 'VEHICLE_PHOTOS',
     responses: [
       text(
-        `Photo ${countDone}/9 received ✅${angleToRecord ? ` (${ANGLE_LABELS[angleToRecord]})` : ''}\n\nNext photo needed: *${ANGLE_LABELS[nextAngle]}*\n\n${remaining.length} photo(s) remaining.`,
+        STRINGS.SELLER.PHOTO_RECEIVED(
+          countDone,
+          angleToRecord ? ANGLE_LABELS[angleToRecord] : null,
+          ANGLE_LABELS[nextAngle],
+          remaining.length,
+        ),
       ),
     ],
     dealUpdate: { photos_received: updatedReceived } as never,
   };
 }
 
+/**
+ * DATA_CONFIRMATION
+ * Show extracted vehicle data to seller for confirmation.
+ */
 async function handleDataConfirmation(
   msg: D360Message,
   state: ConversationState,
@@ -284,21 +355,26 @@ async function handleDataConfirmation(
   const txt = (extractText(msg) ?? '').toLowerCase();
 
   if (!state.context.data_shown) {
-    const extracted = (state.context.extracted_data as Record<string, string> | undefined) ?? {};
+    const extracted =
+      (state.context.extracted_data as Record<string, string> | undefined) ?? {};
     const summary =
       Object.keys(extracted).length > 0
         ? Object.entries(extracted)
             .map(([k, v]) => `• *${k}*: ${v}`)
             .join('\n')
-        : '_(Data extraction in progress — please wait a moment and try again)_';
+        : STRINGS.SELLER.DATA_CONFIRM_PENDING;
+
+    await advance(state.phone, 'DATA_CONFIRMATION', 'seller', state.deal_id, {
+      data_shown: true,
+    });
 
     return {
       nextStep: 'DATA_CONFIRMATION',
       responses: [
-        text(`Here is the vehicle information we extracted:\n\n${summary}`),
-        buttons('Is all the vehicle information above correct?', [
-          { id: 'confirm_yes', title: 'Yes, correct' },
-          { id: 'confirm_no', title: 'Something is wrong' },
+        text(`${STRINGS.SELLER.DATA_CONFIRM_HEADER}${summary}`),
+        buttons(STRINGS.SELLER.DATA_CONFIRM_QUESTION, [
+          { id: 'confirm_yes', title: STRINGS.SELLER.DATA_CONFIRM_YES },
+          { id: 'confirm_no', title: STRINGS.SELLER.DATA_CONFIRM_NO },
         ]),
       ],
     };
@@ -307,80 +383,97 @@ async function handleDataConfirmation(
   const confirmed =
     id === 'confirm_yes' || txt.includes('yes') || txt.includes('correct');
 
-  if (!confirmed) {
+  const denied =
+    id === 'confirm_no' ||
+    txt.includes('no') ||
+    txt.includes('wrong') ||
+    txt.includes('incorrect');
+
+  if (confirmed) {
+    await advance(state.phone, 'WAITING_FOR_CONTRACT', 'seller', state.deal_id);
     return {
-      nextStep: 'DATA_CONFIRMATION',
-      responses: [
-        text(
-          "I'm sorry about that. Please describe what is incorrect and a consultant will assist you to update the information.",
-        ),
-      ],
+      nextStep: 'WAITING_FOR_CONTRACT',
+      responses: [text(STRINGS.SELLER.DATA_CONFIRMED)],
     };
   }
 
+  if (denied) {
+    await advance(state.phone, 'DATA_CONFIRMATION', 'seller', state.deal_id, {
+      data_shown: false,
+    });
+    return {
+      nextStep: 'DATA_CONFIRMATION',
+      responses: [text(STRINGS.SELLER.DATA_CONFIRM_CORRECTION_REQUEST)],
+    };
+  }
+
+  const count = await incrementMalformed(state.phone);
+  if (count >= 3) return escalateToHuman(state);
+
   return {
-    nextStep: 'WAITING_FOR_CONTRACT',
+    nextStep: 'DATA_CONFIRMATION',
     responses: [
-      text(
-        "Vehicle information confirmed! ✅\n\nThe buyer's finance application is being processed. Once approved, you will receive a sale agreement to sign.\n\nWe will notify you on WhatsApp when the contract is ready. 📋",
-      ),
+      buttons(STRINGS.SELLER.DATA_CONFIRM_QUESTION, [
+        { id: 'confirm_yes', title: STRINGS.SELLER.DATA_CONFIRM_YES },
+        { id: 'confirm_no', title: STRINGS.SELLER.DATA_CONFIRM_NO },
+      ]),
     ],
   };
 }
 
+/**
+ * WAITING_FOR_CONTRACT
+ * Passive state — seller waits for contract to be generated.
+ */
 async function handleWaitingForContract(
   _msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
+  await advance(state.phone, 'WAITING_FOR_CONTRACT', 'seller', state.deal_id);
   return {
     nextStep: 'WAITING_FOR_CONTRACT',
-    responses: [
-      text(
-        "The contract is being prepared. We will notify you here as soon as it is ready to sign. Thank you for your patience! 🙏",
-      ),
-    ],
+    responses: [text(STRINGS.SELLER.WAITING_FOR_CONTRACT)],
   };
 }
 
+/**
+ * CONTRACT_SIGNING
+ * Seller needs to sign the sale agreement via the link sent separately.
+ */
 async function handleContractSigning(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   const txt = (extractText(msg) ?? '').toLowerCase();
 
   if (txt.includes('signed') || txt.includes('done') || txt.includes('complete')) {
+    await saveState(state.phone, 'DONE', 'seller', state.deal_id, {}, 0, false);
     return {
       nextStep: 'DONE',
-      responses: [
-        text(
-          "Congratulations! 🎉 You have signed the sale agreement. The finance will be disbursed to the buyer and the vehicle transfer process will begin.\n\nA consultant will contact you with further instructions. Thank you for using VehicleFinance!",
-        ),
-      ],
+      responses: [text(STRINGS.SELLER.CONTRACT_SIGNED)],
       dealUpdate: { status: 'contract_signed' },
     };
   }
 
+  await advance(state.phone, 'CONTRACT_SIGNING', 'seller', state.deal_id);
   return {
     nextStep: 'CONTRACT_SIGNING',
-    responses: [
-      text(
-        "Please sign the sale agreement using the link we sent you. Once signed, reply *Signed* here to confirm. If you have not received the link, reply *Resend*.",
-      ),
-    ],
+    responses: [text(STRINGS.SELLER.CONTRACT_SIGNING_PROMPT)],
   };
 }
 
+/**
+ * DONE
+ * Terminal state — acknowledge any further messages gracefully.
+ */
 async function handleDone(
   _msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
+  await advance(state.phone, 'DONE', 'seller', state.deal_id);
   return {
     nextStep: 'DONE',
-    responses: [
-      text(
-        "This transaction is complete. For further queries, please contact our support team. Thank you! 🚗",
-      ),
-    ],
+    responses: [text(STRINGS.SELLER.DONE_MESSAGE)],
   };
 }
 
@@ -388,6 +481,7 @@ async function handleDone(
 // Router
 // ---------------------------------------------------------------------------
 
+/** Map each SellerStep to its handler function. */
 const HANDLERS: Record<
   SellerStep,
   (msg: D360Message, state: ConversationState) => Promise<FlowResult>
@@ -449,10 +543,10 @@ export function buildSellerReminderMessage(
 ): string {
   const prefix =
     level === '2h'
-      ? "Just a gentle reminder:"
+      ? STRINGS.SELLER.REMINDER_PREFIX_2H
       : level === '24h'
-        ? "We noticed you haven't continued your application. Reminder:"
-        : "⚠️ Final reminder: Your vehicle transaction is waiting on your action.";
+        ? STRINGS.SELLER.REMINDER_PREFIX_24H
+        : STRINGS.SELLER.REMINDER_PREFIX_48H;
 
   switch (step) {
     case 'CONSENT':

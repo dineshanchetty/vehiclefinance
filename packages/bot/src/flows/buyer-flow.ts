@@ -8,6 +8,10 @@
  *
  * Each exported handler accepts the inbound message and current conversation
  * state, and returns the next step plus bot responses to send back.
+ *
+ * CONTRACT: every state handler MUST persist conversation_state before returning.
+ * Persistence is handled by the handleBuyerMessage router after the handler
+ * returns, using saveState / advance from state/conversation.ts.
  */
 
 import type {
@@ -19,15 +23,20 @@ import type {
   FlowResult,
   QuoteData,
 } from '../types/index.js';
+import { STRINGS } from './strings.js';
+import { advance, incrementMalformed, saveState } from '../state/conversation.js';
+import { createOpsTask } from '../services/supabase.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
+/** Build a text BotResponse. */
 function text(body: string): BotResponse {
   return { type: 'text', text: body };
 }
 
+/** Build an interactive button BotResponse. */
 function buttons(
   body: string,
   opts: Array<{ id: string; title: string }>,
@@ -49,6 +58,7 @@ function extractText(msg: D360Message): string | null {
   return null;
 }
 
+/** Extract the button reply ID. */
 function extractButtonId(msg: D360Message): string | null {
   if (msg.type === 'interactive' && msg.interactive?.button_reply) {
     return msg.interactive.button_reply.id;
@@ -57,8 +67,34 @@ function extractButtonId(msg: D360Message): string | null {
   return null;
 }
 
+/** True if the message carries an image or document attachment. */
 function hasMedia(msg: D360Message): boolean {
   return ['image', 'document'].includes(msg.type);
+}
+
+/**
+ * Create a Q_HUMAN_ESCALATION ops task and advance state to DONE.
+ * Called when malformed_count reaches 3.
+ */
+async function escalateToHuman(
+  state: ConversationState,
+): Promise<FlowResult> {
+  try {
+    await createOpsTask({
+      deal_id: state.deal_id ?? undefined,
+      task_type: 'Q_HUMAN_ESCALATION',
+      description: `Buyer ${state.phone} sent 3 consecutive unrecognised inputs at step ${state.current_step}. Human agent required.`,
+      priority: 'high',
+    });
+  } catch {
+    // Non-fatal — log and continue
+    console.warn(`[buyer-flow] Failed to create escalation task for ${state.phone}`);
+  }
+
+  return {
+    nextStep: 'DONE',
+    responses: [text(STRINGS.ESCALATED_TO_HUMAN)],
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -68,24 +104,21 @@ function hasMedia(msg: D360Message): boolean {
 /**
  * WELCOME
  * Triggered on the very first message from a new buyer contact.
+ * Always advances to CONSENT — no validation needed.
  */
 async function handleWelcome(
   _msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
+  await advance(state.phone, 'CONSENT', 'buyer', state.deal_id);
   return {
     nextStep: 'CONSENT',
     responses: [
-      text(
-        'Welcome to VehicleFinance! 🚗\n\nWe help you get vehicle finance quickly and securely via WhatsApp.\n\nBefore we begin, please review our Privacy Policy and Terms of Service.',
-      ),
-      buttons(
-        'Do you consent to our Terms of Service and Privacy Policy, and agree for us to process your personal information to assess your finance application?',
-        [
-          { id: 'consent_yes', title: 'Yes, I agree' },
-          { id: 'consent_no', title: 'No, decline' },
-        ],
-      ),
+      text(STRINGS.BUYER.WELCOME_INTRO),
+      buttons(STRINGS.BUYER.WELCOME_CONSENT_QUESTION, [
+        { id: 'consent_yes', title: STRINGS.BUYER.WELCOME_CONSENT_YES },
+        { id: 'consent_no', title: STRINGS.BUYER.WELCOME_CONSENT_NO },
+      ]),
     ],
   };
 }
@@ -93,10 +126,11 @@ async function handleWelcome(
 /**
  * CONSENT
  * Capture yes/no consent response.
+ * Counts non-affirmative, non-negative inputs as malformed.
  */
 async function handleConsent(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   const id = extractButtonId(msg);
   const txt = (extractText(msg) ?? '').toLowerCase();
@@ -107,25 +141,41 @@ async function handleConsent(
     txt.includes('agree') ||
     txt.includes('i agree');
 
-  if (!agreed) {
+  const declined =
+    id === 'consent_no' ||
+    txt.includes('no') ||
+    txt.includes('decline') ||
+    txt.includes('reject');
+
+  if (agreed) {
+    await advance(state.phone, 'ID_UPLOAD', 'buyer', state.deal_id, { consented: true });
     return {
-      nextStep: 'CONSENT',
-      responses: [
-        text(
-          'No problem. If you change your mind and would like to apply for vehicle finance, feel free to message us again. Goodbye! 👋',
-        ),
-      ],
+      nextStep: 'ID_UPLOAD',
+      responses: [text(STRINGS.BUYER.CONSENT_ACCEPTED_ID_PROMPT)],
+      dealUpdate: {},
     };
   }
 
+  if (declined) {
+    await saveState(state.phone, 'DONE', 'buyer', state.deal_id, {}, 0, false);
+    return {
+      nextStep: 'DONE',
+      responses: [text(STRINGS.BUYER.CONSENT_DECLINED)],
+    };
+  }
+
+  // Ambiguous input — increment malformed
+  const count = await incrementMalformed(state.phone);
+  if (count >= 3) return escalateToHuman(state);
+
   return {
-    nextStep: 'ID_UPLOAD',
+    nextStep: 'CONSENT',
     responses: [
-      text(
-        "Great, thank you! ✅\n\nLet's start collecting your documents.\n\n*Step 1 of 3 — Identity Document*\n\nPlease send a clear photo or PDF of your South African ID document (green bar-coded ID, Smart ID card, or Passport).",
-      ),
+      buttons(STRINGS.BUYER.WELCOME_CONSENT_QUESTION, [
+        { id: 'consent_yes', title: STRINGS.BUYER.WELCOME_CONSENT_YES },
+        { id: 'consent_no', title: STRINGS.BUYER.WELCOME_CONSENT_NO },
+      ]),
     ],
-    dealUpdate: {},
   };
 }
 
@@ -135,26 +185,21 @@ async function handleConsent(
  */
 async function handleIdUpload(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   if (!hasMedia(msg)) {
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
     return {
       nextStep: 'ID_UPLOAD',
-      responses: [
-        text(
-          "Please send your ID document as a *photo* or *PDF file*.\n\nEnsure the document is clear and all four corners are visible.",
-        ),
-      ],
+      responses: [text(STRINGS.BUYER.ID_UPLOAD_PROMPT)],
     };
   }
 
+  await advance(state.phone, 'POA_UPLOAD', 'buyer', state.deal_id);
   return {
     nextStep: 'POA_UPLOAD',
-    responses: [
-      text(
-        "ID document received! ✅\n\n*Step 2 of 3 — Proof of Address (POA)*\n\nPlease send a utility bill, bank statement, or official letter showing your current address. It must be *dated within the last 3 months*.",
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.ID_UPLOAD_RECEIVED)],
   };
 }
 
@@ -164,32 +209,28 @@ async function handleIdUpload(
  */
 async function handlePoaUpload(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   if (!hasMedia(msg)) {
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
     return {
       nextStep: 'POA_UPLOAD',
-      responses: [
-        text(
-          "Please send your Proof of Address as a *photo* or *PDF file*. Acceptable documents include a utility bill, bank statement, or official municipal letter (not older than 3 months).",
-        ),
-      ],
+      responses: [text(STRINGS.BUYER.POA_UPLOAD_PROMPT)],
     };
   }
 
+  await advance(state.phone, 'BANK_STATEMENT_UPLOAD', 'buyer', state.deal_id);
   return {
     nextStep: 'BANK_STATEMENT_UPLOAD',
-    responses: [
-      text(
-        "Proof of address received! ✅\n\n*Step 3 of 3 — Bank Statements*\n\nPlease send your last *3 months' bank statements* as PDF files. You can send them one at a time or as a single combined PDF.",
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.POA_UPLOAD_RECEIVED)],
   };
 }
 
 /**
  * BANK_STATEMENT_UPLOAD
  * Collect bank statements; allow multiple uploads before confirmation.
+ * Counts files received in context.bank_statements_received.
  */
 async function handleBankStatementUpload(
   msg: D360Message,
@@ -199,62 +240,55 @@ async function handleBankStatementUpload(
     (state.context.bank_statements_received as number | undefined) ?? 0;
 
   if (!hasMedia(msg)) {
-    // Check if user said they are done uploading
     const txt = (extractText(msg) ?? '').toLowerCase();
-    if (
+    const isDone =
       (txt.includes('done') || txt.includes('finish') || txt.includes('complete')) &&
-      statementsReceived > 0
-    ) {
+      statementsReceived > 0;
+
+    if (isDone) {
+      await advance(state.phone, 'DATA_CONFIRMATION', 'buyer', state.deal_id, {
+        bank_statements_received: statementsReceived,
+      });
       return {
         nextStep: 'DATA_CONFIRMATION',
-        responses: [
-          text(
-            `Bank statements received (${statementsReceived} file(s)). ✅\n\nI am now extracting your information. Please hold on for a moment...`,
-          ),
-        ],
+        responses: [text(STRINGS.BUYER.BANK_STATEMENT_PROCESSING(statementsReceived))],
       };
     }
 
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
     return {
       nextStep: 'BANK_STATEMENT_UPLOAD',
-      responses: [
-        text(
-          'Please send your bank statements as *PDF files*. Once you have sent all statements, reply *Done*.',
-        ),
-      ],
+      responses: [text(STRINGS.BUYER.BANK_STATEMENT_PROMPT)],
     };
   }
 
   const newCount = statementsReceived + 1;
 
   if (newCount < 3) {
+    await advance(state.phone, 'BANK_STATEMENT_UPLOAD', 'buyer', state.deal_id, {
+      bank_statements_received: newCount,
+    });
     return {
       nextStep: 'BANK_STATEMENT_UPLOAD',
-      responses: [
-        text(
-          `Statement ${newCount} received ✅\n\nPlease send the next statement, or reply *Done* if you have sent all statements.`,
-        ),
-      ],
+      responses: [text(STRINGS.BUYER.BANK_STATEMENT_RECEIVED(newCount))],
       dealUpdate: { bank_statements_received: newCount } as never,
     };
   }
 
-  // 3+ statements received — move on
+  // 3+ statements received — move on automatically
+  await advance(state.phone, 'DATA_CONFIRMATION', 'buyer', state.deal_id, {
+    bank_statements_received: newCount,
+  });
   return {
     nextStep: 'DATA_CONFIRMATION',
-    responses: [
-      text(
-        `Bank statements received (${newCount} file(s)). ✅\n\nI am now extracting your information. Please hold on for a moment...`,
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.BANK_STATEMENT_PROCESSING(newCount))],
   };
 }
 
 /**
  * DATA_CONFIRMATION
  * Show extracted data to buyer for confirmation.
- * In practice, extracted_data is populated by the extraction service before
- * the bot enters this state.
  */
 async function handleDataConfirmation(
   msg: D360Message,
@@ -265,21 +299,27 @@ async function handleDataConfirmation(
 
   // If we haven't shown the data yet, display it
   if (!state.context.data_shown) {
-    const extracted = (state.context.extracted_data as Record<string, string> | undefined) ?? {};
+    const extracted =
+      (state.context.extracted_data as Record<string, string> | undefined) ?? {};
     const summary =
       Object.keys(extracted).length > 0
         ? Object.entries(extracted)
             .map(([k, v]) => `• *${k}*: ${v}`)
             .join('\n')
-        : '_(Data extraction in progress — please wait a moment and try again)_';
+        : STRINGS.BUYER.DATA_CONFIRM_PENDING;
+
+    // Persist data_shown flag
+    await advance(state.phone, 'DATA_CONFIRMATION', 'buyer', state.deal_id, {
+      data_shown: true,
+    });
 
     return {
       nextStep: 'DATA_CONFIRMATION',
       responses: [
-        text(`Here is the information we extracted from your documents:\n\n${summary}`),
-        buttons('Is all the information above correct?', [
-          { id: 'confirm_yes', title: 'Yes, correct' },
-          { id: 'confirm_no', title: 'No, something is wrong' },
+        text(`${STRINGS.BUYER.DATA_CONFIRM_HEADER}${summary}`),
+        buttons(STRINGS.BUYER.DATA_CONFIRM_QUESTION, [
+          { id: 'confirm_yes', title: STRINGS.BUYER.DATA_CONFIRM_YES },
+          { id: 'confirm_no', title: STRINGS.BUYER.DATA_CONFIRM_NO },
         ]),
       ],
     };
@@ -288,23 +328,40 @@ async function handleDataConfirmation(
   const confirmed =
     id === 'confirm_yes' || txt.includes('yes') || txt.includes('correct');
 
-  if (!confirmed) {
+  const denied =
+    id === 'confirm_no' ||
+    txt.includes('no') ||
+    txt.includes('wrong') ||
+    txt.includes('incorrect');
+
+  if (confirmed) {
+    await advance(state.phone, 'SELLER_DETAILS', 'buyer', state.deal_id);
     return {
-      nextStep: 'DATA_CONFIRMATION',
-      responses: [
-        text(
-          "I'm sorry about that. Please describe what information is incorrect and a consultant will assist you shortly.",
-        ),
-      ],
+      nextStep: 'SELLER_DETAILS',
+      responses: [text(STRINGS.BUYER.DATA_CONFIRMED)],
     };
   }
 
+  if (denied) {
+    // Reset data_shown so corrected data can be re-presented
+    await advance(state.phone, 'DATA_CONFIRMATION', 'buyer', state.deal_id, {
+      data_shown: false,
+    });
+    return {
+      nextStep: 'DATA_CONFIRMATION',
+      responses: [text(STRINGS.BUYER.DATA_CONFIRM_CORRECTION_REQUEST)],
+    };
+  }
+
+  const count = await incrementMalformed(state.phone);
+  if (count >= 3) return escalateToHuman(state);
   return {
-    nextStep: 'SELLER_DETAILS',
+    nextStep: 'DATA_CONFIRMATION',
     responses: [
-      text(
-        "Information confirmed! ✅\n\n*Seller Details*\n\nPlease provide the WhatsApp number of the person selling the vehicle. Format: +27XXXXXXXXX",
-      ),
+      buttons(STRINGS.BUYER.DATA_CONFIRM_QUESTION, [
+        { id: 'confirm_yes', title: STRINGS.BUYER.DATA_CONFIRM_YES },
+        { id: 'confirm_no', title: STRINGS.BUYER.DATA_CONFIRM_NO },
+      ]),
     ],
   };
 }
@@ -315,20 +372,17 @@ async function handleDataConfirmation(
  */
 async function handleSellerDetails(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   const txt = extractText(msg) ?? '';
-  // Basic E.164 validation
   const phoneMatch = txt.match(/(\+?27[0-9]{9}|0[0-9]{9})/);
 
   if (!phoneMatch) {
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
     return {
       nextStep: 'SELLER_DETAILS',
-      responses: [
-        text(
-          "Please provide a valid South African WhatsApp number for the seller.\n\nFormat: *+27821234567* or *0821234567*",
-        ),
-      ],
+      responses: [text(STRINGS.BUYER.SELLER_PHONE_PROMPT)],
     };
   }
 
@@ -339,13 +393,13 @@ async function handleSellerDetails(
     sellerPhone = sellerPhone.slice(1);
   }
 
+  await advance(state.phone, 'WAITING_FOR_QUOTE', 'buyer', state.deal_id, {
+    seller_phone: sellerPhone,
+  });
+
   return {
     nextStep: 'WAITING_FOR_QUOTE',
-    responses: [
-      text(
-        `Thank you! We have noted the seller's number: *+${sellerPhone}*\n\nWe will now invite the seller to submit their vehicle documents.\n\nA consultant will review your application and send you a finance quote. This usually takes *1–2 business days*.\n\nWe will notify you on WhatsApp when your quote is ready. 📋`,
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.SELLER_DETAILS_SAVED(sellerPhone))],
     dealUpdate: { seller_phone: sellerPhone } as never,
   };
 }
@@ -357,21 +411,19 @@ async function handleSellerDetails(
  */
 async function handleWaitingForQuote(
   _msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
+  // No state change — re-persist to update last_activity
+  await advance(state.phone, 'WAITING_FOR_QUOTE', 'buyer', state.deal_id);
   return {
     nextStep: 'WAITING_FOR_QUOTE',
-    responses: [
-      text(
-        "Your application is under review. We will contact you as soon as your quote is ready. Thank you for your patience! 🙏",
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.WAITING_FOR_QUOTE)],
   };
 }
 
 /**
  * QUOTE_REVIEW
- * Buyer has received a quote (pushed by sendQuoteToBuyer) and must accept/decline.
+ * Buyer has received a quote and must accept/decline.
  */
 async function handleQuoteReview(
   msg: D360Message,
@@ -380,7 +432,6 @@ async function handleQuoteReview(
   const id = extractButtonId(msg);
   const txt = (extractText(msg) ?? '').toLowerCase();
 
-  // First entry — quote has just been sent; any message here is a response
   const accepted =
     id === 'quote_accept' ||
     txt.includes('accept') ||
@@ -394,42 +445,40 @@ async function handleQuoteReview(
     txt.includes('reject');
 
   if (!accepted && !declined) {
+    // Show/re-show quote
     const quote = state.context.quote_data as QuoteData | undefined;
     const summary = quote
       ? `Loan amount: R${quote.loanAmount.toLocaleString()}\nInterest rate: ${quote.interestRate}% p.a.\nTerm: ${quote.termMonths} months\nMonthly instalment: R${quote.monthlyInstalment.toLocaleString()}\nTotal repayable: R${quote.totalRepayable.toLocaleString()}`
       : '_(Quote details not available)_';
 
+    const count = await incrementMalformed(state.phone);
+    if (count >= 3) return escalateToHuman(state);
+
     return {
       nextStep: 'QUOTE_REVIEW',
       responses: [
-        text(`Your finance quote:\n\n${summary}`),
-        buttons('Would you like to proceed with this quote?', [
-          { id: 'quote_accept', title: 'Accept quote' },
-          { id: 'quote_decline', title: 'Decline' },
+        text(`${STRINGS.BUYER.QUOTE_REVIEW_HEADER}${summary}`),
+        buttons(STRINGS.BUYER.QUOTE_REVIEW_QUESTION, [
+          { id: 'quote_accept', title: STRINGS.BUYER.QUOTE_ACCEPT_BUTTON },
+          { id: 'quote_decline', title: STRINGS.BUYER.QUOTE_DECLINE_BUTTON },
         ]),
       ],
     };
   }
 
   if (declined) {
+    await saveState(state.phone, 'DONE', 'buyer', state.deal_id, {}, 0, false);
     return {
       nextStep: 'DONE',
-      responses: [
-        text(
-          "Thank you for considering VehicleFinance. You have declined this quote. If you would like a new quote in future, please start a new conversation. 👋",
-        ),
-      ],
+      responses: [text(STRINGS.BUYER.QUOTE_DECLINED)],
       dealUpdate: { status: 'quote_declined' },
     };
   }
 
+  await advance(state.phone, 'CONTRACT_SIGNING', 'buyer', state.deal_id);
   return {
     nextStep: 'CONTRACT_SIGNING',
-    responses: [
-      text(
-        "Quote accepted! ✅\n\nWe are preparing your loan agreement. You will receive a secure signing link shortly. Please review and sign the contract at your earliest convenience.",
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.QUOTE_ACCEPTED)],
     dealUpdate: { status: 'quote_accepted' },
   };
 }
@@ -440,29 +489,23 @@ async function handleQuoteReview(
  */
 async function handleContractSigning(
   msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
   const txt = (extractText(msg) ?? '').toLowerCase();
 
   if (txt.includes('signed') || txt.includes('done') || txt.includes('complete')) {
+    await saveState(state.phone, 'DONE', 'buyer', state.deal_id, {}, 0, false);
     return {
       nextStep: 'DONE',
-      responses: [
-        text(
-          "Congratulations! 🎉 Your contract has been signed and your finance application is being finalised.\n\nA consultant will be in touch within 1 business day to complete the disbursement process. Thank you for choosing VehicleFinance!",
-        ),
-      ],
+      responses: [text(STRINGS.BUYER.CONTRACT_SIGNED)],
       dealUpdate: { status: 'contract_signed' },
     };
   }
 
+  await advance(state.phone, 'CONTRACT_SIGNING', 'buyer', state.deal_id);
   return {
     nextStep: 'CONTRACT_SIGNING',
-    responses: [
-      text(
-        "Please sign the contract using the link we sent you. Once signed, reply *Signed* here to confirm. If you have not received the link, please reply *Resend*.",
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.CONTRACT_SIGNING_PROMPT)],
   };
 }
 
@@ -472,15 +515,13 @@ async function handleContractSigning(
  */
 async function handleDone(
   _msg: D360Message,
-  _state: ConversationState,
+  state: ConversationState,
 ): Promise<FlowResult> {
+  // Re-persist to update last_activity (idempotent)
+  await advance(state.phone, 'DONE', 'buyer', state.deal_id);
   return {
     nextStep: 'DONE',
-    responses: [
-      text(
-        "Your application is complete. For any further queries, please contact our support team. Thank you! 🚗",
-      ),
-    ],
+    responses: [text(STRINGS.BUYER.DONE_MESSAGE)],
   };
 }
 

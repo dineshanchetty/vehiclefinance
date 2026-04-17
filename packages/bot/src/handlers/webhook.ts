@@ -20,6 +20,7 @@ import {
   sendImageMessage,
   downloadMedia,
 } from '../services/dialog360.js';
+import { STRINGS } from '../flows/strings.js';
 import { getState, setState } from '../services/conversation-state.js';
 import {
   uploadFile,
@@ -365,10 +366,36 @@ interface AgentWebhookPayload {
   entry?: Array<{ id: string; changes: Array<{ value: D360MessageEntry; field: string }> }>;
 }
 
+// ---------------------------------------------------------------------------
+// Rate limiting (in-process, per-phone)
+// ---------------------------------------------------------------------------
+
+/** Sliding-window rate limiter: max 10 messages per 60-second window per phone. */
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const RATE_LIMIT_MAX_MSGS = 10;
+
+// Maps phone → array of message timestamps in the current window
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- runtime cache, intentionally opaque
+const _rateLimitMap = new Map<string, number[]>();
+
+/**
+ * Return true if the given phone has exceeded the rate limit.
+ * Mutates the internal sliding-window map as a side effect.
+ */
+function isRateLimited(phone: string): boolean {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const timestamps = (_rateLimitMap.get(phone) ?? []).filter((t) => t > windowStart);
+  timestamps.push(now);
+  _rateLimitMap.set(phone, timestamps);
+  return timestamps.length > RATE_LIMIT_MAX_MSGS;
+}
+
 /**
  * POST /webhook/dialog360 (agent-based)
  * Receives incoming WhatsApp messages and routes them to the Claude agent.
  * Responds 200 immediately and processes asynchronously.
+ * Phones sending > 10 messages/minute receive a throttle reply and are skipped.
  */
 export async function handleDialog360Webhook(req: Request, res: Response): Promise<void> {
   res.sendStatus(200);
@@ -411,6 +438,14 @@ export async function handleDialog360Webhook(req: Request, res: Response): Promi
           default:
             console.log(`[webhook] Unsupported message type: ${msg.type} from ${phone}`);
             continue;
+        }
+
+        if (isRateLimited(phone)) {
+          log('warn', 'rate-limit exceeded', { phone });
+          // Fire-and-forget throttle reply — do not block the 200 response
+          sendTextMessage(phone, STRINGS.RATE_LIMIT_EXCEEDED)
+            .catch((e) => log('error', 'throttle reply failed', { phone, e }));
+          continue;
         }
 
         agent.processMessage(phone, messageText, mediaId).catch((err) => {
