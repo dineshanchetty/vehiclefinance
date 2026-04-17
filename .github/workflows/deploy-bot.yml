@@ -1,0 +1,52 @@
+name: Deploy Bot (Fly.io)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/bot/**"
+      - "packages/shared/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+      - ".github/workflows/deploy-bot.yml"
+
+concurrency:
+  group: deploy-bot
+  cancel-in-progress: false   # Never cancel an in-flight deploy
+
+jobs:
+  deploy:
+    name: Build & Deploy to Fly.io
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck — bot
+        run: |
+          pnpm --filter @vehiclefinance/shared build
+          pnpm --filter @vehiclefinance/bot typecheck
+
+      - name: Setup flyctl
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --config packages/bot/fly.toml --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

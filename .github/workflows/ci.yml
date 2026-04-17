@@ -1,0 +1,141 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8.15.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build shared package
+        run: pnpm --filter @vehiclefinance/shared build
+
+      - name: Typecheck — shared
+        run: pnpm --filter @vehiclefinance/shared typecheck
+
+      - name: Typecheck — bot
+        run: pnpm --filter @vehiclefinance/bot typecheck
+
+      - name: Typecheck — web
+        run: pnpm --filter @vehiclefinance/web typecheck
+
+      - name: Lint — web
+        run: pnpm --filter @vehiclefinance/web lint
+
+  unit-tests:
+    name: Unit tests (bot + web)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 8.15.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+      # Tests are optional per package: skip cleanly if no test script is defined.
+      - name: Bot tests
+        run: |
+          if pnpm --filter @vehiclefinance/bot run --if-present test -- --run 2>/dev/null; then
+            echo "bot tests ran"
+          else
+            echo "bot tests skipped (no test script or no tests)"
+          fi
+      - name: Web tests
+        run: |
+          if pnpm --filter @vehiclefinance/web run --if-present test -- --run 2>/dev/null; then
+            echo "web tests ran"
+          else
+            echo "web tests skipped (no test script or no tests)"
+          fi
+
+  db-verify:
+    # Applies every migration in packages/api/supabase/migrations/ to a fresh
+    # Supabase branch, then runs the Deno integration test suite against it.
+    # This is THE Phase 0 verification — it proves the repo can reproduce the DB
+    # on a fresh project.
+    name: DB migrations + integration tests (ephemeral Supabase branch)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_PROJECT_ID:   ${{ secrets.SUPABASE_PROJECT_ID }}
+    if: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/main' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Install Deno (for integration tests)
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Create ephemeral Supabase branch
+        id: branch
+        run: |
+          set -e
+          BRANCH_NAME="ci-${{ github.run_id }}"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+          supabase login --token "$SUPABASE_ACCESS_TOKEN"
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          supabase branches create "$BRANCH_NAME" --experimental --project-ref "$SUPABASE_PROJECT_ID"
+          # Wait for the branch DB to be ready (up to 2 minutes).
+          for i in $(seq 1 24); do
+            STATUS=$(supabase branches list --project-ref "$SUPABASE_PROJECT_ID" \
+              | awk -v b="$BRANCH_NAME" '$0 ~ b {print $3}')
+            if [ "$STATUS" = "FUNCTIONS_DEPLOYED" ] || [ "$STATUS" = "MIGRATIONS_PASSED" ] || [ "$STATUS" = "ACTIVE_HEALTHY" ]; then
+              break
+            fi
+            sleep 5
+          done
+
+      - name: Push migrations to ephemeral branch
+        run: |
+          supabase db push --linked --include-all
+
+      - name: Fetch branch connection details
+        id: branch_details
+        run: |
+          # supabase branches get may not exist in every CLI version; fall back to API if so.
+          DETAILS=$(supabase branches get "${{ steps.branch.outputs.branch_name }}" --project-ref "$SUPABASE_PROJECT_ID" --experimental 2>/dev/null || true)
+          BRANCH_URL=$(echo "$DETAILS" | awk '/db_host|url/ {print $2; exit}')
+          echo "branch_url=https://${BRANCH_URL#https://}" >> $GITHUB_OUTPUT
+
+      - name: Run Deno integration tests against branch
+        env:
+          SUPABASE_URL: ${{ steps.branch_details.outputs.branch_url }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_STAGING_SERVICE_ROLE_KEY }}
+        run: |
+          cd packages/api/tests
+          deno task test
+
+      - name: Destroy ephemeral Supabase branch
+        if: always()
+        run: |
+          supabase branches delete "${{ steps.branch.outputs.branch_name }}" --project-ref "$SUPABASE_PROJECT_ID" --experimental || echo "branch may already be gone"

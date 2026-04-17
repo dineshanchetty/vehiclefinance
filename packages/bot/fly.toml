@@ -1,0 +1,41 @@
+# fly.toml — vehiclefinance-bot (Fly.io)
+# Deploy with: flyctl deploy --config packages/bot/fly.toml
+
+app = "vehiclefinance-bot"
+primary_region = "jnb"   # Johannesburg — closest to South African users
+
+[build]
+  # Dockerfile is at packages/bot/Dockerfile; context is the repo root
+  # so that pnpm workspace packages are accessible during build.
+  dockerfile = "packages/bot/Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT     = "3001"
+
+[http_service]
+  internal_port        = 3001
+  force_https          = true
+  auto_stop_machines   = true
+  auto_start_machines  = true
+  min_machines_running = 1
+
+  [http_service.concurrency]
+    type       = "requests"
+    soft_limit = 100
+    hard_limit = 200
+
+[[vm]]
+  memory    = "512mb"
+  cpu_kind  = "shared"
+  cpus      = 1
+
+[checks]
+  [checks.health]
+    grace_period = "10s"
+    interval     = "30s"
+    method       = "GET"
+    path         = "/health"
+    port         = 3001
+    timeout      = "5s"
+    type         = "http"
