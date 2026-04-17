@@ -1,6 +1,11 @@
 // Re-export the auto-generated Supabase database types plus convenient aliases.
 // The generated `Database` type is the source of truth; everything else is a
 // shortcut to reduce boilerplate at call sites.
+//
+// Phase 2 introduced the `profiles` table (migration 20260417000000_auth_rls.sql).
+// Until `pnpm gen:types` is re-run with that migration applied live, the
+// generated database.ts won't include `profiles` — so `Profile` is declared
+// manually below. Remove once types are regenerated.
 
 export type { Database, Json } from './database'
 import type { Database } from './database'
@@ -59,3 +64,15 @@ export type SignatureStatus         = Enums['signature_status']
 export type TaskPriority            = Enums['task_priority']
 export type TaskStatus              = Enums['task_status']
 export type VerificationStatus      = Enums['verification_status']
+
+// ── Profile (manual, pending gen:types refresh post auth_rls migration) ─────
+export interface Profile {
+  id: string
+  email: string
+  role: 'ops_agent' | 'admin'
+  full_name: string | null
+  created_at: string
+}
+
+export type ProfileInsert = Omit<Profile, 'created_at'>
+export type ProfileUpdate = Partial<ProfileInsert>

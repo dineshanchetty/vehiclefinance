@@ -4,6 +4,26 @@ import { handleDialog360Webhook, handleStatusWebhook } from './handlers/webhook.
 import { sendTextMessage } from './services/dialog360.js';
 import { agent } from './agent/agent.js';
 
+// ── Startup assertions: fail fast if required secrets are missing ─────────────
+// The bot MUST use the service-role key (bypasses RLS). Anon key is never used
+// here — using it would cause every query to be silently blocked by RLS.
+(function assertRequiredEnv() {
+  const required = [
+    'SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+    'ANTHROPIC_API_KEY',
+  ] as const;
+  const missing = required.filter((k) => !process.env[k]);
+  if (missing.length > 0) {
+    console.error(
+      `[startup] FATAL: Missing required environment variables: ${missing.join(', ')}.\n` +
+      `The bot requires SUPABASE_SERVICE_ROLE_KEY (not the anon key) to bypass RLS.`,
+    );
+    process.exit(1);
+  }
+  console.log('[startup] Service-role key present — RLS bypass confirmed for bot.');
+})();
+
 const app: Application = express();
 const PORT = process.env.PORT ?? 3001;
 
