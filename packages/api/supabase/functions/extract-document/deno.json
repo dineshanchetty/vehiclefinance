@@ -1,6 +1,7 @@
 {
   "imports": {
     "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
-    "std/http": "https://deno.land/std@0.224.0/http/server.ts"
+    "@anthropic-ai/sdk":     "https://esm.sh/@anthropic-ai/sdk@0.89.0",
+    "std/http":              "https://deno.land/std@0.224.0/http/server.ts"
   }
 }

@@ -1,9 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "vite",
-  "buildCommand": "cd ../.. && pnpm --filter @vehiclefinance/shared build && pnpm --filter @vehiclefinance/web build",
-  "outputDirectory": "dist",
-  "installCommand": "cd ../.. && pnpm install --frozen-lockfile",
+  "buildCommand": "pnpm --filter @vehiclefinance/shared build && pnpm --filter @vehiclefinance/web build",
+  "installCommand": "pnpm install --frozen-lockfile",
+  "outputDirectory": "packages/web/dist",
   "rewrites": [
     {
       "source": "/(.*)",

@@ -1,28 +1,29 @@
 name: Deploy Bot (Fly.io)
 
+# Triggered only after CI finishes successfully on `main`. This enforces the
+# "no red builds deploy" rule — lint/typecheck/build/db-verify must all pass.
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
-    paths:
-      - "packages/bot/**"
-      - "packages/shared/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - ".github/workflows/deploy-bot.yml"
 
 concurrency:
   group: deploy-bot
-  cancel-in-progress: false   # Never cancel an in-flight deploy
+  cancel-in-progress: false
 
 jobs:
   deploy:
     name: Build & Deploy to Fly.io
     runs-on: ubuntu-latest
+    # Only deploy when the triggering CI run was SUCCESS.
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
 
     steps:
-      - name: Checkout
+      - name: Checkout (the commit that passed CI)
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -38,10 +39,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Typecheck — bot
+      - name: Build bot
         run: |
           pnpm --filter @vehiclefinance/shared build
-          pnpm --filter @vehiclefinance/bot typecheck
+          pnpm --filter @vehiclefinance/bot build
 
       - name: Setup flyctl
         uses: superfly/flyctl-actions/setup-flyctl@master

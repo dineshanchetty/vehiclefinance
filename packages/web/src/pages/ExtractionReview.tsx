@@ -107,7 +107,7 @@ const MOCK_EXTRACTION: ExtractionRecord = {
   doc_type: 'id_document',
   extracted_data: {
     full_name:        { value: 'DLAMINI SIPHO THABO', confidence: 0.96 },
-    id_number:        { value: '9001015800084',        confidence: 0.99 },
+    id_number:        { value: '0000000000000',        confidence: 0.99 }, // synthetic — all zeros is not a valid SA ID
     date_of_birth:    { value: '1990-01-01',            confidence: 0.92 },
     gender:           { value: 'M',                     confidence: 0.98 },
     nationality:      { value: 'RSA',                   confidence: 0.95 },
@@ -215,6 +215,14 @@ export function ExtractionReview() {
     setFields((prev) =>
       prev.map((f) => (f.key === key ? { ...f, status: 'ACCEPTED' } : f))
     )
+  }
+
+  /**
+   * Mark every field as ACCEPTED in one action.
+   * The reviewer still has to click "Save all" to persist to the DB.
+   */
+  function acceptAll() {
+    setFields((prev) => prev.map((f) => ({ ...f, status: 'ACCEPTED' })))
   }
 
   // ── Override modal ─────────────────────────────────────────────────────────
@@ -348,6 +356,13 @@ export function ExtractionReview() {
               Q_MISMATCH_REVIEW task created
             </span>
           )}
+          <button
+            onClick={acceptAll}
+            className="flex items-center gap-2 rounded-lg border border-green-600 bg-white px-4 py-2 text-sm font-medium text-green-700 hover:bg-green-50 transition-colors"
+            title="Mark every field as ACCEPTED (still need to click Save Decisions to persist)"
+          >
+            Accept all
+          </button>
           <button
             onClick={saveAll}
             disabled={saving}
