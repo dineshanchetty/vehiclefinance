@@ -1,0 +1,15 @@
+{
+  "tasks": {
+    "test": "deno test --allow-env --allow-net",
+    "test:database": "deno test --allow-env --allow-net test-database.ts",
+    "test:deal-flow": "deno test --allow-env --allow-net test-deal-flow.ts",
+    "test:photos": "deno test --allow-env --allow-net test-photo-evaluation.ts",
+    "test:notifications": "deno test --allow-env --allow-net test-notifications.ts",
+    "test:tasks": "deno test --allow-env --allow-net test-task-queue.ts",
+    "run": "deno run --allow-env --allow-net run-tests.ts"
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.0",
+    "@supabase/supabase-js": "npm:@supabase/supabase-js@^2.49.4"
+  }
+}
