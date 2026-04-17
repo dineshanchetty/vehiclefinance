@@ -10,10 +10,15 @@
     "dev": "pnpm --parallel -r dev",
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "gen:types": "pnpm --filter @vehiclefinance/api gen:types",
+    "db:reset": "pnpm --filter @vehiclefinance/api db:reset",
+    "db:push": "pnpm --filter @vehiclefinance/api db:push",
+    "test:api": "cd packages/api/tests && deno task test"
   },
   "engines": {
-    "node": ">=18"
+    "node": ">=20.18.0",
+    "pnpm": ">=8.15.0"
   },
   "packageManager": "pnpm@8.15.0"
 }

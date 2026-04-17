@@ -8,6 +8,9 @@
     "functions:serve": "supabase functions serve",
     "db:push": "supabase db push",
     "db:reset": "supabase db reset",
-    "gen:types": "supabase gen types typescript --local > ../shared/src/types/database.ts"
+    "gen:types": "supabase gen types typescript --project-id ${SUPABASE_PROJECT_ID:-sahvfsoclzgsuewbiiah} > ../shared/src/types/database.ts",
+    "gen:types:local": "supabase gen types typescript --local > ../shared/src/types/database.ts",
+    "test": "cd tests && deno task test",
+    "test:run": "cd tests && deno task run"
   }
 }
