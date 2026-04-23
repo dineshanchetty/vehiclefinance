@@ -71,20 +71,18 @@ Everything the evaluators flagged that is **not blocking** but worth tracking. A
 
 ### 4a. Compliance / audit
 
-- **State transitions don't write to `audit_logs`** (Phase 4). Each handler calls `advance`/`saveState`/`incrementMalformed` but no audit row is created. Compliance gap — flagged for a post-UAT phase.
+- **Agent tool calls don't write to `audit_logs` automatically.** `agent/tool-handlers.ts::handle_log_audit_event` exists but the agent only invokes it when the model decides to. Compliance gap — flagged for a post-UAT phase.
 - **`conversation_messages` policies re-created** in the Phase 2 migration, silently dropping any policies the prior migration had set. Low risk but worth a confirmation sweep.
+- **Stuck-conversation detection is now unimplemented** (see §3a). A pg_cron-driven detector based on `conversation_messages.created_at` would be the clean replacement.
 
 ### 4b. Runtime correctness
 
 - **Extraction edge function treats PDFs as base64 images** (Phase 5). Claude Vision does not accept PDFs this way — PDF workflows likely 500 in production. Needs rasterization at caller or media-type tool path.
 - **`extraction_results` schema mismatch** — the edge function inserts a single row with a `extracted_data` JSONB blob; the schema has per-field rows. Whether this is a fatal mismatch depends on downstream consumers.
 - **Rate limit is process-local** (`_rateLimitMap` in `webhook.ts`). Multi-instance or redeploy resets the window. Acceptable for UAT; must move to Redis/Supabase before prod.
-- **`getIdleConversations` doesn't filter `is_stuck = false`** — re-scans already-stuck rows each sweep. Wasted query, not a correctness issue (guarded at `markStuckIfIdle`).
 
 ### 4c. Deviations from the brief (self-consistent)
 
-- **Phase 4 conversation_state schema** — worker used `current_step`, `context`, `last_activity`, `is_stuck` instead of brief's `current_state`, `state_context`, `last_message_at`, `stuck_since`. Internally consistent across code + types.
-- **`PHOTO_SET_COMPLETE` state absent** — Phase 4 flow goes photos-complete → DATA_CONFIRMATION directly. Functionally equivalent, naming-only deviation.
 - **Extraction route is `/extraction/:documentId`** — brief said `/deals/:id/extraction/:documentId`. Low severity.
 
 ### 4d. Documentation
