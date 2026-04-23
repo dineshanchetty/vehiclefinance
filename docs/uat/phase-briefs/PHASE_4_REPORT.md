@@ -7,7 +7,7 @@
 ---
 
 > ⚠️ **DEPRECATED (2026-04-23)** — The code this report describes was **removed**
-> in commit `4e0ff5e` (see `UAT_HANDOFF.md §3`). The bot in production uses the
+> in commit `f587b02` (see `UAT_HANDOFF.md §3`). The bot in production uses the
 > Claude Agent SDK path in `packages/bot/src/agent/`, not the rule-based state
 > machine this phase built. The `conversation_state` table and its migration
 > were also dropped. Keeping this report for historical context only.

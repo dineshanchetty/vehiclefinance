@@ -36,7 +36,7 @@ One row per completed phase. Each row links to the phase brief (the contract we 
 | 1 | Deployment infra | `phase-briefs/PHASE_1_DEPLOYMENT_INFRA.md` | `PHASE_1_REPORT.md` | CHANGES_REQUESTED → fixed in `e5362c4` | `b438c1d` + `e5362c4` |
 | 2 | Auth & RLS | `phase-briefs/PHASE_2_AUTH_RLS.md` | `PHASE_2_REPORT.md` | PASS_WITH_NITS | `ad535dd` |
 | 3 | Web portal live data | `phase-briefs/PHASE_3_WEB_LIVE_DATA.md` | `PHASE_3_REPORT.md` | _(in flight)_ | `fb2ab7a` |
-| 4 | Bot flow completion | `phase-briefs/PHASE_4_BOT_FLOWS.md` | `PHASE_4_REPORT.md` (deprecated) | PASS_WITH_NITS, then code **removed** (see below) | `2f85153` → reverted by `4e0ff5e` |
+| 4 | Bot flow completion | `phase-briefs/PHASE_4_BOT_FLOWS.md` | `PHASE_4_REPORT.md` (deprecated) | PASS_WITH_NITS, then code **removed** (see below) | `2f85153` → reverted by `f587b02` |
 | 5 | Document extraction | `phase-briefs/PHASE_5_EXTRACTION.md` | `PHASE_5_REPORT.md` | CHANGES_REQUESTED → fixed in `0b15bc2` | `12f357c` + `0b15bc2` |
 | 6 | UAT prep package | `phase-briefs/PHASE_6_UAT_PREP.md` | `PHASE_6_REPORT.md` | _(TBD)_ | `0b15bc2` |
 
@@ -47,7 +47,7 @@ One row per completed phase. Each row links to the phase brief (the contract we 
 Phase 4 delivered a hand-coded state machine (`packages/bot/src/flows/`) that
 duplicated a production-ready Claude Agent SDK path (`packages/bot/src/agent/`)
 already wired into `POST /webhook/dialog360`. The flow code was never routed;
-it was dead on arrival. Commit `4e0ff5e` removed:
+it was dead on arrival. Commit `f587b02` removed:
 
 - `packages/bot/src/flows/` (entire dir: `buyer-flow.ts`, `seller-flow.ts`, `strings.ts`)
 - `packages/bot/src/state/conversation.ts` + its `services/conversation-state.ts` peer
