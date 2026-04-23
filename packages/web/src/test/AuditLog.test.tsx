@@ -6,29 +6,30 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuditLog } from '../pages/AuditLog'
 import * as queries from '../lib/queries'
-import type { AuditEvent } from '../types/database'
+import type { AuditFeedItem } from '../types/database'
 
-const STUB_EVENTS: AuditEvent[] = [
+const STUB_EVENTS: AuditFeedItem[] = [
   {
     id: 'ev-1',
+    source: 'audit_events',
     deal_id: 'deal-1',
     event_type: 'DEAL_CREATED',
-    actor_id: 'system',
+    actor: 'WhatsApp Bot',
     actor_type: 'SYSTEM',
-    actor_name: 'WhatsApp Bot',
     details: { trigger: 'buyer_opt_in' },
     created_at: '2025-01-01T09:00:00Z',
-    deal: { deal_number: 'VF-2025-001' } as AuditEvent['deal'],
+    deal: { deal_number: 'VF-2025-001' },
   },
   {
     id: 'ev-2',
+    source: 'audit_logs',
     deal_id: 'deal-1',
     event_type: 'DOCUMENT_UPLOADED',
-    actor_id: 'b1',
-    actor_type: 'BUYER',
-    actor_name: 'Alice Buyer',
-    details: { document_type: 'ID_DOCUMENT' },
+    actor: '+27812345678',
+    actor_type: null,
+    details: { document_type: 'SA_ID_SMART_CARD' },
     created_at: '2025-01-01T10:00:00Z',
+    deal: { deal_number: 'VF-2025-001' },
   },
 ]
 
@@ -55,7 +56,7 @@ describe('AuditLog', () => {
     render(
       <MemoryRouter>
         <AuditLog />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {
@@ -64,7 +65,7 @@ describe('AuditLog', () => {
 
     expect(screen.getByText('DOCUMENT_UPLOADED')).toBeInTheDocument()
     expect(screen.getByText('WhatsApp Bot')).toBeInTheDocument()
-    expect(screen.getByText('Alice Buyer')).toBeInTheDocument()
+    expect(screen.getByText('+27812345678')).toBeInTheDocument()
   })
 
   it('shows empty state when no events match filters', async () => {
@@ -73,7 +74,7 @@ describe('AuditLog', () => {
     render(
       <MemoryRouter>
         <AuditLog />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {
@@ -87,7 +88,7 @@ describe('AuditLog', () => {
     render(
       <MemoryRouter>
         <AuditLog />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {

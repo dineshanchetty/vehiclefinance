@@ -6,7 +6,18 @@ import { StatusBadge } from '../components/StatusBadge'
 import { SLAIndicator } from '../components/SLAIndicator'
 import { listTasks, claimTask, completeTask, escalateTask } from '../lib/queries'
 import { useRealtimeTable } from '../lib/realtime'
-import type { Task, QueueName, TaskPriority } from '../types/database'
+import { supabase } from '../lib/supabase'
+import { useProfile } from '../lib/auth'
+import type { Task, TaskWithDeal, TaskPriority } from '../types/database'
+
+// Queue names used by the bot + web portal. Not an enum in the DB — queue is
+// a free-text column on `tasks`.
+type QueueName =
+  | 'Q_BUYER_DOC_REVIEW' | 'Q_SELLER_DOC_REVIEW' | 'Q_SELLER_PHOTO_REVIEW'
+  | 'Q_FNI_REVIEW' | 'Q_FNI_QUOTE_PREP' | 'Q_HARTCON_INSPECTION'
+  | 'Q_SELLER_CONTRACT' | 'Q_BUYER_CONTRACT' | 'Q_DEAL_APPROVAL'
+  | 'Q_NATIS_COLLECTION' | 'Q_NATIS_FULFILMENT' | 'Q_MISMATCH_REVIEW'
+  | 'Q_HUMAN_ESCALATION' | 'Q_SELLER_FOLLOWUP'
 
 // ─── Queue metadata ─────────────────────────────────────────────────────────
 
@@ -27,14 +38,14 @@ const QUEUE_META: Record<string, { label: string; description: string }> = {
   Q_SELLER_FOLLOWUP:     { label: 'Seller Follow-up',         description: 'Follow up with sellers on outstanding items' },
 }
 
+// Real task_priority enum: LOW | NORMAL | HIGH | URGENT.
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
-  CRITICAL: 0, URGENT: 1, HIGH: 2, MEDIUM: 3, LOW: 4,
+  URGENT: 0, HIGH: 1, NORMAL: 2, LOW: 3,
 }
 
 const priorityColor: Record<string, string> = {
-  LOW: 'bg-slate-100 text-slate-600', MEDIUM: 'bg-blue-100 text-blue-700',
+  LOW: 'bg-slate-100 text-slate-600', NORMAL: 'bg-blue-100 text-blue-700',
   HIGH: 'bg-orange-100 text-orange-800', URGENT: 'bg-red-100 text-red-800',
-  CRITICAL: 'bg-red-200 text-red-900 font-semibold',
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -44,8 +55,9 @@ export function QueuePage() {
   const navigate = useNavigate()
   const queue = queueName ?? 'Q_BUYER_DOC_REVIEW'
   const meta = QUEUE_META[queue] ?? { label: queue.replace(/^Q_/, '').replace(/_/g, ' '), description: '' }
+  const profile = useProfile()
 
-  const [tasks, setTasks] = useState<Task[]>([])
+  const [tasks, setTasks] = useState<TaskWithDeal[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('')
@@ -72,7 +84,8 @@ export function QueuePage() {
     fetchTasks()
   }, [fetchTasks])
 
-  // Realtime: append new tasks for this queue
+  // Realtime: append new tasks for this queue. The realtime payload is a
+  // plain `tasks` row (no deal join), so widen to TaskWithDeal with deal=null.
   useRealtimeTable<Task>(
     'tasks',
     { column: 'queue', value: queue },
@@ -80,14 +93,24 @@ export function QueuePage() {
       setTasks((prev) => {
         // Avoid duplicates
         if (prev.some((t) => t.id === newTask.id)) return prev
-        return [newTask, ...prev]
+        return [{ ...newTask, deal: null } as TaskWithDeal, ...prev]
       })
     },
   )
 
   const handleClaim = async (id: string) => {
     try {
-      const updated = await claimTask(id, 'me')
+      // Real user UUID is required — the tasks.assigned_to column is uuid.
+      let agentId = profile?.id ?? null
+      if (!agentId) {
+        const { data } = await supabase.auth.getUser()
+        agentId = data.user?.id ?? null
+      }
+      if (!agentId) {
+        alert('No authenticated user — cannot claim task')
+        return
+      }
+      const updated = await claimTask(id, agentId)
       setTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...updated } : t))
     } catch { alert('Failed to claim task') }
   }
@@ -248,14 +271,14 @@ export function QueuePage() {
                     </button>
                     {task.deal?.buyer && (
                       <p className="text-xs text-gray-400 mt-0.5">
-                        {task.deal.buyer.first_name} {task.deal.buyer.last_name}
+                        {task.deal.buyer.full_name ?? '—'}
                       </p>
                     )}
                   </td>
                   <td className="px-4 py-3.5">
-                    <p className="font-medium text-gray-900">{task.title}</p>
-                    {task.escalation_reason && (
-                      <p className="mt-0.5 text-xs text-red-600">{task.escalation_reason}</p>
+                    <p className="font-medium text-gray-900">{task.task_type}</p>
+                    {task.status === 'ESCALATED' && task.notes && (
+                      <p className="mt-0.5 text-xs text-red-600">{task.notes}</p>
                     )}
                   </td>
                   <td className="px-4 py-3.5">

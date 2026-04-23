@@ -1,12 +1,20 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { CheckCircle2, Edit3, AlertTriangle, Flag, X, Save } from 'lucide-react'
-import type { ExtractionResult } from '../types/database'
+import type { ExtractionResult, VerificationStatus } from '../types/database'
 
 interface Props {
   results: ExtractionResult[]
   onAccept?: (id: string) => void
   onOverride?: (id: string, value: string) => void
   onFlag?: (id: string, reason: string) => void
+}
+
+// Map the DB `verification_status` enum onto the UI labels.
+const statusConfig: Record<VerificationStatus, { label: string; cls: string }> = {
+  VERIFIED:   { label: 'Accepted',   cls: 'bg-green-100 text-green-800' },
+  OVERRIDDEN: { label: 'Overridden', cls: 'bg-blue-100 text-blue-800' },
+  PENDING:    { label: 'Pending',    cls: 'bg-gray-100 text-gray-700' },
+  MISMATCH:   { label: 'Flagged',    cls: 'bg-red-100 text-red-700' },
 }
 
 function ConfidenceBar({ value }: { value: number }) {
@@ -30,41 +38,39 @@ function ConfidenceBar({ value }: { value: number }) {
   )
 }
 
-const docLabel: Record<string, string> = {
-  d1: 'SA ID Document',
-  d2: 'Payslip (March)',
-  d3: 'Proof of Address',
-}
-
-const statusConfig = {
-  ACCEPTED:   { label: 'Accepted',   cls: 'bg-green-100 text-green-800' },
-  OVERRIDDEN: { label: 'Overridden', cls: 'bg-blue-100 text-blue-800' },
-  PENDING:    { label: 'Pending',    cls: 'bg-gray-100 text-gray-700' },
-  FLAGGED:    { label: 'Flagged',    cls: 'bg-red-100 text-red-700' },
-}
-
 interface OverrideModal {
   id: string
   current: string | null
 }
 
 export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, onFlag }: Props) {
-  const [items, setItems] = useState(results)
+  const [items, setItems] = useState<ExtractionResult[]>(results)
+  // Keep local state in sync when the parent reloads results.
+  useEffect(() => { setItems(results) }, [results])
+
   const [overrideModal, setOverrideModal] = useState<OverrideModal | null>(null)
   const [overrideValue, setOverrideValue] = useState('')
   const [flagModal, setFlagModal] = useState<string | null>(null)
   const [flagReason, setFlagReason] = useState('')
 
   const accept = (id: string) => {
-    setItems((prev) => prev.map((r) => r.id === id ? { ...r, status: 'ACCEPTED' } : r))
+    setItems((prev) =>
+      prev.map((r) =>
+        r.id === id ? { ...r, verification_status: 'VERIFIED' as VerificationStatus } : r,
+      ),
+    )
     onAccept?.(id)
   }
 
   const saveOverride = () => {
     if (!overrideModal) return
-    setItems((prev) => prev.map((r) =>
-      r.id === overrideModal.id ? { ...r, status: 'OVERRIDDEN', override_value: overrideValue } : r
-    ))
+    setItems((prev) =>
+      prev.map((r) =>
+        r.id === overrideModal.id
+          ? { ...r, verification_status: 'OVERRIDDEN' as VerificationStatus, customer_confirmed_value: overrideValue }
+          : r,
+      ),
+    )
     onOverride?.(overrideModal.id, overrideValue)
     setOverrideModal(null)
     setOverrideValue('')
@@ -72,16 +78,23 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
 
   const saveFlag = () => {
     if (!flagModal) return
-    setItems((prev) => prev.map((r) =>
-      r.id === flagModal ? { ...r, status: 'FLAGGED', flag_reason: flagReason } : r
-    ))
+    // The DB has no dedicated `flag_reason` column — reason lives in the
+    // caller's bookkeeping (e.g. verification_checks). Here we just flip the
+    // status; parent wires the audit trail via `onFlag`.
+    setItems((prev) =>
+      prev.map((r) =>
+        r.id === flagModal
+          ? { ...r, verification_status: 'MISMATCH' as VerificationStatus }
+          : r,
+      ),
+    )
     onFlag?.(flagModal, flagReason)
     setFlagModal(null)
     setFlagReason('')
   }
 
-  const lowConfidence = items.filter((r) => r.confidence < 0.60).length
-  const pending = items.filter((r) => r.status === 'PENDING').length
+  const lowConfidence = items.filter((r) => (r.confidence ?? 0) < 0.6).length
+  const pending = items.filter((r) => r.verification_status === 'PENDING').length
 
   return (
     <div className="space-y-4">
@@ -108,7 +121,6 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Field</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Extracted Value</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Confidence</th>
-              <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Source Doc</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Customer Value</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
               <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
@@ -116,8 +128,9 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
           </thead>
           <tbody className="divide-y divide-gray-50">
             {items.map((row) => {
-              const isLow = row.confidence < 0.60
-              const sc = statusConfig[row.status] ?? statusConfig.PENDING
+              const conf = row.confidence ?? 0
+              const isLow = conf < 0.6
+              const sc = statusConfig[row.verification_status] ?? statusConfig.PENDING
               return (
                 <tr key={row.id} className={isLow ? 'bg-red-50/50' : 'bg-white hover:bg-gray-50/50'}>
                   <td className="px-4 py-3 font-medium text-gray-900">
@@ -125,29 +138,22 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
                     {isLow && <AlertTriangle className="ml-1.5 inline h-3.5 w-3.5 text-red-500" />}
                   </td>
                   <td className="px-4 py-3 text-gray-700 font-mono text-xs">
-                    {row.status === 'OVERRIDDEN'
-                      ? <span className="text-blue-700">{row.override_value}</span>
+                    {row.verification_status === 'OVERRIDDEN'
+                      ? <span className="text-blue-700">{row.customer_confirmed_value}</span>
                       : row.extracted_value ?? <span className="italic text-gray-400">not extracted</span>}
                   </td>
-                  <td className="px-4 py-3"><ConfidenceBar value={row.confidence} /></td>
-                  <td className="px-4 py-3 text-xs text-gray-500">
-                    {docLabel[row.document_id] ?? row.document_id}
-                    {row.source_page && <span className="ml-1 text-gray-400">p.{row.source_page}</span>}
-                  </td>
+                  <td className="px-4 py-3"><ConfidenceBar value={conf} /></td>
                   <td className="px-4 py-3 text-xs text-gray-700 font-mono">
-                    {row.customer_value ?? <span className="italic text-gray-400">—</span>}
+                    {row.customer_confirmed_value ?? <span className="italic text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${sc.cls}`}>
                       {sc.label}
                     </span>
-                    {row.flag_reason && (
-                      <p className="mt-0.5 text-xs text-red-600">{row.flag_reason}</p>
-                    )}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
-                      {row.status !== 'ACCEPTED' && (
+                      {row.verification_status !== 'VERIFIED' && (
                         <button
                           onClick={() => accept(row.id)}
                           title="Accept"
@@ -157,15 +163,18 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
                         </button>
                       )}
                       <button
-                        onClick={() => { setOverrideModal({ id: row.id, current: row.extracted_value }); setOverrideValue(row.override_value ?? row.extracted_value ?? '') }}
+                        onClick={() => {
+                          setOverrideModal({ id: row.id, current: row.extracted_value })
+                          setOverrideValue(row.customer_confirmed_value ?? row.extracted_value ?? '')
+                        }}
                         title="Override"
                         className="rounded p-1 text-blue-600 hover:bg-blue-50"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
-                      {row.status !== 'FLAGGED' && (
+                      {row.verification_status !== 'MISMATCH' && (
                         <button
-                          onClick={() => { setFlagModal(row.id); setFlagReason(row.flag_reason ?? '') }}
+                          onClick={() => { setFlagModal(row.id); setFlagReason('') }}
                           title="Flag for review"
                           className="rounded p-1 text-amber-600 hover:bg-amber-50"
                         >

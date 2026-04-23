@@ -1,16 +1,28 @@
-import type { DealStatus, TaskStatus, TaskPriority, ContractStatus, QuoteStatus, InspectionStatus, NATISStatus, PhotoStatus } from '../types/database'
+import type {
+  DealStatus,
+  TaskStatus,
+  TaskPriority,
+  QuoteStatus,
+  SignatureStatus,
+  PhotoQualityStatus,
+  VerificationStatus,
+  NatisStatus,
+} from '../types/database'
 
 type BadgeVariant = 'default' | 'sm'
 
+// The Postgres enums cover most of the real values; the `| string` fallback
+// catches free-text columns like `documents.status` and `inspections.status`
+// which are untyped text.
 type StatusValue =
   | DealStatus
   | TaskStatus
   | TaskPriority
-  | ContractStatus
   | QuoteStatus
-  | InspectionStatus
-  | NATISStatus
-  | PhotoStatus
+  | SignatureStatus
+  | PhotoQualityStatus
+  | VerificationStatus
+  | NatisStatus
   | string
 
 const colorMap: Record<string, string> = {

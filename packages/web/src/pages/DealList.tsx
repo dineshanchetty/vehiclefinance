@@ -3,14 +3,35 @@ import { useNavigate } from 'react-router-dom'
 import { Search, ChevronUp, ChevronDown, Filter, RefreshCw, AlertCircle } from 'lucide-react'
 import { format } from 'date-fns'
 import { StatusBadge } from '../components/StatusBadge'
-import { SLAIndicator } from '../components/SLAIndicator'
 import { listDeals } from '../lib/queries'
-import type { Deal, DealStatus } from '../types/database'
+import type { DealWithRelations, DealStatus } from '../types/database'
 
+// Deal statuses must match the `deal_status` enum in
+// packages/api/supabase/migrations/20260415000000_baseline_schema.sql.
+// A curated subset is exposed in the filter dropdown — not every enum value
+// is useful to filter on in the ops UI.
 const DEAL_STATUSES: DealStatus[] = [
-  'LEAD','DOCS_PENDING','DOCS_REVIEW','FNI_REVIEW','QUOTE_PENDING','QUOTE_SENT',
-  'QUOTE_ACCEPTED','INSPECTION_PENDING','INSPECTION_COMPLETE','CONTRACT_PENDING',
-  'CONTRACT_SIGNED','NATIS_PENDING','NATIS_COMPLETE','SETTLED','CANCELLED','DECLINED',
+  'APPLICATION_INITIATED',
+  'BUYER_DOCS_PENDING',
+  'BUYER_DOCS_EXTRACTED',
+  'SELLER_INVITED',
+  'SELLER_DOCS_PENDING',
+  'VEHICLE_PHOTOS_PENDING',
+  'VEHICLE_PHOTOS_COMPLETE',
+  'QUICK_EVAL_COMPLETE',
+  'FNI_REVIEW_PENDING',
+  'QUOTE_SENT',
+  'QUOTE_ACCEPTED',
+  'INSPECTION_SCHEDULED',
+  'INSPECTION_COMPLETE',
+  'SELLER_CONTRACT_SIGNED',
+  'BUYER_CONTRACT_SIGNED',
+  'DEAL_PENDING_APPROVAL',
+  'DEAL_APPROVED',
+  'NATIS_COMPLETE',
+  'DEAL_FULFILLED',
+  'DEAL_CANCELLED',
+  'DEAL_ON_HOLD',
 ]
 
 type SortKey = 'deal_number' | 'status' | 'created_at' | 'updated_at'
@@ -18,7 +39,7 @@ type SortDir = 'asc' | 'desc'
 
 export function DealList() {
   const navigate = useNavigate()
-  const [deals, setDeals] = useState<Deal[]>([])
+  const [deals, setDeals] = useState<DealWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
@@ -58,9 +79,9 @@ export function DealList() {
   const filtered = deals.filter((d) => {
     if (!search) return true
     const q = search.toLowerCase()
-    const buyerName = d.buyer ? `${d.buyer.first_name} ${d.buyer.last_name}`.toLowerCase() : ''
+    const buyerName = d.buyer?.full_name?.toLowerCase() ?? ''
     const phone = d.buyer?.phone?.toLowerCase() ?? ''
-    const dealNum = d.deal_number.toLowerCase()
+    const dealNum = (d.deal_number ?? '').toLowerCase()
     return buyerName.includes(q) || phone.includes(q) || dealNum.includes(q)
   })
 
@@ -158,7 +179,6 @@ export function DealList() {
                   { key: 'status' as SortKey, label: 'Status' },
                   { key: 'created_at' as SortKey, label: 'Created' },
                   { key: 'updated_at' as SortKey, label: 'Updated' },
-                  { key: null, label: 'SLA' },
                 ].map(({ key, label }) => (
                   <th
                     key={label}
@@ -176,7 +196,7 @@ export function DealList() {
             <tbody className="divide-y divide-gray-50">
               {loading && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
                     <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-300" />
                     Loading deals…
                   </td>
@@ -184,7 +204,7 @@ export function DealList() {
               )}
               {!loading && !error && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-sm text-gray-400">
+                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
                     No deals found
                   </td>
                 </tr>
@@ -196,34 +216,30 @@ export function DealList() {
                   className="cursor-pointer hover:bg-blue-50/50 transition-colors"
                 >
                   <td className="px-4 py-3.5">
-                    <span className="font-semibold text-gray-900">{deal.deal_number}</span>
-                    {deal.current_blockers && deal.current_blockers.length > 0 && (
-                      <div className="mt-0.5 flex items-center gap-1">
-                        <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-                        <span className="text-xs text-red-600">{deal.current_blockers[0]}</span>
-                      </div>
-                    )}
+                    <span className="font-semibold text-gray-900">{deal.deal_number ?? '—'}</span>
                   </td>
                   <td className="px-4 py-3.5">
                     {deal.buyer
                       ? <div>
-                          <p className="font-medium text-gray-900">{deal.buyer.first_name} {deal.buyer.last_name}</p>
+                          <p className="font-medium text-gray-900">{deal.buyer.full_name ?? '—'}</p>
                           <p className="text-xs text-gray-400">{deal.buyer.phone}</p>
                         </div>
                       : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3.5 text-gray-700">
                     {deal.seller
-                      ? `${deal.seller.first_name} ${deal.seller.last_name}`
+                      ? (deal.seller.full_name ?? '—')
                       : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-4 py-3.5">
                     {deal.vehicle
                       ? <div>
-                          <p className="font-medium text-gray-900">{deal.vehicle.year} {deal.vehicle.make} {deal.vehicle.model}</p>
+                          <p className="font-medium text-gray-900">
+                            {deal.vehicle.year ?? ''} {deal.vehicle.make ?? ''} {deal.vehicle.model ?? ''}
+                          </p>
                           <p className="text-xs text-gray-400">
                             {deal.vehicle.registration_number}
-                            {deal.vehicle.odometer_km ? ` · ${deal.vehicle.odometer_km.toLocaleString()} km` : ''}
+                            {deal.vehicle.odometer_reading ? ` · ${deal.vehicle.odometer_reading}` : ''}
                           </p>
                         </div>
                       : <span className="text-gray-400">—</span>}
@@ -236,9 +252,6 @@ export function DealList() {
                   </td>
                   <td className="px-4 py-3.5 text-xs text-gray-500">
                     {format(new Date(deal.updated_at), 'dd MMM HH:mm')}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <SLAIndicator dueAt={deal.sla_due_at} />
                   </td>
                 </tr>
               ))}

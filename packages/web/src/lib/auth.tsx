@@ -43,8 +43,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   // Fetch the profile row for the given user id.
+  // NOTE: the `profiles` table is not present in the generated Supabase types
+  // yet (it was added in migration 20260417000000_auth_rls.sql; the shared
+  // types/database.ts was generated earlier and needs a `pnpm gen:types`
+  // refresh). Until then, cast the supabase client to work around the
+  // table-name union.
   const fetchProfile = async (userId: string): Promise<Profile | null> => {
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const client = supabase as any
+    const { data, error } = await client
       .from('profiles')
       .select('id, email, role, full_name, created_at')
       .eq('id', userId)

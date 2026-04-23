@@ -9,7 +9,16 @@ import {
   ZoomIn,
   ShieldAlert,
 } from 'lucide-react'
-import type { VehiclePhoto, VehicleQuickEvaluation, ConditionBand, DamageSeverity } from '../types/database'
+import type { VehiclePhoto, VehicleQuickEvaluation, ConditionBand, DamageSeverity, PhotoQualityStatus } from '../types/database'
+
+// The `damage_items` column is `Json` in the schema — shape below is what
+// the vehicle-evaluation edge function emits.
+interface DamageItem {
+  description: string
+  severity: DamageSeverity
+  location: string | null
+  estimated_repair_cost: number | null
+}
 
 interface Props {
   photos?: VehiclePhoto[]
@@ -22,10 +31,17 @@ interface Props {
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+// Matches the `photo_angle` enum in baseline_schema.sql.
 const ANGLE_LABELS: Record<string, string> = {
-  FRONT: 'Front', REAR: 'Rear', DRIVER_SIDE: 'Driver Side', PASSENGER_SIDE: 'Passenger Side',
-  INTERIOR_FRONT: 'Interior Front', INTERIOR_REAR: 'Interior Rear',
-  ENGINE_BAY: 'Engine Bay', ODOMETER: 'Odometer', DAMAGE_1: 'Damage 1', DAMAGE_2: 'Damage 2', DAMAGE_3: 'Damage 3', OTHER: 'Other',
+  FRONT_VIEW: 'Front', REAR_VIEW: 'Rear',
+  LEFT_SIDE: 'Driver Side', RIGHT_SIDE: 'Passenger Side',
+  FRONT_LEFT_ANGLE: 'Front Left', FRONT_RIGHT_ANGLE: 'Front Right',
+  REAR_LEFT_ANGLE: 'Rear Left', REAR_RIGHT_ANGLE: 'Rear Right',
+  ODOMETER: 'Odometer', INTERIOR_DASHBOARD: 'Dashboard', VIN_CHASSIS: 'VIN/Chassis',
+  TYRE_FL: 'Tyre — Front Left', TYRE_FR: 'Tyre — Front Right',
+  TYRE_RL: 'Tyre — Rear Left', TYRE_RR: 'Tyre — Rear Right',
+  BOOT_INTERIOR: 'Boot Interior', DAMAGE_CLOSEUP: 'Damage Closeup',
+  ENGINE_BAY: 'Engine Bay',
 }
 
 const bandConfig: Record<ConditionBand, { label: string; bg: string; border: string; text: string; dot: string }> = {
@@ -36,18 +52,22 @@ const bandConfig: Record<ConditionBand, { label: string; bg: string; border: str
   SEVERE:    { label: 'Severe',    bg: 'bg-red-100',   border: 'border-red-400',   text: 'text-red-900',    dot: 'bg-red-600' },
 }
 
+// Matches damage_severity enum: NONE | MINOR | MODERATE | MAJOR | SEVERE.
 const severityConfig: Record<DamageSeverity, { label: string; cls: string }> = {
+  NONE:     { label: 'None',     cls: 'bg-gray-100 text-gray-700' },
   MINOR:    { label: 'Minor',    cls: 'bg-yellow-100 text-yellow-800' },
   MODERATE: { label: 'Moderate', cls: 'bg-orange-100 text-orange-800' },
-  SEVERE:   { label: 'Severe',   cls: 'bg-red-100 text-red-800' },
+  MAJOR:    { label: 'Major',    cls: 'bg-red-100 text-red-800' },
+  SEVERE:   { label: 'Severe',   cls: 'bg-red-200 text-red-900' },
 }
 
-const photoStatusConfig = {
-  UPLOADED:             { label: 'Uploaded',        cls: 'bg-blue-100 text-blue-800' },
-  APPROVED:             { label: 'Approved',         cls: 'bg-green-100 text-green-800' },
-  REJECTED:             { label: 'Rejected',         cls: 'bg-red-100 text-red-800' },
-  RE_UPLOAD_REQUESTED:  { label: 'Re-upload needed', cls: 'bg-orange-100 text-orange-800' },
-  PENDING:              { label: 'Pending',          cls: 'bg-gray-100 text-gray-700' },
+// photo_quality_status enum: ACCEPTED | ACCEPTED_WITH_WARNING | REJECTED.
+// `ACCEPTED_WITH_WARNING` maps to the old "re-upload requested" UI slot.
+const photoStatusConfig: Record<string, { label: string; cls: string }> = {
+  ACCEPTED:              { label: 'Accepted',     cls: 'bg-green-100 text-green-800' },
+  ACCEPTED_WITH_WARNING: { label: 'Warning',      cls: 'bg-amber-100 text-amber-800' },
+  REJECTED:              { label: 'Rejected',     cls: 'bg-red-100 text-red-800' },
+  PENDING:               { label: 'Pending',      cls: 'bg-gray-100 text-gray-700' },
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -71,23 +91,36 @@ export function VehiclePhotoPanel({
   const [overrideNotes, setOverrideNotes] = useState('')
 
   const approvePhoto = (id: string) => {
-    setItems((prev) => prev.map((p) => p.id === id ? { ...p, status: 'APPROVED' } : p))
+    // `quality_status` on vehicle_photos is the photo_quality_status enum.
+    setItems((prev) =>
+      prev.map((p) =>
+        p.id === id ? { ...p, quality_status: 'ACCEPTED' as PhotoQualityStatus } : p,
+      ),
+    )
     onApprove?.(id)
   }
 
   const requestReupload = () => {
     if (!reuploadModal) return
-    setItems((prev) => prev.map((p) =>
-      p.id === reuploadModal ? { ...p, status: 'RE_UPLOAD_REQUESTED', rejection_reason: reuploadReason } : p
-    ))
+    setItems((prev) =>
+      prev.map((p) =>
+        p.id === reuploadModal
+          ? { ...p, quality_status: 'REJECTED' as PhotoQualityStatus, rejection_reason: reuploadReason }
+          : p,
+      ),
+    )
     onRequestReupload?.(reuploadModal, reuploadReason)
     setReuploadModal(null)
     setReuploadReason('')
   }
 
-  const band = evaluation?.condition_band ?? 'FAIR'
+  const band = (evaluation?.condition_band ?? 'FAIR') as ConditionBand
   const bandCfg = bandConfig[band]
-  const confidencePct = Math.round((evaluation?.confidence_score ?? 0) * 100)
+  const confidencePct = Math.round((evaluation?.overall_confidence ?? 0) * 100)
+  // damage_items is stored as `Json` in the DB; cast to the UI shape.
+  const damageItems: DamageItem[] = Array.isArray(evaluation?.damage_items)
+    ? (evaluation!.damage_items as unknown as DamageItem[])
+    : []
 
   return (
     <div className="space-y-6">
@@ -109,7 +142,7 @@ export function VehiclePhotoPanel({
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-semibold text-gray-900">AI Quick Evaluation</h3>
             <span className="text-xs text-gray-400">
-              {new Date(evaluation.evaluated_at).toLocaleString()}
+              {new Date(evaluation.created_at).toLocaleString()}
             </span>
           </div>
 
@@ -137,23 +170,21 @@ export function VehiclePhotoPanel({
               </div>
             </div>
 
-            {/* Value Range */}
+            {/* Recommendation — schema has no dedicated min/max columns. */}
             <div className="rounded-lg border border-gray-200 bg-white p-3">
-              <p className="text-xs text-gray-500 mb-1">Estimated Value</p>
-              <p className="text-base font-bold text-gray-900">
-                {evaluation.estimated_value_min && evaluation.estimated_value_max
-                  ? `R ${evaluation.estimated_value_min.toLocaleString()} – R ${evaluation.estimated_value_max.toLocaleString()}`
-                  : '—'}
+              <p className="text-xs text-gray-500 mb-1">Recommendation</p>
+              <p className="text-sm font-medium text-gray-900">
+                {evaluation.recommendation ?? '—'}
               </p>
             </div>
           </div>
 
           {/* Damage Items */}
-          {evaluation.damage_items.length > 0 && (
+          {damageItems.length > 0 && (
             <div className="mb-4">
               <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">Identified Damage</p>
               <div className="space-y-1.5">
-                {evaluation.damage_items.map((d, i) => {
+                {damageItems.map((d, i) => {
                   const sc = severityConfig[d.severity]
                   return (
                     <div key={i} className="flex items-center gap-2 rounded-lg bg-white/60 border border-white px-3 py-2">
@@ -170,11 +201,13 @@ export function VehiclePhotoPanel({
             </div>
           )}
 
-          {/* Advisory Notes */}
-          {evaluation.advisory_notes && (
+          {/* Advisory / review notes */}
+          {(evaluation.review_notes || evaluation.disclaimer) && (
             <div className="rounded-lg bg-white/60 border border-white px-3 py-2">
               <p className="text-xs font-semibold text-gray-500 mb-1">Advisory Notes</p>
-              <p className="text-sm text-gray-700">{evaluation.advisory_notes}</p>
+              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                {evaluation.review_notes ?? evaluation.disclaimer}
+              </p>
             </div>
           )}
 
@@ -201,8 +234,10 @@ export function VehiclePhotoPanel({
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Photo Set ({items.length} photos)</h3>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {items.map((photo) => {
-            const sc = photoStatusConfig[photo.status] ?? photoStatusConfig.PENDING
+            const statusKey = photo.quality_status ?? 'PENDING'
+            const sc = photoStatusConfig[statusKey] ?? photoStatusConfig.PENDING
             const qualityPct = photo.quality_score ? Math.round(photo.quality_score * 100) : null
+            const angleKey = photo.angle_type ?? 'OTHER'
             return (
               <div
                 key={photo.id}
@@ -211,14 +246,16 @@ export function VehiclePhotoPanel({
                 {/* Photo */}
                 <div
                   className="relative cursor-pointer bg-gray-100"
-                  onClick={() => setLightbox(photo.file_url)}
+                  onClick={() => photo.file_url && setLightbox(photo.file_url)}
                 >
-                  <img
-                    src={photo.file_url}
-                    alt={ANGLE_LABELS[photo.angle] ?? photo.angle}
-                    className="h-36 w-full object-cover"
-                    loading="lazy"
-                  />
+                  {photo.file_url && (
+                    <img
+                      src={photo.file_url}
+                      alt={ANGLE_LABELS[angleKey] ?? angleKey}
+                      className="h-36 w-full object-cover"
+                      loading="lazy"
+                    />
+                  )}
                   <div className="absolute inset-0 flex items-center justify-center bg-black/0 group-hover:bg-black/20 transition-colors">
                     <ZoomIn className="h-6 w-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
@@ -235,7 +272,7 @@ export function VehiclePhotoPanel({
 
                 {/* Info */}
                 <div className="px-3 py-2">
-                  <p className="text-xs font-semibold text-gray-800">{ANGLE_LABELS[photo.angle] ?? photo.angle}</p>
+                  <p className="text-xs font-semibold text-gray-800">{ANGLE_LABELS[angleKey] ?? angleKey}</p>
                   <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${sc.cls}`}>
                     {sc.label}
                   </span>
@@ -246,7 +283,7 @@ export function VehiclePhotoPanel({
 
                 {/* Quick actions */}
                 <div className="flex gap-1 border-t border-gray-100 px-3 py-2">
-                  {photo.status !== 'APPROVED' && (
+                  {photo.quality_status !== 'ACCEPTED' && (
                     <button
                       onClick={() => approvePhoto(photo.id)}
                       title="Approve"

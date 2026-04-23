@@ -20,6 +20,6 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", "vitest.d.ts"],
+  "include": ["src", "vitest-globals.d.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

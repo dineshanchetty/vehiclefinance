@@ -6,39 +6,37 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { DealDetail } from '../pages/DealDetail'
 import * as queries from '../lib/queries'
-import type { Deal } from '../types/database'
+import type { DealWithRelations } from '../types/database'
 
-const STUB_DEAL: Deal = {
+const STUB_DEAL: DealWithRelations = {
   id: 'deal-1',
   deal_number: 'VF-2025-042',
-  status: 'DOCS_REVIEW',
-  buyer_id: 'b1',
-  seller_id: 's1',
-  vehicle_id: 'v1',
-  assigned_fni_agent_id: null,
-  assigned_ops_agent_id: null,
-  current_blockers: null,
-  sla_due_at: null,
+  status: 'BUYER_DOCS_PENDING',
+  assigned_fni_analyst: null,
+  assigned_seller_agent: null,
+  notes: null,
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-02T00:00:00Z',
   buyer: {
-    id: 'b1', first_name: 'Jane', last_name: 'Smith',
+    id: 'b1', deal_id: 'deal-1', full_name: 'Jane Smith',
     id_number: '9001010000000', phone: '+27812345678', email: 'jane@example.com',
-    date_of_birth: '1990-01-01', employment_type: 'Permanent', employer_name: 'ACME',
-    monthly_income: 40000, monthly_expenses: 15000, credit_score: 720,
-    address: '1 Test Street', created_at: '', updated_at: '',
+    date_of_birth: '1990-01-01', gender: null, nationality: 'RSA',
+    employer_name: 'ACME', employment_duration: '5y', monthly_income: 40000,
+    physical_address: '1 Test Street', suburb: null, city: 'Cape Town', postal_code: '8001',
+    consent_status: true, consent_timestamp: null,
+    created_at: '', updated_at: '',
   },
   seller: {
-    id: 's1', first_name: 'John', last_name: 'Doe',
+    id: 's1', deal_id: 'deal-1', full_name: 'John Doe',
     id_number: null, phone: '+27811111111', email: null,
-    bank_name: 'Nedbank', bank_account_number: '123456789', bank_branch_code: '198765',
+    consent_status: true, consent_timestamp: null,
     created_at: '', updated_at: '',
   },
   vehicle: {
-    id: 'v1', make: 'Honda', model: 'Civic', year: 2022,
+    id: 'v1', deal_id: 'deal-1', make: 'Honda', model: 'Civic', year: 2022,
     colour: 'Blue', vin: 'VNKKTUD31FA123456', registration_number: 'GP999ZZZ',
-    odometer_km: 25000, engine_number: 'ENG999', transmission: 'Automatic',
-    fuel_type: 'Petrol', asking_price: 280000, agreed_price: 270000,
+    odometer_reading: '25000 km', engine_number: 'ENG999',
+    asking_price: 280000, year_of_first_registration: 2022,
     created_at: '', updated_at: '',
   },
 }
@@ -50,7 +48,8 @@ vi.mock('../lib/queries', () => ({
   getInspection: vi.fn(),
   listContracts: vi.fn(),
   listTasks: vi.fn(),
-  listAuditEvents: vi.fn(),
+  listAuditFeed: vi.fn(),
+  listExtractionResults: vi.fn(),
   getNatisFulfilment: vi.fn(),
   updateDealStatus: vi.fn(),
   claimTask: vi.fn(),
@@ -60,10 +59,25 @@ vi.mock('../lib/queries', () => ({
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    from: vi.fn(() => ({ select: vi.fn(() => ({ order: vi.fn(() => ({ limit: vi.fn(() => ({ data: [], error: null })) })) })) }),
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        order: vi.fn(() => ({
+          limit: vi.fn(() => ({ data: [], error: null })),
+        })),
+      })),
+    })),
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+    },
     channel: vi.fn(() => ({ on: vi.fn(() => ({ subscribe: vi.fn() })) })),
     removeChannel: vi.fn(),
   },
+}))
+
+// The auth context is Phase-2 code — stub useProfile so DealDetail renders
+// without an AuthProvider wrapper.
+vi.mock('../lib/auth', () => ({
+  useProfile: () => null,
 }))
 
 // Stub child components that do their own Supabase calls
@@ -79,7 +93,8 @@ describe('DealDetail', () => {
     vi.mocked(queries.getInspection).mockResolvedValue(null)
     vi.mocked(queries.listContracts).mockResolvedValue([])
     vi.mocked(queries.listTasks).mockResolvedValue([])
-    vi.mocked(queries.listAuditEvents).mockResolvedValue([])
+    vi.mocked(queries.listAuditFeed).mockResolvedValue([])
+    vi.mocked(queries.listExtractionResults).mockResolvedValue([])
     vi.mocked(queries.getNatisFulfilment).mockResolvedValue(null)
   })
 
@@ -89,11 +104,9 @@ describe('DealDetail', () => {
         <Routes>
           <Route path="/deals/:id" element={<DealDetail />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
-    // Loading spinner shown
-    // Wait for data to load
     await waitFor(() => {
       expect(screen.getByText('VF-2025-042')).toBeInTheDocument()
     })
@@ -110,7 +123,7 @@ describe('DealDetail', () => {
         <Routes>
           <Route path="/deals/:id" element={<DealDetail />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {

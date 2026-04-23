@@ -11,11 +11,10 @@ import {
   RefreshCw,
   AlertCircle,
 } from 'lucide-react'
-import { SLAIndicator } from '../components/SLAIndicator'
 import { StatusBadge } from '../components/StatusBadge'
 import { listDeals } from '../lib/queries'
 import { supabase } from '../lib/supabase'
-import type { Deal } from '../types/database'
+import type { DealWithRelations } from '../types/database'
 
 interface QueueCount {
   label: string
@@ -48,7 +47,7 @@ export function Dashboard() {
     { label: 'Contracts Awaiting Signature', value: null, icon: <FileSignature className="h-6 w-6" />, route: '/queue/Q_SELLER_CONTRACT',        description: 'Sent, awaiting signing' },
     { label: 'Deals Pending Approval',       value: null, icon: <CheckCircle2 className="h-6 w-6" />,  route: '/queue/Q_DEAL_APPROVAL',          description: 'Awaiting final sign-off' },
   ])
-  const [recentDeals, setRecentDeals] = useState<Deal[]>([])
+  const [recentDeals, setRecentDeals] = useState<DealWithRelations[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState(new Date())
@@ -59,11 +58,11 @@ export function Dashboard() {
     try {
       const [activeDeals, pendingDocs, pendingPhotos, pendingQuotes, pendingContracts, pendingApproval, recentData] =
         await Promise.allSettled([
-          supabase.from('deals').select('id', { count: 'exact', head: true }).not('status', 'in', '("SETTLED","CANCELLED","DECLINED")'),
+          supabase.from('deals').select('id', { count: 'exact', head: true }).not('status', 'in', '("DEAL_FULFILLED","DEAL_CANCELLED","DEAL_DECLINED")'),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('queue', 'Q_BUYER_DOC_REVIEW').eq('status', 'PENDING'),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('queue', 'Q_SELLER_PHOTO_REVIEW').eq('status', 'PENDING'),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('queue', 'Q_FNI_QUOTE_PREP').eq('status', 'PENDING'),
-          supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('status', 'SENT'),
+          supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('signature_status', 'SENT'),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('queue', 'Q_DEAL_APPROVAL').eq('status', 'PENDING'),
           listDeals({ sortKey: 'updated_at', sortDir: 'desc', limit: 10 }),
         ])
@@ -191,12 +190,11 @@ export function Dashboard() {
                   <StatusBadge status={deal.status} variant="sm" />
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {deal.buyer ? `${deal.buyer.first_name} ${deal.buyer.last_name}` : '—'}
-                  {deal.vehicle ? ` · ${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}` : ''}
+                  {deal.buyer?.full_name ?? '—'}
+                  {deal.vehicle ? ` · ${deal.vehicle.year ?? ''} ${deal.vehicle.make ?? ''} ${deal.vehicle.model ?? ''}` : ''}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
-                <SLAIndicator dueAt={deal.sla_due_at} compact />
                 <span className="text-xs text-gray-400">
                   {new Date(deal.updated_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                 </span>

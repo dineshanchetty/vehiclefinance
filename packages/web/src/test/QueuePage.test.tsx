@@ -6,39 +6,39 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueuePage } from '../pages/QueuePage'
 import * as queries from '../lib/queries'
-import type { Task } from '../types/database'
+import type { TaskWithDeal } from '../types/database'
 
-const STUB_TASK: Task = {
+const STUB_TASK: TaskWithDeal = {
   id: 'task-1',
   deal_id: 'deal-1',
+  task_type: 'Review ID document for buyer',
   queue: 'Q_BUYER_DOC_REVIEW',
   status: 'PENDING',
   priority: 'HIGH',
-  title: 'Review ID document for buyer',
-  description: null,
   assigned_to: null,
-  assigned_at: null,
   due_at: new Date(Date.now() + 3_600_000).toISOString(),
   completed_at: null,
-  escalated_at: null,
-  escalation_reason: null,
+  notes: null,
   created_at: new Date(Date.now() - 86_400_000).toISOString(),
   updated_at: new Date(Date.now() - 3_600_000).toISOString(),
   deal: {
     deal_number: 'VF-2025-010',
-    status: 'DOCS_REVIEW',
+    status: 'BUYER_DOCS_PENDING',
     buyer: {
-      id: 'b1', first_name: 'Alice', last_name: 'Mokoena',
+      id: 'b1', deal_id: 'deal-1', full_name: 'Alice Mokoena',
       id_number: '9001010000000', phone: '+27811111111', email: null,
-      date_of_birth: null, employment_type: null, employer_name: null,
-      monthly_income: null, monthly_expenses: null, credit_score: null,
-      address: null, created_at: '', updated_at: '',
+      date_of_birth: null, gender: null, nationality: null,
+      employer_name: null, employment_duration: null, monthly_income: null,
+      physical_address: null, suburb: null, city: null, postal_code: null,
+      consent_status: false, consent_timestamp: null,
+      created_at: '', updated_at: '',
     },
     vehicle: {
-      id: 'v1', make: 'Nissan', model: 'Micra', year: 2021,
-      colour: null, vin: null, registration_number: null, odometer_km: null,
-      engine_number: null, transmission: null, fuel_type: null,
-      asking_price: null, agreed_price: null, created_at: '', updated_at: '',
+      id: 'v1', deal_id: 'deal-1', make: 'Nissan', model: 'Micra', year: 2021,
+      colour: null, vin: null, registration_number: null,
+      odometer_reading: null, engine_number: null,
+      asking_price: null, year_of_first_registration: null,
+      created_at: '', updated_at: '',
     },
   },
 }
@@ -55,9 +55,16 @@ vi.mock('../lib/realtime', () => ({
   useRealtimeTable: vi.fn(),
 }))
 
+vi.mock('../lib/auth', () => ({
+  useProfile: () => null,
+}))
+
 vi.mock('../lib/supabase', () => ({
   supabase: {
     from: vi.fn(),
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+    },
     channel: vi.fn(() => ({ on: vi.fn(() => ({ subscribe: vi.fn() })) })),
     removeChannel: vi.fn(),
   },
@@ -76,7 +83,7 @@ describe('QueuePage', () => {
         <Routes>
           <Route path="/queue/:queueName" element={<QueuePage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {
@@ -95,7 +102,7 @@ describe('QueuePage', () => {
         <Routes>
           <Route path="/queue/:queueName" element={<QueuePage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {
@@ -111,7 +118,7 @@ describe('QueuePage', () => {
         <Routes>
           <Route path="/queue/:queueName" element={<QueuePage />} />
         </Routes>
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {

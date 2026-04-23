@@ -6,39 +6,38 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { DealList } from '../pages/DealList'
 import * as queries from '../lib/queries'
+import type { DealWithRelations } from '../types/database'
 
-const STUB_DEALS = [
+const STUB_DEALS: DealWithRelations[] = [
   {
     id: 'deal-1',
     deal_number: 'VF-2025-001',
-    status: 'DOCS_REVIEW' as const,
-    buyer_id: 'b1',
-    seller_id: 's1',
-    vehicle_id: 'v1',
-    assigned_fni_agent_id: null,
-    assigned_ops_agent_id: null,
-    current_blockers: null,
-    sla_due_at: null,
+    status: 'BUYER_DOCS_PENDING',
+    assigned_fni_analyst: null,
+    assigned_seller_agent: null,
+    notes: null,
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-02T00:00:00Z',
     buyer: {
-      id: 'b1', first_name: 'Test', last_name: 'Buyer',
+      id: 'b1', deal_id: 'deal-1', full_name: 'Test Buyer',
       id_number: '0000000000000', phone: '+27800000000', email: null,
-      date_of_birth: null, employment_type: null, employer_name: null,
-      monthly_income: null, monthly_expenses: null, credit_score: null,
-      address: null, created_at: '', updated_at: '',
+      date_of_birth: null, gender: null, nationality: null,
+      employer_name: null, employment_duration: null, monthly_income: null,
+      physical_address: null, suburb: null, city: null, postal_code: null,
+      consent_status: false, consent_timestamp: null,
+      created_at: '', updated_at: '',
     },
     seller: {
-      id: 's1', first_name: 'Test', last_name: 'Seller',
+      id: 's1', deal_id: 'deal-1', full_name: 'Test Seller',
       id_number: null, phone: '+27900000000', email: null,
-      bank_name: null, bank_account_number: null, bank_branch_code: null,
+      consent_status: false, consent_timestamp: null,
       created_at: '', updated_at: '',
     },
     vehicle: {
-      id: 'v1', make: 'Toyota', model: 'Corolla', year: 2020,
+      id: 'v1', deal_id: 'deal-1', make: 'Toyota', model: 'Corolla', year: 2020,
       colour: 'White', vin: null, registration_number: 'GP111AAA',
-      odometer_km: 50000, engine_number: null, transmission: null,
-      fuel_type: null, asking_price: 150000, agreed_price: 145000,
+      odometer_reading: '50000 km', engine_number: null,
+      asking_price: 150000, year_of_first_registration: null,
       created_at: '', updated_at: '',
     },
   },
@@ -48,10 +47,17 @@ vi.mock('../lib/queries', () => ({
   listDeals: vi.fn(),
 }))
 
-// Silence supabase import warning
+// Silence supabase import warning. Keeps a minimal chainable stub matching
+// the usage patterns in pages.
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    from: vi.fn(() => ({ select: vi.fn(() => ({ order: vi.fn(() => ({ limit: vi.fn(() => ({ data: [], error: null })) })) })) }),
+    from: vi.fn(() => ({
+      select: vi.fn(() => ({
+        order: vi.fn(() => ({
+          limit: vi.fn(() => ({ data: [], error: null })),
+        })),
+      })),
+    })),
     channel: vi.fn(() => ({ on: vi.fn(() => ({ subscribe: vi.fn() })) })),
     removeChannel: vi.fn(),
   },
@@ -63,12 +69,12 @@ describe('DealList', () => {
   })
 
   it('renders deal rows from live data', async () => {
-    vi.mocked(queries.listDeals).mockResolvedValue(STUB_DEALS as ReturnType<typeof queries.listDeals> extends Promise<infer T> ? T : never)
+    vi.mocked(queries.listDeals).mockResolvedValue(STUB_DEALS)
 
     render(
       <MemoryRouter>
         <DealList />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     // Loading state appears initially
@@ -81,7 +87,7 @@ describe('DealList', () => {
 
     expect(screen.getByText('Test Buyer')).toBeInTheDocument()
     expect(screen.getByText('Test Seller')).toBeInTheDocument()
-    expect(screen.getByText('2020 Toyota Corolla')).toBeInTheDocument()
+    expect(screen.getByText(/Toyota Corolla/)).toBeInTheDocument()
   })
 
   it('shows error state when query fails', async () => {
@@ -90,7 +96,7 @@ describe('DealList', () => {
     render(
       <MemoryRouter>
         <DealList />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {
@@ -106,7 +112,7 @@ describe('DealList', () => {
     render(
       <MemoryRouter>
         <DealList />
-      </MemoryRouter>
+      </MemoryRouter>,
     )
 
     await waitFor(() => {

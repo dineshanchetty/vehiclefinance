@@ -90,36 +90,6 @@ const STATUS_CFG: Record<FieldStatus, { label: string; cls: string }> = {
   FLAGGED:    { label: 'Flagged',    cls: 'bg-red-100 text-red-700' },
 }
 
-// ─── Mocks (used when Supabase is unavailable) ───────────────────────────────
-
-const MOCK_DOC: DocumentInfo = {
-  id: 'doc-demo-001',
-  deal_id: 'deal-demo-001',
-  document_type: 'id_document',
-  storage_path: null,
-  mime_type: 'image/jpeg',
-  status: 'extracted',
-  extracted_at: new Date().toISOString(),
-}
-
-const MOCK_EXTRACTION: ExtractionRecord = {
-  id: 'ext-demo-001',
-  doc_type: 'id_document',
-  extracted_data: {
-    full_name:        { value: 'DLAMINI SIPHO THABO', confidence: 0.96 },
-    id_number:        { value: '0000000000000',        confidence: 0.99 }, // synthetic — all zeros is not a valid SA ID
-    date_of_birth:    { value: '1990-01-01',            confidence: 0.92 },
-    gender:           { value: 'M',                     confidence: 0.98 },
-    nationality:      { value: 'RSA',                   confidence: 0.95 },
-    country_of_birth: { value: 'ZA',                    confidence: 0.54 },
-  },
-  confidence_score: 0.89,
-  flagged: true,
-  low_confidence_fields: ['country_of_birth'],
-  model_used: 'claude-sonnet-4-5',
-  created_at: new Date().toISOString(),
-}
-
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export function ExtractionReview() {
@@ -150,49 +120,114 @@ export function ExtractionReview() {
     setLoading(true)
     setError(null)
     try {
-      // Fetch document row
+      // Fetch document row — only real columns from the `documents` table.
       const { data: docData, error: docErr } = await supabase
         .from('documents')
-        .select('id, deal_id, document_type, storage_path, mime_type, status, extracted_at')
+        .select('id, deal_id, doc_type, file_url, mime_type, status, upload_timestamp')
         .eq('id', docId)
         .single()
 
-      const docInfo: DocumentInfo = docData ?? MOCK_DOC
-      if (docErr) console.warn('Using mock doc data:', docErr.message)
+      if (docErr || !docData) {
+        throw new Error(docErr?.message ?? 'Document not found')
+      }
+
+      const docInfo: DocumentInfo = {
+        id: docData.id,
+        deal_id: docData.deal_id,
+        document_type: docData.doc_type ?? 'OTHER',
+        storage_path: docData.file_url ?? null,
+        mime_type: docData.mime_type ?? null,
+        status: docData.status,
+        extracted_at: docData.upload_timestamp ?? null,
+      }
       setDoc(docInfo)
 
-      // Fetch extraction result
-      const { data: extData, error: extErr } = await supabase
+      // Fetch extraction results — one row per (field_name) in the schema.
+      const { data: extRows, error: extErr } = await supabase
         .from('extraction_results')
-        .select('*')
+        .select('id, document_id, field_name, extracted_value, confidence, confidence_level, customer_confirmed_value, verification_status, created_at')
         .eq('document_id', docId)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .single()
 
-      const extRecord: ExtractionRecord = extData ?? MOCK_EXTRACTION
-      if (extErr) console.warn('Using mock extraction data:', extErr.message)
-      setExtraction(extRecord)
+      if (extErr) {
+        throw new Error(extErr.message)
+      }
 
-      // Build field list
-      const extractedData = extRecord.extracted_data ?? {}
-      const fieldList: ExtractedField[] = Object.entries(extractedData).map(([key, f]) => ({
-        key,
-        label: humanLabel(key),
-        value: f.value,
-        confidence: f.confidence,
-        status: 'PENDING',
-        overrideValue: null,
-        flagReason: extRecord.low_confidence_fields?.includes(key) ? 'Low confidence' : null,
-      }))
-      // Pre-flag fields below threshold
-      setFields(
-        fieldList.map((f) =>
-          f.confidence < 0.60 ? { ...f, status: 'FLAGGED' } : f
-        )
+      // Take the most-recent row per field_name (rows are ordered desc).
+      const seen = new Set<string>()
+      const latestByField = (extRows ?? []).filter((r) => {
+        if (seen.has(r.field_name)) return false
+        seen.add(r.field_name)
+        return true
+      })
+
+      // Derive an overall extraction summary for the header UI.
+      const confidences = latestByField
+        .map((r) => r.confidence)
+        .filter((c): c is number => typeof c === 'number')
+      const avg =
+        confidences.length > 0
+          ? confidences.reduce((a, b) => a + b, 0) / confidences.length
+          : 0
+      const anyLow = latestByField.some(
+        (r) => typeof r.confidence === 'number' && r.confidence < 0.6,
       )
 
-      // Try to get a signed URL for preview
+      const extRecord: ExtractionRecord = {
+        id: `${docId}-summary`,
+        doc_type: docInfo.document_type,
+        extracted_data: Object.fromEntries(
+          latestByField.map((r) => [
+            r.field_name,
+            { value: r.extracted_value, confidence: r.confidence ?? 0 },
+          ]),
+        ),
+        confidence_score: avg,
+        flagged: anyLow,
+        low_confidence_fields: latestByField
+          .filter((r) => typeof r.confidence === 'number' && r.confidence < 0.6)
+          .map((r) => r.field_name),
+        model_used: null,
+        created_at:
+          latestByField[0]?.created_at ?? new Date().toISOString(),
+      }
+      setExtraction(extRecord)
+
+      // Build the UI field list from the real DB rows.
+      const fieldList: ExtractedField[] = latestByField.map((r) => {
+        // Map the DB enum onto the UI status.
+        const mapped: FieldStatus =
+          r.verification_status === 'VERIFIED'
+            ? 'ACCEPTED'
+            : r.verification_status === 'MISMATCH'
+            ? 'FLAGGED'
+            : r.verification_status === 'OVERRIDDEN'
+            ? 'OVERRIDDEN'
+            : 'PENDING'
+        return {
+          key: r.field_name,
+          label: humanLabel(r.field_name),
+          value: r.extracted_value,
+          confidence: r.confidence ?? 0,
+          status: mapped,
+          overrideValue: r.customer_confirmed_value,
+          flagReason:
+            typeof r.confidence === 'number' && r.confidence < 0.6
+              ? 'Low confidence'
+              : null,
+        }
+      })
+
+      // Auto-flag any still-PENDING field below the 0.60 threshold.
+      setFields(
+        fieldList.map((f) =>
+          f.status === 'PENDING' && f.confidence < 0.6
+            ? { ...f, status: 'FLAGGED' }
+            : f,
+        ),
+      )
+
+      // Try to get a signed URL for preview.
       if (docInfo.storage_path) {
         const bucket = 'deal-documents'
         const path = docInfo.storage_path.startsWith(bucket + '/')
@@ -204,7 +239,7 @@ export function ExtractionReview() {
         if (urlData?.signedUrl) setPreviewUrl(urlData.signedUrl)
       }
     } catch (e) {
-      setError(String(e))
+      setError(e instanceof Error ? e.message : String(e))
     } finally {
       setLoading(false)
     }
@@ -295,11 +330,11 @@ export function ExtractionReview() {
           })
         }
       }
-      // Audit
+      // Audit — columns on audit_logs: deal_id, phone, event_type, description, metadata.
       await supabase.from('audit_logs').insert({
-        deal_id: doc?.deal_id,
+        deal_id: doc?.deal_id ?? null,
         event_type: 'EXTRACTION_REVIEWED',
-        actor: 'ops:manual',
+        description: 'ops:manual extraction review',
         metadata: {
           document_id: documentId,
           accepted: fields.filter((f) => f.status === 'ACCEPTED').length,
