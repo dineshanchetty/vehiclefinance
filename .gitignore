@@ -54,3 +54,4 @@ coverage/
 
 # Vercel
 .vercel/
+deno.lock

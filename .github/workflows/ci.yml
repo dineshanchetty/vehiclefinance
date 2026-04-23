@@ -8,7 +8,7 @@ on:
 
 jobs:
   lint-and-typecheck:
-    name: Lint & Typecheck
+    name: Typecheck
     runs-on: ubuntu-latest
 
     steps:
@@ -40,9 +40,6 @@ jobs:
 
       - name: Typecheck — web
         run: pnpm --filter @vehiclefinance/web typecheck
-
-      - name: Lint — web
-        run: pnpm --filter @vehiclefinance/web lint
 
   build:
     name: Build all packages

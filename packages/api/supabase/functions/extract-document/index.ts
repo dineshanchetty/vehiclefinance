@@ -18,7 +18,7 @@
 
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts"
 import { getSupabaseClient } from "../_shared/supabase.ts"
-import { createMessage, type ContentBlockImage, type Message } from "../_shared/anthropic.ts"
+import { createMessage, type ContentBlockImage, type ContentBlockText, type Message } from "../_shared/anthropic.ts"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -292,8 +292,12 @@ serve(async (req: Request) => {
       messages,
     })
 
-    const rawBlock = aiResponse.content.find((b) => b.type === "text")
-    if (!rawBlock || rawBlock.type !== "text") {
+    // Narrow to a text block so TS knows `.text` is a string (ContentBlock is a
+    // union of ContentBlockImage | ContentBlockText).
+    const rawBlock = aiResponse.content.find(
+      (b): b is ContentBlockText => b.type === "text",
+    )
+    if (!rawBlock) {
       throw new Error("No text block in Claude response")
     }
 
@@ -394,20 +398,27 @@ serve(async (req: Request) => {
   } catch (err) {
     console.error("[extract-document] error:", err)
 
-    // Attempt to mark document as failed
-    await supabase
-      .from("documents")
-      .update({ status: "failed", error_message: String(err) })
-      .eq("id", document_id)
-      .catch(() => {})
+    // Attempt to mark document as failed (best-effort — we're already in an
+    // error path; don't let a second DB failure mask the original).
+    try {
+      await supabase
+        .from("documents")
+        .update({ status: "failed", error_message: String(err) })
+        .eq("id", document_id)
+    } catch {
+      // swallow
+    }
 
-    // Also update extraction task
-    await supabase
-      .from("extraction_tasks")
-      .update({ status: "failed", error_message: String(err) })
-      .eq("document_id", document_id)
-      .eq("status", "pending")
-      .catch(() => {})
+    // Also update extraction task (best-effort)
+    try {
+      await supabase
+        .from("extraction_tasks")
+        .update({ status: "failed", error_message: String(err) })
+        .eq("document_id", document_id)
+        .eq("status", "pending")
+    } catch {
+      // swallow
+    }
 
     return new Response(
       JSON.stringify({ error: String(err) }),
