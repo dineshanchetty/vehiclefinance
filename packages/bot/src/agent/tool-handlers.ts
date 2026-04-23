@@ -4,7 +4,6 @@ import { sendEmail as sgSendEmail } from '../services/sendgrid.js';
 import {
   getDealByBuyerPhone,
   getDealBySellerPhone,
-  getDealById,
   updateDealStatus as dbUpdateDealStatus,
   storeDocument as dbStoreDocument,
   createExtractionTask,

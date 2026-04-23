@@ -8,7 +8,7 @@ import {
   buildMessagesArray,
   pruneOldMessages,
 } from './memory.js';
-import { getDealByBuyerPhone, getDealBySellerPhone } from '../services/supabase.js';
+import { getDealBySellerPhone } from '../services/supabase.js';
 import { sendTextMessage } from '../services/dialog360.js';
 
 const MODEL = 'claude-sonnet-4-20250514';

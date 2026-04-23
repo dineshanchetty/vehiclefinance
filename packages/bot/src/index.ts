@@ -3,8 +3,6 @@ import express, { type Application } from 'express';
 import { handleDialog360Webhook, handleStatusWebhook } from './handlers/webhook.js';
 import { sendTextMessage } from './services/dialog360.js';
 import { agent } from './agent/agent.js';
-import { getIdleConversations, markStuckIfIdle } from './state/conversation.js';
-import { createOpsTask } from './services/supabase.js';
 
 // ── Startup assertions: fail fast if required secrets are missing ─────────────
 // The bot MUST use the service-role key (bypasses RLS). Anon key is never used
@@ -143,47 +141,18 @@ app.post('/api/send-notification', async (req, res) => {
   }
 });
 
-// ── Escalation / timeout scheduler ───────────────────────────────────────────
-// Runs every 5 minutes. Marks conversations idle > 48 h as stuck and creates
-// a Q_HUMAN_ESCALATION ops task so an agent can follow up.
-// NOTE: For production workloads replace this Node interval with a database-
-// driven cron job (pg_cron or Supabase Edge Function on a schedule) so the
-// logic survives process restarts.
-
-const IDLE_ESCALATION_MINUTES = 48 * 60; // 48 hours
-const SCHEDULER_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
-
-async function runEscalationSweep(): Promise<void> {
-  try {
-    const idleConversations = await getIdleConversations(IDLE_ESCALATION_MINUTES);
-    for (const conv of idleConversations) {
-      const wasMarked = await markStuckIfIdle(conv.phone, IDLE_ESCALATION_MINUTES);
-      if (wasMarked) {
-        console.log(`[scheduler] Escalating idle conversation: ${conv.phone} step=${conv.current_step}`);
-        await createOpsTask({
-          deal_id: conv.deal_id ?? undefined,
-          task_type: 'Q_HUMAN_ESCALATION',
-          description: `Conversation for ${conv.phone} has been idle > 48 h at step ${conv.current_step}. Human follow-up required.`,
-          priority: 'high',
-        }).catch((err) => {
-          console.warn('[scheduler] Failed to create escalation task', err);
-        });
-      }
-    }
-  } catch (err) {
-    console.error('[scheduler] runEscalationSweep error', err);
-  }
-}
-
 // ── Start server ──────────────────────────────────────────────────────────────
+// NOTE: An in-process escalation scheduler previously ran here, driven by a
+// `conversation_state` table that the old rule-based flows wrote to. That path
+// was removed; the agent stores conversation turns in `conversation_messages`
+// instead. A replacement stuck-conversation detector — driven by
+// `conversation_messages.created_at` and ideally run as pg_cron, not
+// setInterval — is tracked in UAT_HANDOFF §4b.
+
 app.listen(PORT, () => {
   console.log(`[bot] Vehicle Finance Bot running on port ${PORT}`);
   console.log(`[bot] Webhook endpoint: POST /webhook/dialog360`);
   console.log(`[bot] Health check: GET /health`);
-
-  // Start escalation scheduler
-  setInterval(() => { void runEscalationSweep(); }, SCHEDULER_INTERVAL_MS);
-  console.log(`[bot] Escalation scheduler started (interval: ${SCHEDULER_INTERVAL_MS / 1000}s)`);
 });
 
 export default app;
