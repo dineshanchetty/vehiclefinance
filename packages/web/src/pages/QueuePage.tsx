@@ -1,10 +1,11 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { format } from 'date-fns'
-import { User, ArrowUpCircle, CheckCircle2, ExternalLink } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { User, ArrowUpCircle, CheckCircle2, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react'
 import { StatusBadge } from '../components/StatusBadge'
 import { SLAIndicator } from '../components/SLAIndicator'
+import { listTasks, claimTask, completeTask, escalateTask } from '../lib/queries'
+import { useRealtimeTable } from '../lib/realtime'
 import type { Task, QueueName, TaskPriority } from '../types/database'
 
 // ─── Queue metadata ─────────────────────────────────────────────────────────
@@ -26,44 +27,6 @@ const QUEUE_META: Record<string, { label: string; description: string }> = {
   Q_SELLER_FOLLOWUP:     { label: 'Seller Follow-up',         description: 'Follow up with sellers on outstanding items' },
 }
 
-// ─── Mock data ───────────────────────────────────────────────────────────────
-
-function makeMockTasks(queue: string): Task[] {
-  const base = [
-    { id: '1', deal_number: 'VF-2024-001', buyer: 'Sipho Dlamini',    title: 'Review ID document',         priority: 'HIGH' as TaskPriority,   due_offset: 2_700_000 },
-    { id: '2', deal_number: 'VF-2024-002', buyer: 'Naledi Mokoena',   title: 'Verify payslip income',      priority: 'URGENT' as TaskPriority,  due_offset: -1_800_000 },
-    { id: '3', deal_number: 'VF-2024-006', buyer: 'Mpho Radebe',      title: 'Check proof of address',     priority: 'MEDIUM' as TaskPriority,  due_offset: 86_400_000 },
-    { id: '4', deal_number: 'VF-2024-009', buyer: 'Zanele Moyo',      title: 'Review bank statement',      priority: 'LOW' as TaskPriority,     due_offset: 172_800_000 },
-    { id: '5', deal_number: 'VF-2024-011', buyer: 'Thabo Sithole',    title: 'Income verification flag',   priority: 'CRITICAL' as TaskPriority, due_offset: -7_200_000 },
-  ]
-
-  return base.map((b) => ({
-    id: `${queue}-${b.id}`,
-    deal_id: b.id,
-    queue: queue as QueueName,
-    status: b.priority === 'CRITICAL' ? 'ESCALATED' : b.priority === 'URGENT' ? 'IN_PROGRESS' : 'PENDING',
-    priority: b.priority,
-    title: b.title,
-    description: null,
-    assigned_to: b.priority === 'URGENT' || b.priority === 'CRITICAL' ? 'agent1' : null,
-    assigned_at: b.priority === 'URGENT' ? new Date(Date.now() - 3_600_000).toISOString() : null,
-    due_at: new Date(Date.now() + b.due_offset).toISOString(),
-    completed_at: null,
-    escalated_at: b.priority === 'CRITICAL' ? new Date(Date.now() - 1_800_000).toISOString() : null,
-    escalation_reason: b.priority === 'CRITICAL' ? 'Credit score mismatch detected' : null,
-    created_at: new Date(Date.now() - 86_400_000).toISOString(),
-    updated_at: new Date(Date.now() - 3_600_000).toISOString(),
-    deal: {
-      deal_number: b.deal_number,
-      status: 'DOCS_REVIEW',
-      buyer: { id: b.id, first_name: b.buyer.split(' ')[0], last_name: b.buyer.split(' ')[1] ?? '', id_number: '', phone: '', email: null, date_of_birth: null, employment_type: null, employer_name: null, monthly_income: null, monthly_expenses: null, credit_score: null, address: null, created_at: '', updated_at: '' },
-      vehicle: { id: 'v', make: 'Toyota', model: 'Corolla', year: 2019, colour: null, vin: null, registration_number: null, odometer_km: null, engine_number: null, transmission: null, fuel_type: null, asking_price: null, agreed_price: null, created_at: '', updated_at: '' },
-    },
-  }))
-}
-
-// ─── Priority ordering ───────────────────────────────────────────────────────
-
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   CRITICAL: 0, URGENT: 1, HIGH: 2, MEDIUM: 3, LOW: 4,
 }
@@ -82,46 +45,65 @@ export function QueuePage() {
   const queue = queueName ?? 'Q_BUYER_DOC_REVIEW'
   const meta = QUEUE_META[queue] ?? { label: queue.replace(/^Q_/, '').replace(/_/g, ' '), description: '' }
 
-  const [tasks, setTasks] = useState<Task[]>(() => makeMockTasks(queue))
-  const [loading, setLoading] = useState(false)
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [statusFilter, setStatusFilter] = useState<string>('')
   const [priorityFilter, setPriorityFilter] = useState<string>('')
 
-  useEffect(() => {
-    setTasks(makeMockTasks(queue))
+  const fetchTasks = useCallback(async () => {
     setLoading(true)
-
-    const run = async () => {
-      try {
-        const { data } = await supabase
-          .from('tasks')
-          .select('*, deal:deals(deal_number, status, buyer:buyers(*), vehicle:vehicles(*))')
-          .eq('queue', queue)
-          .neq('status', 'COMPLETED')
-          .order('created_at', { ascending: false })
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (data && data.length > 0) setTasks(data as any as Task[])
-      } catch { /* stay on mock */ } finally {
-        setLoading(false)
-      }
+    setError(null)
+    try {
+      const data = await listTasks({
+        queue: queue as QueueName,
+        excludeCompleted: true,
+        limit: 100,
+      })
+      setTasks(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load tasks')
+    } finally {
+      setLoading(false)
     }
-    run()
   }, [queue])
 
-  const claim = (id: string) => {
-    setTasks((prev) => prev.map((t) =>
-      t.id === id ? { ...t, status: 'IN_PROGRESS', assigned_to: 'me', assigned_at: new Date().toISOString() } : t
-    ))
+  useEffect(() => {
+    fetchTasks()
+  }, [fetchTasks])
+
+  // Realtime: append new tasks for this queue
+  useRealtimeTable<Task>(
+    'tasks',
+    { column: 'queue', value: queue },
+    (newTask) => {
+      setTasks((prev) => {
+        // Avoid duplicates
+        if (prev.some((t) => t.id === newTask.id)) return prev
+        return [newTask, ...prev]
+      })
+    },
+  )
+
+  const handleClaim = async (id: string) => {
+    try {
+      const updated = await claimTask(id, 'me')
+      setTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...updated } : t))
+    } catch { alert('Failed to claim task') }
   }
 
-  const complete = (id: string) => {
-    setTasks((prev) => prev.filter((t) => t.id !== id))
+  const handleComplete = async (id: string) => {
+    try {
+      await completeTask(id)
+      setTasks((prev) => prev.filter((t) => t.id !== id))
+    } catch { alert('Failed to complete task') }
   }
 
-  const escalate = (id: string) => {
-    setTasks((prev) => prev.map((t) =>
-      t.id === id ? { ...t, status: 'ESCALATED', escalated_at: new Date().toISOString() } : t
-    ))
+  const handleEscalate = async (id: string) => {
+    try {
+      const updated = await escalateTask(id)
+      setTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...updated } : t))
+    } catch { alert('Failed to escalate task') }
   }
 
   const filtered = tasks
@@ -131,7 +113,6 @@ export function QueuePage() {
       const pa = PRIORITY_ORDER[a.priority] ?? 9
       const pb = PRIORITY_ORDER[b.priority] ?? 9
       if (pa !== pb) return pa - pb
-      // SLA ascending
       const da = a.due_at ? new Date(a.due_at).getTime() : Infinity
       const db = b.due_at ? new Date(b.due_at).getTime() : Infinity
       return da - db
@@ -147,8 +128,20 @@ export function QueuePage() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
-        <h1 className="text-xl font-bold text-gray-900">{meta.label}</h1>
-        <p className="text-sm text-gray-500 mt-0.5">{meta.description}</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">{meta.label}</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{meta.description}</p>
+          </div>
+          <button
+            onClick={fetchTasks}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
 
         {/* Stats row */}
         <div className="mt-3 flex flex-wrap gap-3">
@@ -165,6 +158,9 @@ export function QueuePage() {
               {counts.escalated} escalated
             </span>
           )}
+          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600">
+            Live
+          </span>
         </div>
 
         {/* Filters */}
@@ -194,6 +190,15 @@ export function QueuePage() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600" />
+          <p className="text-sm text-red-800">{error}</p>
+          <button onClick={fetchTasks} className="ml-auto text-sm font-medium text-red-700 underline">Retry</button>
+        </div>
+      )}
+
       {/* Table */}
       <div className="flex-1 overflow-auto p-6">
         <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
@@ -213,10 +218,13 @@ export function QueuePage() {
             <tbody className="divide-y divide-gray-50">
               {loading && (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-sm text-gray-400">Loading…</td>
+                  <td colSpan={8} className="py-12 text-center text-sm text-gray-400">
+                    <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-300" />
+                    Loading…
+                  </td>
                 </tr>
               )}
-              {!loading && filtered.length === 0 && (
+              {!loading && !error && filtered.length === 0 && (
                 <tr>
                   <td colSpan={8} className="py-12 text-center text-sm text-gray-400">
                     No tasks in this queue.
@@ -276,7 +284,7 @@ export function QueuePage() {
                     <div className="flex items-center gap-1">
                       {task.status === 'PENDING' && (
                         <button
-                          onClick={() => claim(task.id)}
+                          onClick={() => handleClaim(task.id)}
                           className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
                         >
                           <User className="h-3.5 w-3.5" /> Claim
@@ -284,7 +292,7 @@ export function QueuePage() {
                       )}
                       {task.status === 'IN_PROGRESS' && (
                         <button
-                          onClick={() => complete(task.id)}
+                          onClick={() => handleComplete(task.id)}
                           className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
                         >
                           <CheckCircle2 className="h-3.5 w-3.5" /> Complete
@@ -292,7 +300,7 @@ export function QueuePage() {
                       )}
                       {task.status !== 'ESCALATED' && (
                         <button
-                          onClick={() => escalate(task.id)}
+                          onClick={() => handleEscalate(task.id)}
                           className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
                         >
                           <ArrowUpCircle className="h-3.5 w-3.5" /> Escalate

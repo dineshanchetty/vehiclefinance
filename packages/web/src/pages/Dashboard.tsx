@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   FileText,
@@ -9,27 +9,21 @@ import {
   Clock,
   AlertTriangle,
   RefreshCw,
+  AlertCircle,
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { SLAIndicator } from '../components/SLAIndicator'
+import { StatusBadge } from '../components/StatusBadge'
+import { listDeals } from '../lib/queries'
+import { supabase } from '../lib/supabase'
+import type { Deal } from '../types/database'
 
-interface StatCard {
+interface QueueCount {
   label: string
   value: number | null
   icon: React.ReactNode
-  slaState: 'ok' | 'warning' | 'overdue'
   route: string
   description: string
 }
-
-const MOCK_STATS: StatCard[] = [
-  { label: 'Total Active Deals',          value: 42,  icon: <TrendingUp className="h-6 w-6" />,    slaState: 'ok',      route: '/deals',                          description: 'Deals currently in pipeline' },
-  { label: 'Pending Documents',           value: 11,  icon: <FileText className="h-6 w-6" />,       slaState: 'warning', route: '/queue/Q_BUYER_DOC_REVIEW',       description: 'Awaiting review or upload' },
-  { label: 'Pending Photos',              value: 7,   icon: <Camera className="h-6 w-6" />,         slaState: 'ok',      route: '/queue/Q_SELLER_PHOTO_REVIEW',    description: 'Photo sets awaiting review' },
-  { label: 'Quotes Pending',              value: 5,   icon: <Clock className="h-6 w-6" />,          slaState: 'overdue', route: '/queue/Q_FNI_QUOTE_PREP',         description: 'F&I quotes in preparation' },
-  { label: 'Contracts Awaiting Signature',value: 3,   icon: <FileSignature className="h-6 w-6" />,  slaState: 'warning', route: '/queue/Q_SELLER_CONTRACT',        description: 'Sent, awaiting signing' },
-  { label: 'Deals Pending Approval',      value: 8,   icon: <CheckCircle2 className="h-6 w-6" />,   slaState: 'ok',      route: '/queue/Q_DEAL_APPROVAL',          description: 'Awaiting final sign-off' },
-]
 
 const slaConfig = {
   ok:      { bg: 'bg-green-50',  border: 'border-green-200',  dot: 'bg-green-500',  text: 'text-green-700',  label: 'Within SLA' },
@@ -37,36 +31,33 @@ const slaConfig = {
   overdue: { bg: 'bg-red-50',    border: 'border-red-200',    dot: 'bg-red-500',    text: 'text-red-700',    label: 'SLA Breach' },
 }
 
-interface RecentDeal {
-  id: string
-  deal_number: string
-  status: string
-  buyer_name: string
-  vehicle_summary: string
-  updated_at: string
-  sla_due_at: string | null
+function getSlaState(count: number | null): 'ok' | 'warning' | 'overdue' {
+  if (count === null) return 'ok'
+  if (count === 0) return 'ok'
+  if (count <= 3) return 'warning'
+  return 'overdue'
 }
-
-const MOCK_RECENT: RecentDeal[] = [
-  { id: '1', deal_number: 'VF-2024-001', status: 'DOCS_REVIEW',          buyer_name: 'Sipho Dlamini',    vehicle_summary: '2019 Toyota Corolla',      updated_at: new Date(Date.now() - 3_600_000).toISOString(),  sla_due_at: new Date(Date.now() + 2_700_000).toISOString() },
-  { id: '2', deal_number: 'VF-2024-002', status: 'QUOTE_PENDING',        buyer_name: 'Naledi Mokoena',   vehicle_summary: '2021 VW Polo',             updated_at: new Date(Date.now() - 7_200_000).toISOString(),  sla_due_at: new Date(Date.now() - 1_800_000).toISOString() },
-  { id: '3', deal_number: 'VF-2024-003', status: 'CONTRACT_PENDING',     buyer_name: 'Thandeka Nkosi',   vehicle_summary: '2020 Ford Ranger',         updated_at: new Date(Date.now() - 1_800_000).toISOString(),  sla_due_at: new Date(Date.now() + 18_000_000).toISOString() },
-  { id: '4', deal_number: 'VF-2024-004', status: 'INSPECTION_PENDING',   buyer_name: 'Bongani Zulu',     vehicle_summary: '2018 Hyundai Tucson',      updated_at: new Date(Date.now() - 5_400_000).toISOString(),  sla_due_at: new Date(Date.now() + 86_400_000).toISOString() },
-  { id: '5', deal_number: 'VF-2024-005', status: 'NATIS_PENDING',        buyer_name: 'Lerato Sithole',   vehicle_summary: '2022 Kia Picanto',         updated_at: new Date(Date.now() - 900_000).toISOString(),    sla_due_at: null },
-]
 
 export function Dashboard() {
   const navigate = useNavigate()
-  const [stats, setStats] = useState<StatCard[]>(MOCK_STATS)
-  const [recentDeals, setRecentDeals] = useState<RecentDeal[]>(MOCK_RECENT)
-  const [loading, setLoading] = useState(false)
+  const [queueCounts, setQueueCounts] = useState<QueueCount[]>([
+    { label: 'Total Active Deals',           value: null, icon: <TrendingUp className="h-6 w-6" />,   route: '/deals',                          description: 'Deals currently in pipeline' },
+    { label: 'Pending Documents',            value: null, icon: <FileText className="h-6 w-6" />,      route: '/queue/Q_BUYER_DOC_REVIEW',       description: 'Awaiting review or upload' },
+    { label: 'Pending Photos',               value: null, icon: <Camera className="h-6 w-6" />,        route: '/queue/Q_SELLER_PHOTO_REVIEW',    description: 'Photo sets awaiting review' },
+    { label: 'Quotes Pending',               value: null, icon: <Clock className="h-6 w-6" />,         route: '/queue/Q_FNI_QUOTE_PREP',         description: 'F&I quotes in preparation' },
+    { label: 'Contracts Awaiting Signature', value: null, icon: <FileSignature className="h-6 w-6" />, route: '/queue/Q_SELLER_CONTRACT',        description: 'Sent, awaiting signing' },
+    { label: 'Deals Pending Approval',       value: null, icon: <CheckCircle2 className="h-6 w-6" />,  route: '/queue/Q_DEAL_APPROVAL',          description: 'Awaiting final sign-off' },
+  ])
+  const [recentDeals, setRecentDeals] = useState<Deal[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [lastRefreshed, setLastRefreshed] = useState(new Date())
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     setLoading(true)
+    setError(null)
     try {
-      // Try live Supabase counts; fall back to mock on error
-      const [activeDeals, pendingDocs, pendingPhotos, pendingQuotes, pendingContracts, pendingApproval] =
+      const [activeDeals, pendingDocs, pendingPhotos, pendingQuotes, pendingContracts, pendingApproval, recentData] =
         await Promise.allSettled([
           supabase.from('deals').select('id', { count: 'exact', head: true }).not('status', 'in', '("SETTLED","CANCELLED","DECLINED")'),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('queue', 'Q_BUYER_DOC_REVIEW').eq('status', 'PENDING'),
@@ -74,61 +65,29 @@ export function Dashboard() {
           supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('queue', 'Q_FNI_QUOTE_PREP').eq('status', 'PENDING'),
           supabase.from('contracts').select('id', { count: 'exact', head: true }).eq('status', 'SENT'),
           supabase.from('tasks').select('id', { count: 'exact', head: true }).eq('queue', 'Q_DEAL_APPROVAL').eq('status', 'PENDING'),
+          listDeals({ sortKey: 'updated_at', sortDir: 'desc', limit: 10 }),
         ])
 
       const counts = [activeDeals, pendingDocs, pendingPhotos, pendingQuotes, pendingContracts, pendingApproval].map(
-        (r) => (r.status === 'fulfilled' && r.value.count != null ? r.value.count : null)
+        (r) => (r.status === 'fulfilled' && (r.value as { count: number | null }).count != null
+          ? (r.value as { count: number }).count
+          : null)
       )
 
-      setStats((prev) =>
-        prev.map((s, i) => ({ ...s, value: counts[i] ?? s.value }))
-      )
+      setQueueCounts((prev) => prev.map((q, i) => ({ ...q, value: counts[i] ?? q.value })))
 
-      // Fetch recent deals
-      const { data } = await supabase
-        .from('deals')
-        .select('id, deal_number, status, sla_due_at, updated_at, buyers(first_name, last_name), vehicles(make, model, year)')
-        .not('status', 'in', '("SETTLED","CANCELLED")')
-        .order('updated_at', { ascending: false })
-        .limit(10)
-
-      if (data && data.length > 0) {
-        setRecentDeals(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          (data as any[]).map((d) => ({
-            id: d.id as string,
-            deal_number: d.deal_number as string,
-            status: d.status as string,
-            buyer_name: d.buyers ? `${d.buyers.first_name} ${d.buyers.last_name}` : '—',
-            vehicle_summary: d.vehicles ? `${d.vehicles.year} ${d.vehicles.make} ${d.vehicles.model}` : '—',
-            updated_at: d.updated_at as string,
-            sla_due_at: d.sla_due_at as string | null,
-          }))
-        )
+      if (recentData.status === 'fulfilled') {
+        setRecentDeals(recentData.value)
       }
-    } catch {
-      // silently stay on mock data
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load dashboard data')
     } finally {
       setLoading(false)
       setLastRefreshed(new Date())
     }
-  }
+  }, [])
 
-  useEffect(() => { fetchStats() }, [])
-
-  const statusLabel: Record<string, string> = {
-    DOCS_REVIEW: 'Docs Review', QUOTE_PENDING: 'Quote Pending',
-    CONTRACT_PENDING: 'Contract Pending', INSPECTION_PENDING: 'Inspection Pending',
-    NATIS_PENDING: 'NATIS Pending',
-  }
-
-  const statusColor: Record<string, string> = {
-    DOCS_REVIEW:         'bg-blue-100 text-blue-800',
-    QUOTE_PENDING:       'bg-purple-100 text-purple-800',
-    CONTRACT_PENDING:    'bg-amber-100 text-amber-800',
-    INSPECTION_PENDING:  'bg-orange-100 text-orange-800',
-    NATIS_PENDING:       'bg-sky-100 text-sky-800',
-  }
+  useEffect(() => { fetchStats() }, [fetchStats])
 
   return (
     <div className="p-6 space-y-6">
@@ -150,6 +109,14 @@ export function Dashboard() {
         </button>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+          <AlertCircle className="h-4 w-4 text-red-600 flex-shrink-0" />
+          <p className="text-sm text-red-800">{error}</p>
+        </div>
+      )}
+
       {/* SLA Legend */}
       <div className="flex items-center gap-4 text-xs text-gray-500">
         <span className="font-medium text-gray-700">SLA Status:</span>
@@ -163,8 +130,9 @@ export function Dashboard() {
 
       {/* Stat Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {stats.map((card) => {
-          const cfg = slaConfig[card.slaState]
+        {queueCounts.map((card) => {
+          const slaState = getSlaState(card.value)
+          const cfg = slaConfig[slaState]
           return (
             <button
               key={card.label}
@@ -177,7 +145,7 @@ export function Dashboard() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium text-gray-600 truncate">{card.label}</p>
                 <p className={`text-3xl font-bold ${cfg.text}`}>
-                  {card.value ?? '—'}
+                  {loading ? '—' : (card.value ?? '—')}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{card.description}</p>
               </div>
@@ -188,17 +156,6 @@ export function Dashboard() {
             </button>
           )
         })}
-      </div>
-
-      {/* Alert strip */}
-      <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
-        <AlertTriangle className="h-4 w-4 flex-shrink-0 text-red-600" />
-        <p className="text-sm text-red-800">
-          <span className="font-semibold">2 deals</span> have breached SLA and require immediate attention.{' '}
-          <button onClick={() => navigate('/queue/Q_HUMAN_ESCALATION')} className="underline font-medium">
-            View escalations
-          </button>
-        </p>
       </div>
 
       {/* Recent Activity */}
@@ -213,6 +170,15 @@ export function Dashboard() {
           </button>
         </div>
         <div className="divide-y divide-gray-50">
+          {loading && (
+            <div className="py-8 text-center text-sm text-gray-400">
+              <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-300" />
+              Loading recent activity…
+            </div>
+          )}
+          {!loading && recentDeals.length === 0 && !error && (
+            <div className="py-8 text-center text-sm text-gray-400">No recent deals.</div>
+          )}
           {recentDeals.map((deal) => (
             <button
               key={deal.id}
@@ -222,12 +188,11 @@ export function Dashboard() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-semibold text-gray-900">{deal.deal_number}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColor[deal.status] ?? 'bg-gray-100 text-gray-600'}`}>
-                    {statusLabel[deal.status] ?? deal.status.replace(/_/g, ' ')}
-                  </span>
+                  <StatusBadge status={deal.status} variant="sm" />
                 </div>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  {deal.buyer_name} · {deal.vehicle_summary}
+                  {deal.buyer ? `${deal.buyer.first_name} ${deal.buyer.last_name}` : '—'}
+                  {deal.vehicle ? ` · ${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}` : ''}
                 </p>
               </div>
               <div className="flex flex-col items-end gap-1">
@@ -239,6 +204,17 @@ export function Dashboard() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Escalation alert — only shown when there are tasks in escalation queue */}
+      <div className="flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+        <AlertTriangle className="h-4 w-4 flex-shrink-0 text-red-600" />
+        <p className="text-sm text-red-800">
+          Check the escalations queue for deals requiring immediate attention.{' '}
+          <button onClick={() => navigate('/queue/Q_HUMAN_ESCALATION')} className="underline font-medium">
+            View escalations
+          </button>
+        </p>
       </div>
     </div>
   )

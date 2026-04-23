@@ -4,111 +4,30 @@ import { format } from 'date-fns'
 import {
   ArrowLeft, User, Car, FileText, DollarSign,
   FileSignature, Wrench, MapPin, ClipboardList, ScrollText,
-  CheckCircle2, AlertTriangle, ExternalLink,
+  CheckCircle2, AlertTriangle, ExternalLink, RefreshCw, AlertCircle,
 } from 'lucide-react'
-import { supabase } from '../lib/supabase'
 import { StatusBadge } from '../components/StatusBadge'
 import { SLAIndicator } from '../components/SLAIndicator'
 import { VehiclePhotoPanel } from '../components/VehiclePhotoPanel'
 import { ExtractionConfidencePanel } from '../components/ExtractionConfidencePanel'
+import {
+  getDeal,
+  listDocuments,
+  listQuotes,
+  listContracts,
+  listTasks,
+  listAuditEvents,
+  getInspection,
+  getNatisFulfilment,
+  updateDealStatus,
+  claimTask,
+  completeTask,
+  escalateTask,
+} from '../lib/queries'
 import type {
   Deal, Quote, Inspection, Contract, Task, AuditEvent,
-  NATISFulfilment, Document,
+  NATISFulfilment, Document, DealStatus,
 } from '../types/database'
-
-// ─── Mock data ─────────────────────────────────────────────────────────────────
-
-const MOCK_DEAL: Deal = {
-  id: '1',
-  deal_number: 'VF-2024-001',
-  status: 'DOCS_REVIEW',
-  buyer_id: 'b1',
-  seller_id: 's1',
-  vehicle_id: 'v1',
-  assigned_fni_agent_id: 'agent1',
-  assigned_ops_agent_id: 'ops1',
-  current_blockers: ['Income document confidence below threshold'],
-  sla_due_at: new Date(Date.now() + 2_700_000).toISOString(),
-  created_at: new Date(Date.now() - 86_400_000 * 2).toISOString(),
-  updated_at: new Date(Date.now() - 3_600_000).toISOString(),
-  buyer: {
-    id: 'b1', first_name: 'Sipho', last_name: 'Dlamini',
-    id_number: '9001015800084', phone: '+27823456789', email: 'sipho@email.com',
-    date_of_birth: '1990-01-01', employment_type: 'Permanent', employer_name: 'Telkom SA',
-    monthly_income: 35000, monthly_expenses: 12000, credit_score: 680,
-    address: '14 Acacia Avenue, Pretoria, 0001',
-    created_at: '', updated_at: '',
-  },
-  seller: {
-    id: 's1', first_name: 'Johan', last_name: 'van der Merwe', id_number: null,
-    phone: '+27114567890', email: 'johan@dealer.co.za',
-    bank_name: 'FNB', bank_account_number: '62345678901', bank_branch_code: '250655',
-    created_at: '', updated_at: '',
-  },
-  vehicle: {
-    id: 'v1', make: 'Toyota', model: 'Corolla', year: 2019, colour: 'Silver',
-    vin: 'AHTLB9AG003456789', registration_number: 'GP123456', odometer_km: 85000,
-    engine_number: '2ZR123456', transmission: 'Manual', fuel_type: 'Petrol',
-    asking_price: 175000, agreed_price: 168000, created_at: '', updated_at: '',
-  },
-}
-
-const MOCK_DOCS: Document[] = [
-  { id: 'd1', deal_id: '1', owner_type: 'BUYER', owner_id: 'b1', document_type: 'ID_DOCUMENT',      status: 'APPROVED',      file_url: '#', file_name: 'id_document.pdf',  mime_type: 'application/pdf', uploaded_at: new Date(Date.now() - 86_400_000).toISOString(), reviewed_at: new Date(Date.now() - 72_000_000).toISOString(), reviewer_id: 'agent1', rejection_reason: null, created_at: '', updated_at: '' },
-  { id: 'd2', deal_id: '1', owner_type: 'BUYER', owner_id: 'b1', document_type: 'PROOF_OF_INCOME',  status: 'UNDER_REVIEW',  file_url: '#', file_name: 'payslip_march.pdf', mime_type: 'application/pdf', uploaded_at: new Date(Date.now() - 50_400_000).toISOString(), reviewed_at: null, reviewer_id: null, rejection_reason: null, created_at: '', updated_at: '' },
-  { id: 'd3', deal_id: '1', owner_type: 'BUYER', owner_id: 'b1', document_type: 'PROOF_OF_ADDRESS', status: 'UNDER_REVIEW',  file_url: '#', file_name: 'utility_bill.pdf', mime_type: 'application/pdf', uploaded_at: new Date(Date.now() - 36_000_000).toISOString(), reviewed_at: null, reviewer_id: null, rejection_reason: null, created_at: '', updated_at: '' },
-  { id: 'd4', deal_id: '1', owner_type: 'SELLER', owner_id: 's1', document_type: 'VEHICLE_REGISTRATION', status: 'APPROVED', file_url: '#', file_name: 'natis_cert.pdf',   mime_type: 'application/pdf', uploaded_at: new Date(Date.now() - 86_400_000).toISOString(), reviewed_at: new Date(Date.now() - 72_000_000).toISOString(), reviewer_id: 'agent1', rejection_reason: null, created_at: '', updated_at: '' },
-]
-
-const MOCK_QUOTE: Quote = {
-  id: 'q1', deal_id: '1', version: 1, status: 'SENT',
-  loan_amount: 168000, deposit_amount: 16800, interest_rate: 11.25,
-  term_months: 72, monthly_instalment: 3450,
-  balloon_payment: null, initiation_fee: 1207.50, monthly_admin_fee: 69,
-  insurance_premium: 650, total_cost_of_credit: 258400,
-  sent_at: new Date(Date.now() - 14_400_000).toISOString(),
-  viewed_at: new Date(Date.now() - 10_800_000).toISOString(),
-  accepted_at: null, declined_at: null, declined_reason: null,
-  expiry_at: new Date(Date.now() + 86_400_000 * 5).toISOString(),
-  created_at: '', updated_at: '',
-}
-
-const MOCK_INSPECTION: Inspection = {
-  id: 'i1', deal_id: '1', vehicle_id: 'v1', status: 'PENDING',
-  inspector_name: null, inspector_company: 'Hartcon',
-  scheduled_at: null, completed_at: null, report_url: null,
-  overall_condition: null, odometer_reading: null, roadworthy: null,
-  defects: null, recommendation: null, final_valuation: null,
-  created_at: '', updated_at: '',
-}
-
-const MOCK_CONTRACTS: Contract[] = [
-  { id: 'c1', deal_id: '1', contract_type: 'SELLER', status: 'SIGNED', docusign_envelope_id: 'env_123', file_url: '#', sent_at: new Date(Date.now() - 86_400_000 * 1.5).toISOString(), viewed_at: new Date(Date.now() - 86_400_000 * 1.4).toISOString(), signed_at: new Date(Date.now() - 86_400_000 * 1.2).toISOString(), declined_at: null, expiry_at: null, signatory_name: 'Johan van der Merwe', signatory_email: 'johan@dealer.co.za', created_at: '', updated_at: '' },
-  { id: 'c2', deal_id: '1', contract_type: 'BUYER',  status: 'SENT',   docusign_envelope_id: 'env_124', file_url: '#', sent_at: new Date(Date.now() - 14_400_000).toISOString(), viewed_at: null, signed_at: null, declined_at: null, expiry_at: new Date(Date.now() + 86_400_000 * 5).toISOString(), signatory_name: 'Sipho Dlamini', signatory_email: 'sipho@email.com', created_at: '', updated_at: '' },
-]
-
-const MOCK_TASKS: Task[] = [
-  { id: 't1', deal_id: '1', queue: 'Q_BUYER_DOC_REVIEW', status: 'IN_PROGRESS', priority: 'HIGH',   title: 'Review buyer income documents',     description: null, assigned_to: 'agent1', assigned_at: new Date(Date.now() - 7_200_000).toISOString(), due_at: new Date(Date.now() + 3_600_000).toISOString(), completed_at: null, escalated_at: null, escalation_reason: null, created_at: new Date(Date.now() - 7_200_000).toISOString(), updated_at: '' },
-  { id: 't2', deal_id: '1', queue: 'Q_SELLER_PHOTO_REVIEW', status: 'PENDING', priority: 'MEDIUM', title: 'Review vehicle photo set',           description: null, assigned_to: null, assigned_at: null, due_at: new Date(Date.now() + 86_400_000).toISOString(), completed_at: null, escalated_at: null, escalation_reason: null, created_at: new Date(Date.now() - 3_600_000).toISOString(), updated_at: '' },
-  { id: 't3', deal_id: '1', queue: 'Q_FNI_QUOTE_PREP',     status: 'PENDING', priority: 'MEDIUM', title: 'Prepare F&I quote for buyer',        description: null, assigned_to: null, assigned_at: null, due_at: new Date(Date.now() + 86_400_000 * 2).toISOString(), completed_at: null, escalated_at: null, escalation_reason: null, created_at: '', updated_at: '' },
-]
-
-const MOCK_AUDIT: AuditEvent[] = [
-  { id: 'a1', deal_id: '1', event_type: 'DEAL_CREATED',       actor_id: 'system',  actor_type: 'SYSTEM', actor_name: 'WhatsApp Bot',  details: { trigger: 'buyer_opt_in' },        created_at: new Date(Date.now() - 86_400_000 * 2).toISOString() },
-  { id: 'a2', deal_id: '1', event_type: 'DOCUMENT_UPLOADED',  actor_id: 'b1',      actor_type: 'BUYER',  actor_name: 'Sipho Dlamini', details: { document_type: 'ID_DOCUMENT' },    created_at: new Date(Date.now() - 86_400_000).toISOString() },
-  { id: 'a3', deal_id: '1', event_type: 'DOCUMENT_APPROVED',  actor_id: 'agent1',  actor_type: 'AGENT',  actor_name: 'Thabo Mokoena', details: { document_id: 'd1' },               created_at: new Date(Date.now() - 72_000_000).toISOString() },
-  { id: 'a4', deal_id: '1', event_type: 'PHOTO_SET_UPLOADED', actor_id: 's1',      actor_type: 'SELLER', actor_name: 'Johan vdM',     details: { photo_count: 8 },                 created_at: new Date(Date.now() - 50_400_000).toISOString() },
-  { id: 'a5', deal_id: '1', event_type: 'AI_EVAL_COMPLETE',   actor_id: 'system',  actor_type: 'SYSTEM', actor_name: 'AI Engine',     details: { condition_band: 'FAIR', confidence: 0.73 }, created_at: new Date(Date.now() - 36_000_000).toISOString() },
-  { id: 'a6', deal_id: '1', event_type: 'QUOTE_SENT',         actor_id: 'agent1',  actor_type: 'AGENT',  actor_name: 'Thabo Mokoena', details: { quote_id: 'q1', amount: 168000 },  created_at: new Date(Date.now() - 14_400_000).toISOString() },
-]
-
-const MOCK_NATIS: NATISFulfilment = {
-  id: 'n1', deal_id: '1', vehicle_id: 'v1', status: 'PENDING',
-  submitted_at: null, processing_at: null, completed_at: null, rejected_at: null,
-  rejection_reason: null, natis_reference: null,
-  collection_address: '12 Hartcon House, 3rd Floor, Sandton',
-  collection_agent: null, notes: null, created_at: '', updated_at: '',
-}
 
 // ─── Deal timeline stages ─────────────────────────────────────────────────────
 
@@ -149,7 +68,6 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'audit',       label: 'Audit',       icon: <ScrollText className="h-4 w-4" /> },
 ]
 
-// Use a simple grid icon inline (lucide doesn't export LayoutGrid in older versions)
 function LayoutGrid({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -158,8 +76,6 @@ function LayoutGrid({ className }: { className?: string }) {
     </svg>
   )
 }
-
-// ─── Info row helper ──────────────────────────────────────────────────────────
 
 function InfoRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -172,8 +88,23 @@ function InfoRow({ label, value }: { label: string; value?: string | number | nu
 
 // ─── Tabs ─────────────────────────────────────────────────────────────────────
 
-function OverviewTab({ deal }: { deal: Deal }) {
+function OverviewTab({ deal, onStatusChange }: { deal: Deal; onStatusChange: (s: DealStatus) => void }) {
   const currentIdx = stageIndex(deal.status)
+  const [changing, setChanging] = useState(false)
+
+  const handleStatusChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value as DealStatus
+    if (!newStatus || newStatus === deal.status) return
+    setChanging(true)
+    try {
+      await updateDealStatus(deal.id, newStatus)
+      onStatusChange(newStatus)
+    } catch {
+      alert('Failed to update status')
+    } finally {
+      setChanging(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -208,7 +139,6 @@ function OverviewTab({ deal }: { deal: Deal }) {
         </div>
       </div>
 
-      {/* Key Dates */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="rounded-xl border border-gray-200 bg-white p-4">
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Key Dates</h3>
@@ -221,10 +151,25 @@ function OverviewTab({ deal }: { deal: Deal }) {
           <h3 className="text-sm font-semibold text-gray-700 mb-3">Assigned Agents</h3>
           <InfoRow label="F&I Agent"  value={deal.assigned_fni_agent_id ?? null} />
           <InfoRow label="Ops Agent"  value={deal.assigned_ops_agent_id ?? null} />
+          <div className="mt-3">
+            <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">Update Status</label>
+            <select
+              onChange={handleStatusChange}
+              disabled={changing}
+              defaultValue=""
+              className="mt-1 block w-full rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm text-gray-700 focus:border-blue-500 focus:outline-none disabled:opacity-50"
+            >
+              <option value="" disabled>Change status…</option>
+              {STATUS_ORDER.map((s) => (
+                <option key={s} value={s} disabled={s === deal.status}>
+                  {s.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 
-      {/* Current Blockers */}
       {deal.current_blockers && deal.current_blockers.length > 0 && (
         <div className="rounded-xl border border-red-200 bg-red-50 p-4">
           <div className="flex items-center gap-2 mb-2">
@@ -272,10 +217,10 @@ function BuyerTab({ deal, docs }: { deal: Deal; docs: Document[] }) {
         </div>
       </div>
 
-      {/* Buyer Documents */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Documents</h3>
         <div className="space-y-2">
+          {buyerDocs.length === 0 && <p className="text-sm text-gray-400">No documents uploaded yet.</p>}
           {buyerDocs.map((doc) => (
             <div key={doc.id} className="flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-2.5">
               <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -284,18 +229,16 @@ function BuyerTab({ deal, docs }: { deal: Deal; docs: Document[] }) {
                 {doc.uploaded_at && <p className="text-xs text-gray-400">Uploaded {format(new Date(doc.uploaded_at), 'dd MMM HH:mm')}</p>}
               </div>
               <StatusBadge status={doc.status} variant="sm" />
-              {doc.file_url && doc.file_url !== '#' && (
+              {doc.file_url && (
                 <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-blue-500 hover:text-blue-700">
                   <ExternalLink className="h-4 w-4" />
                 </a>
               )}
             </div>
           ))}
-          {buyerDocs.length === 0 && <p className="text-sm text-gray-400">No documents uploaded yet.</p>}
         </div>
       </div>
 
-      {/* Extraction Results */}
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Extraction Results</h3>
         <ExtractionConfidencePanel results={[]} />
@@ -324,6 +267,7 @@ function SellerTab({ deal, docs }: { deal: Deal; docs: Document[] }) {
       <div className="rounded-xl border border-gray-200 bg-white p-5">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Documents</h3>
         <div className="space-y-2">
+          {sellerDocs.length === 0 && <p className="text-sm text-gray-400">No documents uploaded yet.</p>}
           {sellerDocs.map((doc) => (
             <div key={doc.id} className="flex items-center gap-3 rounded-lg border border-gray-100 px-3 py-2.5">
               <FileText className="h-4 w-4 text-gray-400 flex-shrink-0" />
@@ -334,7 +278,6 @@ function SellerTab({ deal, docs }: { deal: Deal; docs: Document[] }) {
               <StatusBadge status={doc.status} variant="sm" />
             </div>
           ))}
-          {sellerDocs.length === 0 && <p className="text-sm text-gray-400">No documents uploaded yet.</p>}
         </div>
       </div>
     </div>
@@ -372,40 +315,43 @@ function VehicleTab({ deal }: { deal: Deal }) {
   )
 }
 
-function QuoteTab({ quote }: { quote: Quote | null }) {
+function QuoteTab({ quotes }: { quotes: Quote[] }) {
+  const quote = quotes[0] ?? null
   if (!quote) return <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">No quote has been prepared yet.</div>
 
   return (
-    <div className="space-y-6">
-      <div className="rounded-xl border border-gray-200 bg-white p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-gray-700">Quote v{quote.version}</h3>
-          <StatusBadge status={quote.status} />
-        </div>
+    <div className="space-y-4">
+      {quotes.map((q) => (
+        <div key={q.id} className="rounded-xl border border-gray-200 bg-white p-5">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-gray-700">Quote v{q.version}</h3>
+            <StatusBadge status={q.status} />
+          </div>
 
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-4">
-          {[
-            { label: 'Loan Amount',     value: `R ${quote.loan_amount.toLocaleString()}` },
-            { label: 'Deposit',         value: `R ${quote.deposit_amount.toLocaleString()}` },
-            { label: 'Interest Rate',   value: `${quote.interest_rate}% p.a.` },
-            { label: 'Term',            value: `${quote.term_months} months` },
-            { label: 'Monthly Install.',value: `R ${quote.monthly_instalment.toLocaleString()}` },
-            { label: 'Total Credit',    value: quote.total_cost_of_credit ? `R ${quote.total_cost_of_credit.toLocaleString()}` : '—' },
-          ].map((item) => (
-            <div key={item.label} className="rounded-lg bg-gray-50 border border-gray-100 p-3">
-              <p className="text-xs text-gray-500 mb-1">{item.label}</p>
-              <p className="text-sm font-bold text-gray-900">{item.value}</p>
-            </div>
-          ))}
-        </div>
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 mb-4">
+            {[
+              { label: 'Loan Amount',     value: `R ${q.loan_amount.toLocaleString()}` },
+              { label: 'Deposit',         value: `R ${q.deposit_amount.toLocaleString()}` },
+              { label: 'Interest Rate',   value: `${q.interest_rate}% p.a.` },
+              { label: 'Term',            value: `${q.term_months} months` },
+              { label: 'Monthly Install.',value: `R ${q.monthly_instalment.toLocaleString()}` },
+              { label: 'Total Credit',    value: q.total_cost_of_credit ? `R ${q.total_cost_of_credit.toLocaleString()}` : '—' },
+            ].map((item) => (
+              <div key={item.label} className="rounded-lg bg-gray-50 border border-gray-100 p-3">
+                <p className="text-xs text-gray-500 mb-1">{item.label}</p>
+                <p className="text-sm font-bold text-gray-900">{item.value}</p>
+              </div>
+            ))}
+          </div>
 
-        <InfoRow label="Initiation Fee"   value={quote.initiation_fee ? `R ${quote.initiation_fee.toLocaleString()}` : null} />
-        <InfoRow label="Admin Fee"        value={quote.monthly_admin_fee ? `R ${quote.monthly_admin_fee}/mo` : null} />
-        <InfoRow label="Insurance"        value={quote.insurance_premium ? `R ${quote.insurance_premium}/mo` : null} />
-        <InfoRow label="Sent At"          value={quote.sent_at ? format(new Date(quote.sent_at), 'dd MMM yyyy HH:mm') : null} />
-        <InfoRow label="Viewed At"        value={quote.viewed_at ? format(new Date(quote.viewed_at), 'dd MMM yyyy HH:mm') : null} />
-        <InfoRow label="Expires"          value={quote.expiry_at ? format(new Date(quote.expiry_at), 'dd MMM yyyy') : null} />
-      </div>
+          <InfoRow label="Initiation Fee"   value={q.initiation_fee ? `R ${q.initiation_fee.toLocaleString()}` : null} />
+          <InfoRow label="Admin Fee"        value={q.monthly_admin_fee ? `R ${q.monthly_admin_fee}/mo` : null} />
+          <InfoRow label="Insurance"        value={q.insurance_premium ? `R ${q.insurance_premium}/mo` : null} />
+          <InfoRow label="Sent At"          value={q.sent_at ? format(new Date(q.sent_at), 'dd MMM yyyy HH:mm') : null} />
+          <InfoRow label="Viewed At"        value={q.viewed_at ? format(new Date(q.viewed_at), 'dd MMM yyyy HH:mm') : null} />
+          <InfoRow label="Expires"          value={q.expiry_at ? format(new Date(q.expiry_at), 'dd MMM yyyy') : null} />
+        </div>
+      ))}
     </div>
   )
 }
@@ -413,6 +359,11 @@ function QuoteTab({ quote }: { quote: Quote | null }) {
 function ContractsTab({ contracts }: { contracts: Contract[] }) {
   return (
     <div className="space-y-4">
+      {contracts.length === 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
+          No contracts generated yet.
+        </div>
+      )}
       {contracts.map((c) => (
         <div key={c.id} className="rounded-xl border border-gray-200 bg-white p-5">
           <div className="flex items-center justify-between mb-3">
@@ -425,18 +376,13 @@ function ContractsTab({ contracts }: { contracts: Contract[] }) {
           <InfoRow label="Viewed At"   value={c.viewed_at ? format(new Date(c.viewed_at), 'dd MMM yyyy HH:mm') : null} />
           <InfoRow label="Signed At"   value={c.signed_at ? format(new Date(c.signed_at), 'dd MMM yyyy HH:mm') : null} />
           <InfoRow label="Envelope ID" value={c.docusign_envelope_id} />
-          {c.file_url && c.file_url !== '#' && (
+          {c.file_url && (
             <a href={c.file_url} className="mt-3 inline-flex items-center gap-1.5 text-sm text-blue-600 hover:text-blue-800">
               <ExternalLink className="h-4 w-4" /> View Contract
             </a>
           )}
         </div>
       ))}
-      {contracts.length === 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
-          No contracts generated yet.
-        </div>
-      )}
     </div>
   )
 }
@@ -501,7 +447,6 @@ function NATISTab({ natis }: { natis: NATISFulfilment | null }) {
           <StatusBadge status={natis.status} />
         </div>
 
-        {/* Timeline */}
         <div className="flex items-center gap-0 mb-4">
           {steps.map((step, i) => (
             <div key={step.label} className="flex flex-1 items-center">
@@ -530,7 +475,17 @@ function NATISTab({ natis }: { natis: NATISFulfilment | null }) {
   )
 }
 
-function TasksTab({ tasks }: { tasks: Task[] }) {
+function TasksTab({
+  tasks,
+  onClaim,
+  onComplete,
+  onEscalate,
+}: {
+  tasks: Task[]
+  onClaim: (id: string) => Promise<void>
+  onComplete: (id: string) => Promise<void>
+  onEscalate: (id: string) => Promise<void>
+}) {
   const priorityColor: Record<string, string> = {
     LOW: 'bg-slate-100 text-slate-600', MEDIUM: 'bg-blue-100 text-blue-700',
     HIGH: 'bg-orange-100 text-orange-800', URGENT: 'bg-red-100 text-red-800',
@@ -539,6 +494,11 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
 
   return (
     <div className="space-y-3">
+      {tasks.length === 0 && (
+        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
+          No tasks for this deal.
+        </div>
+      )}
       {tasks.map((task) => (
         <div key={task.id} className="rounded-xl border border-gray-200 bg-white p-4">
           <div className="flex items-start justify-between gap-3">
@@ -560,15 +520,21 @@ function TasksTab({ tasks }: { tasks: Task[] }) {
                   <User className="mr-1 inline h-3 w-3" />{task.assigned_to}
                 </span>
               )}
+              <div className="flex gap-1 mt-1">
+                {task.status === 'PENDING' && (
+                  <button onClick={() => onClaim(task.id)} className="text-xs text-blue-700 hover:underline">Claim</button>
+                )}
+                {task.status === 'IN_PROGRESS' && (
+                  <button onClick={() => onComplete(task.id)} className="text-xs text-green-700 hover:underline">Complete</button>
+                )}
+                {task.status !== 'ESCALATED' && (
+                  <button onClick={() => onEscalate(task.id)} className="text-xs text-red-700 hover:underline">Escalate</button>
+                )}
+              </div>
             </div>
           </div>
         </div>
       ))}
-      {tasks.length === 0 && (
-        <div className="rounded-xl border border-gray-200 bg-white p-8 text-center text-sm text-gray-400">
-          No tasks for this deal.
-        </div>
-      )}
     </div>
   )
 }
@@ -599,6 +565,11 @@ function AuditTab({ events }: { events: AuditEvent[] }) {
           </tr>
         </thead>
         <tbody className="divide-y divide-gray-50">
+          {events.length === 0 && (
+            <tr>
+              <td colSpan={4} className="py-8 text-center text-sm text-gray-400">No audit events.</td>
+            </tr>
+          )}
           {events.map((ev) => (
             <>
               <tr key={ev.id} className="hover:bg-gray-50/50">
@@ -648,46 +619,54 @@ export function DealDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<TabId>('overview')
-  const [deal, setDeal] = useState<Deal>(MOCK_DEAL)
-  const [docs, setDocs] = useState<Document[]>(MOCK_DOCS)
-  const [quote, setQuote] = useState<Quote | null>(MOCK_QUOTE)
-  const [inspection, setInspection] = useState<Inspection | null>(MOCK_INSPECTION)
-  const [contracts, setContracts] = useState<Contract[]>(MOCK_CONTRACTS)
-  const [tasks, setTasks] = useState<Task[]>(MOCK_TASKS)
-  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>(MOCK_AUDIT)
-  const [natis, setNatis] = useState<NATISFulfilment | null>(MOCK_NATIS)
-  const [loading, setLoading] = useState(false)
+
+  const [deal, setDeal] = useState<Deal | null>(null)
+  const [docs, setDocs] = useState<Document[]>([])
+  const [quotes, setQuotes] = useState<Quote[]>([])
+  const [inspection, setInspection] = useState<Inspection | null>(null)
+  const [contracts, setContracts] = useState<Contract[]>([])
+  const [tasks, setTasks] = useState<Task[]>([])
+  const [auditEvents, setAuditEvents] = useState<AuditEvent[]>([])
+  const [natis, setNatis] = useState<NATISFulfilment | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!id) return
     setLoading(true)
+    setError(null)
 
     const fetchAll = async () => {
       try {
-        const [dealRes, docsRes, quotesRes, inspRes, contractsRes, tasksRes, auditRes, natisRes] =
+        const [dealData, docsData, quotesData, inspData, contractsData, tasksData, auditData, natisData] =
           await Promise.allSettled([
-            supabase.from('deals').select('*, buyer:buyers(*), seller:sellers(*), vehicle:vehicles(*)').eq('id', id).single(),
-            supabase.from('documents').select('*').eq('deal_id', id),
-            supabase.from('quotes').select('*').eq('deal_id', id).order('version', { ascending: false }).limit(1),
-            supabase.from('inspections').select('*').eq('deal_id', id).single(),
-            supabase.from('contracts').select('*').eq('deal_id', id),
-            supabase.from('tasks').select('*').eq('deal_id', id).order('created_at', { ascending: false }),
-            supabase.from('audit_events').select('*').eq('deal_id', id).order('created_at', { ascending: false }),
-            supabase.from('natis_fulfilments').select('*').eq('deal_id', id).single(),
+            getDeal(id),
+            listDocuments(id),
+            listQuotes(id),
+            getInspection(id),
+            listContracts(id),
+            listTasks({ dealId: id }),
+            listAuditEvents({ dealId: id }),
+            getNatisFulfilment(id),
           ])
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const val = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value.data : null
-        if (val(dealRes))        setDeal(val(dealRes) as Deal)
-        if (val(docsRes))        setDocs(val(docsRes) as Document[])
-        if (val(quotesRes)?.[0]) setQuote(val(quotesRes)[0] as Quote)
-        if (val(inspRes))        setInspection(val(inspRes) as Inspection)
-        if (val(contractsRes))   setContracts(val(contractsRes) as Contract[])
-        if (val(tasksRes))       setTasks(val(tasksRes) as Task[])
-        if (val(auditRes))       setAuditEvents(val(auditRes) as AuditEvent[])
-        if (val(natisRes))       setNatis(val(natisRes) as NATISFulfilment)
-      } catch {
-        // stay on mock
+        const val = <T,>(r: PromiseSettledResult<T>): T | null =>
+          r.status === 'fulfilled' ? r.value : null
+
+        const dealResult = val(dealData)
+        if (!dealResult) throw new Error('Deal not found')
+
+        setDeal(dealResult)
+        setDocs(val(docsData) ?? [])
+        setQuotes(val(quotesData) ?? [])
+        setInspection(val(inspData) ?? null)
+        setContracts(val(contractsData) ?? [])
+        setTasks(val(tasksData) ?? [])
+        setAuditEvents(val(auditData) ?? [])
+        setNatis(val(natisData) ?? null)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load deal')
       } finally {
         setLoading(false)
       }
@@ -696,10 +675,45 @@ export function DealDetail() {
     fetchAll()
   }, [id])
 
+  const handleStatusChange = (newStatus: DealStatus) => {
+    if (deal) setDeal({ ...deal, status: newStatus, updated_at: new Date().toISOString() })
+  }
+
+  const handleClaim = async (taskId: string) => {
+    try {
+      const updated = await claimTask(taskId, 'me')
+      setTasks((prev) => prev.map((t) => t.id === taskId ? updated : t))
+    } catch { alert('Failed to claim task') }
+  }
+
+  const handleComplete = async (taskId: string) => {
+    try {
+      const updated = await completeTask(taskId)
+      setTasks((prev) => prev.map((t) => t.id === taskId ? updated : t))
+    } catch { alert('Failed to complete task') }
+  }
+
+  const handleEscalate = async (taskId: string) => {
+    try {
+      const updated = await escalateTask(taskId)
+      setTasks((prev) => prev.map((t) => t.id === taskId ? updated : t))
+    } catch { alert('Failed to escalate task') }
+  }
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent" />
+        <RefreshCw className="h-8 w-8 animate-spin text-blue-400" />
+      </div>
+    )
+  }
+
+  if (error || !deal) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3">
+        <AlertCircle className="h-8 w-8 text-red-400" />
+        <p className="text-sm text-gray-600">{error ?? 'Deal not found'}</p>
+        <button onClick={() => navigate('/deals')} className="text-sm text-blue-600 underline">Back to Deals</button>
       </div>
     )
   }
@@ -726,8 +740,7 @@ export function DealDetail() {
               <p className="mt-1 text-sm text-gray-600">
                 <User className="mr-1 inline h-3.5 w-3.5 text-gray-400" />
                 {deal.buyer.first_name} {deal.buyer.last_name}
-                {' · '}
-                {deal.vehicle && `${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}`}
+                {deal.vehicle && ` · ${deal.vehicle.year} ${deal.vehicle.make} ${deal.vehicle.model}`}
                 {deal.vehicle?.registration_number && ` (${deal.vehicle.registration_number})`}
               </p>
             )}
@@ -767,15 +780,22 @@ export function DealDetail() {
 
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto p-6">
-        {activeTab === 'overview'   && <OverviewTab deal={deal} />}
-        {activeTab === 'buyer'      && <BuyerTab deal={deal} docs={docs} />}
-        {activeTab === 'seller'     && <SellerTab deal={deal} docs={docs} />}
-        {activeTab === 'vehicle'    && <VehicleTab deal={deal} />}
-        {activeTab === 'quote'      && <QuoteTab quote={quote} />}
+        {activeTab === 'overview'   && <OverviewTab deal={deal} onStatusChange={handleStatusChange} />}
+        {activeTab === 'buyer'      && deal.buyer && <BuyerTab deal={deal} docs={docs} />}
+        {activeTab === 'seller'     && deal.seller && <SellerTab deal={deal} docs={docs} />}
+        {activeTab === 'vehicle'    && deal.vehicle && <VehicleTab deal={deal} />}
+        {activeTab === 'quote'      && <QuoteTab quotes={quotes} />}
         {activeTab === 'contracts'  && <ContractsTab contracts={contracts} />}
         {activeTab === 'inspection' && <InspectionTab inspection={inspection} />}
         {activeTab === 'natis'      && <NATISTab natis={natis} />}
-        {activeTab === 'tasks'      && <TasksTab tasks={tasks} />}
+        {activeTab === 'tasks'      && (
+          <TasksTab
+            tasks={tasks}
+            onClaim={handleClaim}
+            onComplete={handleComplete}
+            onEscalate={handleEscalate}
+          />
+        )}
         {activeTab === 'audit'      && <AuditTab events={auditEvents} />}
       </div>
     </div>

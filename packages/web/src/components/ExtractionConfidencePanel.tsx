@@ -30,17 +30,6 @@ function ConfidenceBar({ value }: { value: number }) {
   )
 }
 
-const MOCK_RESULTS: ExtractionResult[] = [
-  { id: 'e1', document_id: 'd1', deal_id: '1', field_name: 'Full Name',       extracted_value: 'Sipho Dlamini',        confidence: 0.97, source_page: 1, customer_value: 'Sipho Dlamini',        status: 'ACCEPTED',  override_value: null, override_by: null, override_at: null, flag_reason: null, created_at: '', updated_at: '' },
-  { id: 'e2', document_id: 'd1', deal_id: '1', field_name: 'ID Number',        extracted_value: '9001015800084',       confidence: 0.99, source_page: 1, customer_value: '9001015800084',       status: 'ACCEPTED',  override_value: null, override_by: null, override_at: null, flag_reason: null, created_at: '', updated_at: '' },
-  { id: 'e3', document_id: 'd1', deal_id: '1', field_name: 'Date of Birth',    extracted_value: '1990-01-01',          confidence: 0.91, source_page: 1, customer_value: '1990-01-01',          status: 'PENDING',   override_value: null, override_by: null, override_at: null, flag_reason: null, created_at: '', updated_at: '' },
-  { id: 'e4', document_id: 'd2', deal_id: '1', field_name: 'Employer',         extracted_value: 'Telkom SA',           confidence: 0.72, source_page: 2, customer_value: 'Telkom South Africa',  status: 'PENDING',   override_value: null, override_by: null, override_at: null, flag_reason: null, created_at: '', updated_at: '' },
-  { id: 'e5', document_id: 'd2', deal_id: '1', field_name: 'Monthly Income',   extracted_value: 'R 32,500',            confidence: 0.55, source_page: 3, customer_value: 'R 35,000',            status: 'PENDING',   override_value: null, override_by: null, override_at: null, flag_reason: null, created_at: '', updated_at: '' },
-  { id: 'e6', document_id: 'd3', deal_id: '1', field_name: 'Address Line 1',   extracted_value: '14 Acacia',           confidence: 0.43, source_page: 1, customer_value: '14 Acacia Avenue',    status: 'FLAGGED',   override_value: null, override_by: null, override_at: null, flag_reason: 'Partial match only', created_at: '', updated_at: '' },
-  { id: 'e7', document_id: 'd3', deal_id: '1', field_name: 'Postal Code',      extracted_value: '0001',                confidence: 0.88, source_page: 1, customer_value: '0001',                 status: 'PENDING',   override_value: null, override_by: null, override_at: null, flag_reason: null, created_at: '', updated_at: '' },
-  { id: 'e8', document_id: 'd2', deal_id: '1', field_name: 'Employment Type',  extracted_value: null,                  confidence: 0.21, source_page: 2, customer_value: 'Permanent',            status: 'FLAGGED',   override_value: null, override_by: null, override_at: null, flag_reason: 'Could not extract', created_at: '', updated_at: '' },
-]
-
 const docLabel: Record<string, string> = {
   d1: 'SA ID Document',
   d2: 'Payslip (March)',
@@ -59,7 +48,7 @@ interface OverrideModal {
   current: string | null
 }
 
-export function ExtractionConfidencePanel({ results = MOCK_RESULTS, onAccept, onOverride, onFlag }: Props) {
+export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, onFlag }: Props) {
   const [items, setItems] = useState(results)
   const [overrideModal, setOverrideModal] = useState<OverrideModal | null>(null)
   const [overrideValue, setOverrideValue] = useState('')

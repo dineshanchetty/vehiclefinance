@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { format } from 'date-fns'
-import { Search, ChevronDown, ChevronRight, Filter } from 'lucide-react'
-import { supabase } from '../lib/supabase'
+import { Search, ChevronDown, ChevronRight, Filter, RefreshCw, AlertCircle } from 'lucide-react'
+import { listAuditFeed } from '../lib/queries'
 import type { AuditEvent, ActorType } from '../types/database'
 
 const EVENT_TYPES = [
@@ -19,23 +19,6 @@ const EVENT_TYPES = [
 ]
 
 const ACTOR_TYPES: ActorType[] = ['SYSTEM', 'AGENT', 'BUYER', 'SELLER', 'ADMIN']
-
-const MOCK_EVENTS: AuditEvent[] = [
-  { id: 'a01', deal_id: 'VF-2024-001', event_type: 'DEAL_CREATED',        actor_id: 'system',  actor_type: 'SYSTEM', actor_name: 'WhatsApp Bot',   details: { trigger: 'buyer_opt_in', phone: '+27823456789' },                          created_at: new Date(Date.now() - 86_400_000 * 4).toISOString() },
-  { id: 'a02', deal_id: 'VF-2024-001', event_type: 'DOCUMENT_UPLOADED',   actor_id: 'b1',      actor_type: 'BUYER',  actor_name: 'Sipho Dlamini',   details: { document_type: 'ID_DOCUMENT', file_name: 'id_document.pdf' },               created_at: new Date(Date.now() - 86_400_000 * 3.5).toISOString() },
-  { id: 'a03', deal_id: 'VF-2024-001', event_type: 'DOCUMENT_APPROVED',   actor_id: 'agent1',  actor_type: 'AGENT',  actor_name: 'Thabo Mokoena',   details: { document_id: 'd1', document_type: 'ID_DOCUMENT' },                         created_at: new Date(Date.now() - 86_400_000 * 3).toISOString() },
-  { id: 'a04', deal_id: 'VF-2024-002', event_type: 'DEAL_CREATED',        actor_id: 'system',  actor_type: 'SYSTEM', actor_name: 'WhatsApp Bot',   details: { trigger: 'buyer_opt_in', phone: '+27734567890' },                          created_at: new Date(Date.now() - 86_400_000 * 3).toISOString() },
-  { id: 'a05', deal_id: 'VF-2024-001', event_type: 'PHOTO_SET_UPLOADED',  actor_id: 's1',      actor_type: 'SELLER', actor_name: 'Johan van der Merwe', details: { photo_count: 8, set_id: 'ps1' },                                       created_at: new Date(Date.now() - 86_400_000 * 2.5).toISOString() },
-  { id: 'a06', deal_id: 'VF-2024-001', event_type: 'AI_EVAL_COMPLETE',    actor_id: 'system',  actor_type: 'SYSTEM', actor_name: 'AI Engine',       details: { condition_band: 'FAIR', confidence: 0.73, damage_count: 4 },               created_at: new Date(Date.now() - 86_400_000 * 2).toISOString() },
-  { id: 'a07', deal_id: 'VF-2024-002', event_type: 'TASK_ESCALATED',      actor_id: 'agent2',  actor_type: 'AGENT',  actor_name: 'Mpho Sithole',    details: { task_id: 't7', reason: 'Credit score below threshold — manual review' },   created_at: new Date(Date.now() - 86_400_000 * 1.8).toISOString() },
-  { id: 'a08', deal_id: 'VF-2024-001', event_type: 'QUOTE_SENT',          actor_id: 'agent1',  actor_type: 'AGENT',  actor_name: 'Thabo Mokoena',   details: { quote_id: 'q1', loan_amount: 168000, term_months: 72, rate: 11.25 },        created_at: new Date(Date.now() - 86_400_000 * 1).toISOString() },
-  { id: 'a09', deal_id: 'VF-2024-003', event_type: 'CONTRACT_SIGNED',     actor_id: 's3',      actor_type: 'SELLER', actor_name: 'Thabo Molete',    details: { contract_id: 'c3', type: 'SELLER', envelope: 'env_303' },                   created_at: new Date(Date.now() - 50_400_000).toISOString() },
-  { id: 'a10', deal_id: 'VF-2024-001', event_type: 'EXTRACTION_FLAGGED',  actor_id: 'agent1',  actor_type: 'AGENT',  actor_name: 'Thabo Mokoena',   details: { field: 'Monthly Income', extracted: 'R 32,500', customer: 'R 35,000', reason: 'Income mismatch exceeds 10%' }, created_at: new Date(Date.now() - 36_000_000).toISOString() },
-  { id: 'a11', deal_id: 'VF-2024-004', event_type: 'INSPECTION_SCHEDULED',actor_id: 'ops1',    actor_type: 'AGENT',  actor_name: 'Zanele Dube',     details: { inspector: 'Hartcon', scheduled_for: new Date(Date.now() + 86_400_000 * 2).toISOString() }, created_at: new Date(Date.now() - 21_600_000).toISOString() },
-  { id: 'a12', deal_id: 'VF-2024-005', event_type: 'NATIS_SUBMITTED',     actor_id: 'system',  actor_type: 'SYSTEM', actor_name: 'NATIS Integration', details: { reference: 'NAT-2024-00982', vehicle_reg: 'WC555666' },                   created_at: new Date(Date.now() - 7_200_000).toISOString() },
-  { id: 'a13', deal_id: 'VF-2024-006', event_type: 'DEAL_STATUS_CHANGED', actor_id: 'system',  actor_type: 'SYSTEM', actor_name: 'Workflow Engine', details: { from: 'DOCS_REVIEW', to: 'FNI_REVIEW' },                                   created_at: new Date(Date.now() - 3_600_000).toISOString() },
-  { id: 'a14', deal_id: 'VF-2024-001', event_type: 'HUMAN_OVERRIDE',      actor_id: 'admin1',  actor_type: 'ADMIN',  actor_name: 'Lerato Admin',    details: { field: 'condition_band', old: 'FAIR', new: 'GOOD', notes: 'Reviewed physical photos — minor cosmetic only' }, created_at: new Date(Date.now() - 1_800_000).toISOString() },
-]
 
 const actorTypeColor: Record<ActorType, string> = {
   SYSTEM: 'bg-gray-100 text-gray-700',
@@ -58,8 +41,9 @@ const eventTypeColor: Record<string, string> = {
 }
 
 export function AuditLog() {
-  const [events, setEvents] = useState<AuditEvent[]>(MOCK_EVENTS)
-  const [loading, setLoading] = useState(false)
+  const [events, setEvents] = useState<AuditEvent[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
@@ -67,45 +51,62 @@ export function AuditLog() {
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
 
-  useEffect(() => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true)
-    const run = async () => {
-      try {
-        const { data } = await supabase
-          .from('audit_events')
-          .select('*, deal:deals(deal_number)')
-          .order('created_at', { ascending: false })
-          .limit(200)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        if (data && data.length > 0) setEvents(data as any as AuditEvent[])
-      } catch { /* stay on mock */ } finally {
-        setLoading(false)
-      }
+    setError(null)
+    try {
+      const data = await listAuditFeed({
+        eventType: typeFilter || undefined,
+        actorType: actorFilter || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        limit: 200,
+      })
+      setEvents(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load audit events')
+    } finally {
+      setLoading(false)
     }
-    run()
-  }, [])
+  }, [typeFilter, actorFilter, dateFrom, dateTo])
+
+  useEffect(() => {
+    fetchEvents()
+  }, [fetchEvents])
 
   const toggle = (id: string) =>
     setExpanded((p) => { const next = new Set(p); next.has(id) ? next.delete(id) : next.add(id); return next })
 
   const filtered = events.filter((e) => {
-    if (search) {
-      const q = search.toLowerCase()
-      if (!e.deal_id?.toLowerCase().includes(q) && !e.event_type.toLowerCase().includes(q) && !(e.actor_name ?? '').toLowerCase().includes(q)) return false
-    }
-    if (typeFilter && e.event_type !== typeFilter) return false
-    if (actorFilter && e.actor_type !== actorFilter) return false
-    if (dateFrom && e.created_at < dateFrom) return false
-    if (dateTo && e.created_at > dateTo + 'T23:59:59') return false
-    return true
+    if (!search) return true
+    const q = search.toLowerCase()
+    return (
+      (e.deal_id?.toLowerCase().includes(q) ?? false) ||
+      e.event_type.toLowerCase().includes(q) ||
+      (e.actor_name ?? '').toLowerCase().includes(q) ||
+      // also match deal_number from joined data
+      ((e.deal as { deal_number?: string } | undefined)?.deal_number?.toLowerCase().includes(q) ?? false)
+    )
   })
 
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="border-b border-gray-200 bg-white px-6 py-4">
-        <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
-        <p className="text-sm text-gray-500 mt-0.5">Complete audit trail of all platform events</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Audit Log</h1>
+            <p className="text-sm text-gray-500 mt-0.5">Complete audit trail of all platform events</p>
+          </div>
+          <button
+            onClick={fetchEvents}
+            disabled={loading}
+            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
 
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-48">
@@ -153,8 +154,19 @@ export function AuditLog() {
             className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
           />
         </div>
-        <p className="mt-2 text-xs text-gray-400">{filtered.length} events</p>
+        <p className="mt-2 text-xs text-gray-400">
+          {loading ? 'Loading…' : `${filtered.length} events`}
+        </p>
       </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mx-6 mt-4 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-4 py-3">
+          <AlertCircle className="h-4 w-4 flex-shrink-0 text-red-600" />
+          <p className="text-sm text-red-800">{error}</p>
+          <button onClick={fetchEvents} className="ml-auto text-sm font-medium text-red-700 underline">Retry</button>
+        </div>
+      )}
 
       {/* Table */}
       <div className="flex-1 overflow-auto p-6">
@@ -173,10 +185,19 @@ export function AuditLog() {
             </thead>
             <tbody className="divide-y divide-gray-50">
               {loading && (
-                <tr><td colSpan={7} className="py-12 text-center text-sm text-gray-400">Loading audit log…</td></tr>
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
+                    <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-300" />
+                    Loading audit log…
+                  </td>
+                </tr>
               )}
-              {!loading && filtered.length === 0 && (
-                <tr><td colSpan={7} className="py-12 text-center text-sm text-gray-400">No events match the current filters.</td></tr>
+              {!loading && !error && filtered.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
+                    No events match the current filters.
+                  </td>
+                </tr>
               )}
               {!loading && filtered.map((ev) => (
                 <>
@@ -196,9 +217,11 @@ export function AuditLog() {
                       <div className="text-gray-400">{format(new Date(ev.created_at), 'HH:mm:ss')}</div>
                     </td>
                     <td className="px-4 py-3">
-                      {ev.deal_id
-                        ? <span className="font-semibold text-gray-900">{ev.deal_id}</span>
-                        : <span className="text-gray-400 italic text-xs">system</span>}
+                      {(ev.deal as { deal_number?: string } | undefined)?.deal_number
+                        ? <span className="font-semibold text-gray-900">{(ev.deal as { deal_number: string }).deal_number}</span>
+                        : ev.deal_id
+                          ? <span className="font-semibold text-gray-900">{ev.deal_id}</span>
+                          : <span className="text-gray-400 italic text-xs">system</span>}
                     </td>
                     <td className="px-4 py-3">
                       <span className={`rounded px-2 py-0.5 text-xs font-mono font-medium ${eventTypeColor[ev.event_type] ?? 'bg-gray-50 text-gray-700'}`}>

@@ -20,38 +20,6 @@ interface Props {
   onOverride?: (band: ConditionBand, notes: string) => void
 }
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-
-const MOCK_PHOTOS: VehiclePhoto[] = [
-  { id: 'p1', photo_set_id: 'ps1', angle: 'FRONT',           file_url: 'https://placehold.co/400x300/e2e8f0/475569?text=Front',           thumbnail_url: null, quality_score: 0.92, status: 'UPLOADED', rejection_reason: null, uploaded_at: '', created_at: '' },
-  { id: 'p2', photo_set_id: 'ps1', angle: 'REAR',            file_url: 'https://placehold.co/400x300/e2e8f0/475569?text=Rear',            thumbnail_url: null, quality_score: 0.88, status: 'UPLOADED', rejection_reason: null, uploaded_at: '', created_at: '' },
-  { id: 'p3', photo_set_id: 'ps1', angle: 'DRIVER_SIDE',     file_url: 'https://placehold.co/400x300/e2e8f0/475569?text=Driver+Side',     thumbnail_url: null, quality_score: 0.95, status: 'APPROVED', rejection_reason: null, uploaded_at: '', created_at: '' },
-  { id: 'p4', photo_set_id: 'ps1', angle: 'PASSENGER_SIDE',  file_url: 'https://placehold.co/400x300/e2e8f0/475569?text=Passenger+Side',  thumbnail_url: null, quality_score: 0.61, status: 'UPLOADED', rejection_reason: null, uploaded_at: '', created_at: '' },
-  { id: 'p5', photo_set_id: 'ps1', angle: 'INTERIOR_FRONT',  file_url: 'https://placehold.co/400x300/e2e8f0/475569?text=Interior+Front',  thumbnail_url: null, quality_score: 0.79, status: 'UPLOADED', rejection_reason: null, uploaded_at: '', created_at: '' },
-  { id: 'p6', photo_set_id: 'ps1', angle: 'ENGINE_BAY',      file_url: 'https://placehold.co/400x300/e2e8f0/475569?text=Engine+Bay',      thumbnail_url: null, quality_score: 0.45, status: 'RE_UPLOAD_REQUESTED', rejection_reason: 'Image too dark', uploaded_at: '', created_at: '' },
-  { id: 'p7', photo_set_id: 'ps1', angle: 'ODOMETER',        file_url: 'https://placehold.co/400x300/e2e8f0/475569?text=Odometer',        thumbnail_url: null, quality_score: 0.97, status: 'APPROVED', rejection_reason: null, uploaded_at: '', created_at: '' },
-  { id: 'p8', photo_set_id: 'ps1', angle: 'DAMAGE_1',        file_url: 'https://placehold.co/400x300/fca5a5/991b1b?text=Damage',          thumbnail_url: null, quality_score: 0.83, status: 'UPLOADED', rejection_reason: null, uploaded_at: '', created_at: '' },
-]
-
-const MOCK_EVAL: VehicleQuickEvaluation = {
-  id: 'qe1',
-  photo_set_id: 'ps1',
-  deal_id: '1',
-  condition_band: 'FAIR',
-  confidence_score: 0.73,
-  damage_items: [
-    { description: 'Rear bumper scuff',            severity: 'MINOR',    location: 'Rear',            estimated_repair_cost: 800 },
-    { description: 'Driver door dent',             severity: 'MODERATE', location: 'Driver Side',     estimated_repair_cost: 2500 },
-    { description: 'Windscreen stone chip (×2)',   severity: 'MINOR',    location: 'Windscreen',      estimated_repair_cost: 400 },
-    { description: 'Engine oil leak (suspected)',  severity: 'SEVERE',   location: 'Engine Bay',      estimated_repair_cost: null },
-  ],
-  estimated_value_min: 155000,
-  estimated_value_max: 175000,
-  advisory_notes: 'Vehicle appears to be in fair overall condition. Engine bay photo quality insufficient — re-upload required for complete assessment.',
-  evaluated_at: new Date(Date.now() - 3_600_000).toISOString(),
-  created_at: '',
-}
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const ANGLE_LABELS: Record<string, string> = {
@@ -85,8 +53,8 @@ const photoStatusConfig = {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function VehiclePhotoPanel({
-  photos = MOCK_PHOTOS,
-  evaluation = MOCK_EVAL,
+  photos = [],
+  evaluation = null,
   onApprove,
   onRequestReupload,
   onEscalate,
