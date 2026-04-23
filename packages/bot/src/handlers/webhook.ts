@@ -244,7 +244,7 @@ async function processMessage(message: D360Message, phone: string): Promise<void
     }
   } catch (flowErr) {
     log('error', 'flow handler threw', { phone, error: flowErr });
-    await sendTextMessage(phone, "I'm sorry, something went wrong. Please try again in a moment.");
+    await sendTextMessage(phone, STRINGS.GENERIC_ERROR);
     return;
   }
 

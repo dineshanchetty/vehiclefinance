@@ -268,19 +268,30 @@ export function ExtractionReview() {
     if (!documentId) return
     setSaving(true)
     try {
-      // Persist override/flag decisions as extraction_results rows
+      // Persist reviewer decisions as extraction_results rows.
+      // Schema columns: document_id, field_name, extracted_value, confidence,
+      // verification_status (enum: PENDING|VERIFIED|MISMATCH|OVERRIDDEN),
+      // customer_confirmed_value, confirmed_at.
+      // We map the UI state onto the enum: ACCEPTED → VERIFIED, FLAGGED → MISMATCH.
+      const statusToEnum = (s: FieldStatus): 'VERIFIED' | 'MISMATCH' | 'OVERRIDDEN' | 'PENDING' => {
+        if (s === 'ACCEPTED') return 'VERIFIED'
+        if (s === 'FLAGGED') return 'MISMATCH'
+        if (s === 'OVERRIDDEN') return 'OVERRIDDEN'
+        return 'PENDING'
+      }
       for (const f of fields) {
         if (f.status === 'OVERRIDDEN' || f.status === 'FLAGGED' || f.status === 'ACCEPTED') {
-          await supabase.from('extraction_results').upsert({
+          // No unique constraint on (document_id, field_name) in schema, so
+          // we insert a new audit row each save. Readers should take the latest
+          // row per (document_id, field_name) by confirmed_at.
+          await supabase.from('extraction_results').insert({
             document_id: documentId,
-            deal_id: doc?.deal_id,
             field_name: f.key,
             extracted_value: f.value,
             confidence: f.confidence,
-            status: f.status,
-            override_value: f.overrideValue,
-            flag_reason: f.flagReason,
-            updated_at: new Date().toISOString(),
+            verification_status: statusToEnum(f.status),
+            customer_confirmed_value: f.overrideValue,
+            confirmed_at: new Date().toISOString(),
           })
         }
       }
