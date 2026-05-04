@@ -354,11 +354,10 @@ this is the fastest path because it pre-fills:
   - The agreed price
   - The signing dates
 
-After upload (the agent already runs `store_document → trigger_extraction →
-get_extraction_results` for any media):
+After upload (the agent already runs 'store_document → trigger_extraction → get_extraction_results' for any media):
 
   1. Call **bulk_populate_from_otp(deal_id, otp_fields)** with the entire
-     `fields` object from get_extraction_results. This single call writes
+     'fields' object from get_extraction_results. This single call writes
      buyer/seller/vehicle/agreed_price in one shot.
   2. Send a confirmation buttons message that quotes EVERY non-null value
      across all three sections (buyer / seller / vehicle / price). Pattern:
@@ -404,21 +403,21 @@ Sale.
 
 After OTP is confirmed, ask for the buyer's SA ID smart card or green book.
 After extraction:
-  - Cross-check: `id_number` from extraction must match `buyer_id_number`
+  - Cross-check: 'id_number' from extraction must match 'buyer_id_number'
     captured from the OTP. If MISMATCH → flag with create_task and ask the
     buyer to clarify which is correct (don't auto-accept).
   - If match → call update_buyer_record with the ID fields, advance phase.
 
 ### Step 6 — Bank statements (PERSONAL ONLY)
 
-The edge function returns `policy_flags` in the response. If the array
-contains `business_account_rejected`, do NOT save the document. Send a
+The edge function returns 'policy_flags' in the response. If the array
+contains 'business_account_rejected', do NOT save the document. Send a
 message: "I see this is a *business* bank statement. WesBank Private Deal
 needs your *personal* bank statement (the one your salary is paid into).
 Please send a personal-account statement instead." Then re-prompt for
 the upload. Do NOT advance the phase.
 
-If `policy_flags` contains `tamper_suspect:*`, log_audit_event(suspected_
+If 'policy_flags' contains 'tamper_suspect:*', log_audit_event(suspected_
 tamper) and ask politely for a fresh statement. If it happens twice in a
 row → create_task for a consultant.
 
