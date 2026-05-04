@@ -4,12 +4,13 @@ import { format } from 'date-fns'
 import {
   ArrowLeft, User, Car, FileText, DollarSign,
   FileSignature, Wrench, MapPin, ClipboardList, ScrollText,
-  CheckCircle2, ExternalLink, RefreshCw, AlertCircle,
+  CheckCircle2, ExternalLink, RefreshCw, AlertCircle, MessageSquare,
 } from 'lucide-react'
 import { StatusBadge } from '../components/StatusBadge'
 import { SLAIndicator } from '../components/SLAIndicator'
 import { VehiclePhotoPanel } from '../components/VehiclePhotoPanel'
 import { ExtractionConfidencePanel } from '../components/ExtractionConfidencePanel'
+import { DealConversation } from '../components/DealConversation'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../lib/auth'
 import {
@@ -97,7 +98,7 @@ function stageIndex(status: string) {
 
 // ─── Tab definitions ──────────────────────────────────────────────────────────
 
-type TabId = 'overview'|'buyer'|'seller'|'vehicle'|'quote'|'contracts'|'inspection'|'natis'|'tasks'|'audit'
+type TabId = 'overview'|'buyer'|'seller'|'vehicle'|'quote'|'contracts'|'inspection'|'natis'|'tasks'|'conversation'|'audit'
 
 const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'overview',    label: 'Overview',    icon: <LayoutGrid className="h-4 w-4" /> },
@@ -109,6 +110,7 @@ const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'inspection',  label: 'Inspection',  icon: <Wrench className="h-4 w-4" /> },
   { id: 'natis',       label: 'NATIS',       icon: <MapPin className="h-4 w-4" /> },
   { id: 'tasks',       label: 'Tasks',       icon: <ClipboardList className="h-4 w-4" /> },
+  { id: 'conversation',label: 'Conversation',icon: <MessageSquare className="h-4 w-4" /> },
   { id: 'audit',       label: 'Audit',       icon: <ScrollText className="h-4 w-4" /> },
 ]
 
@@ -872,6 +874,7 @@ export function DealDetail() {
             onEscalate={handleEscalate}
           />
         )}
+        {activeTab === 'conversation' && <DealConversation dealId={deal.id} />}
         {activeTab === 'audit'      && <AuditTab events={auditEvents} />}
       </div>
     </div>
