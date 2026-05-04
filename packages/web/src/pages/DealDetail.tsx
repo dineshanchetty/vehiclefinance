@@ -11,6 +11,8 @@ import { SLAIndicator } from '../components/SLAIndicator'
 import { VehiclePhotoPanel } from '../components/VehiclePhotoPanel'
 import { ExtractionConfidencePanel } from '../components/ExtractionConfidencePanel'
 import { DealConversation } from '../components/DealConversation'
+import { DealHero } from '../components/DealHero'
+import { PhaseTimeline } from '../components/PhaseTimeline'
 import { supabase } from '../lib/supabase'
 import { useProfile } from '../lib/auth'
 import {
@@ -797,6 +799,15 @@ export function DealDetail() {
     )
   }
 
+  // The phase columns aren't yet in the auto-generated Supabase types, but
+  // they are selected from `deals.*` and reach the runtime payload. Cast at
+  // the read boundary so the hero/timeline can consume them safely.
+  const dealWithPhase = deal as DealWithRelations & {
+    current_phase?: string | null
+    phase_state?: Record<string, unknown> | null
+    completed_milestones?: string[] | null
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -814,12 +825,10 @@ export function DealDetail() {
               <h1 className="text-xl font-bold text-gray-900">{deal.deal_number ?? deal.id}</h1>
               <StatusBadge status={deal.status} />
             </div>
-            {deal.buyer && (
-              <p className="mt-1 text-sm text-gray-600">
+            {deal.vehicle?.registration_number && (
+              <p className="mt-1 text-sm text-gray-500">
                 <User className="mr-1 inline h-3.5 w-3.5 text-gray-400" />
-                {deal.buyer.full_name ?? '—'}
-                {deal.vehicle && ` · ${deal.vehicle.year ?? ''} ${deal.vehicle.make ?? ''} ${deal.vehicle.model ?? ''}`}
-                {deal.vehicle?.registration_number && ` (${deal.vehicle.registration_number})`}
+                Reg {deal.vehicle.registration_number}
               </p>
             )}
           </div>
@@ -856,8 +865,14 @@ export function DealDetail() {
         </div>
       </div>
 
-      {/* Tab Content */}
+      {/* Tab Content + sticky journey rail */}
       <div className="flex-1 overflow-y-auto p-6">
+        <div className="mb-6">
+          <DealHero deal={dealWithPhase} />
+        </div>
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <div>
         {activeTab === 'overview'   && <OverviewTab deal={deal} onStatusChange={handleStatusChange} />}
         {activeTab === 'buyer'      && deal.buyer && <BuyerTab deal={deal} docs={docs} extractionResults={extractionResults} />}
         {activeTab === 'seller'     && deal.seller && <SellerTab deal={deal} docs={docs} />}
@@ -876,6 +891,17 @@ export function DealDetail() {
         )}
         {activeTab === 'conversation' && <DealConversation dealId={deal.id} />}
         {activeTab === 'audit'      && <AuditTab events={auditEvents} />}
+          </div>
+
+          <aside className="hidden lg:block">
+            <div className="sticky top-6">
+              <PhaseTimeline
+                currentPhase={dealWithPhase.current_phase ?? null}
+                completedMilestones={dealWithPhase.completed_milestones ?? []}
+              />
+            </div>
+          </aside>
+        </div>
       </div>
     </div>
   )
