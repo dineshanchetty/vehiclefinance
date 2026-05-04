@@ -1,4 +1,11 @@
-import { downloadAndStoreMedia, sendTextMessage } from '../services/dialog360.js';
+import {
+  downloadAndStoreMedia,
+  sendTextMessage,
+  sendInteractiveMessage,
+  sendListMessage,
+  type Button,
+  type ListSection,
+} from '../services/dialog360.js';
 import { sendSMS as bulkSmsSend } from '../services/bulksms.js';
 import { sendEmail as sgSendEmail } from '../services/sendgrid.js';
 import {
@@ -17,6 +24,7 @@ import {
   getLatestQuote,
   recordQuoteResponse as dbRecordQuoteResponse,
   getContract,
+  getSupabaseClient,
 } from '../services/supabase.js';
 
 const MANDATORY_ANGLES = [
@@ -64,6 +72,39 @@ export async function handle_update_deal_status(input: ToolInput): Promise<ToolR
   return { success: true, deal: updated };
 }
 
+// Maps the agent's flexible naming onto the strict `document_type` enum.
+// Enum: SA_ID_SMART_CARD, SA_ID_GREEN_BOOK, PROOF_OF_ADDRESS, BANK_STATEMENT,
+//       PAYSLIP, VEHICLE_NATIS, VEHICLE_REGISTRATION, SETTLEMENT_LETTER,
+//       VEHICLE_PHOTO, OTHER.
+function normalizeDocumentType(raw: string): string {
+  const k = raw.toUpperCase().replace(/[\s-]+/g, '_');
+  const map: Record<string, string> = {
+    ID: 'SA_ID_SMART_CARD',
+    ID_DOCUMENT: 'SA_ID_SMART_CARD',
+    SA_ID: 'SA_ID_SMART_CARD',
+    SOUTH_AFRICAN_ID: 'SA_ID_SMART_CARD',
+    PASSPORT: 'OTHER',
+    GREEN_BOOK: 'SA_ID_GREEN_BOOK',
+    POA: 'PROOF_OF_ADDRESS',
+    PROOF_OF_ADDRESS: 'PROOF_OF_ADDRESS',
+    UTILITY_BILL: 'PROOF_OF_ADDRESS',
+    MUNICIPAL_BILL: 'PROOF_OF_ADDRESS',
+    BANK_STATEMENT: 'BANK_STATEMENT',
+    STATEMENT: 'BANK_STATEMENT',
+    BANK_STATEMENTS: 'BANK_STATEMENT',
+    PAYSLIP: 'PAYSLIP',
+    PAY_SLIP: 'PAYSLIP',
+    NATIS: 'VEHICLE_NATIS',
+    VEHICLE_NATIS: 'VEHICLE_NATIS',
+    REGISTRATION: 'VEHICLE_REGISTRATION',
+    VEHICLE_REGISTRATION: 'VEHICLE_REGISTRATION',
+    SETTLEMENT_LETTER: 'SETTLEMENT_LETTER',
+    VEHICLE_PHOTO: 'VEHICLE_PHOTO',
+    PHOTO: 'VEHICLE_PHOTO',
+  };
+  return map[k] ?? 'OTHER';
+}
+
 export async function handle_store_document(input: ToolInput): Promise<ToolResult> {
   const { deal_id, party_type, document_type, media_id, mime_type } = input as {
     deal_id: string;
@@ -72,18 +113,23 @@ export async function handle_store_document(input: ToolInput): Promise<ToolResul
     media_id: string;
     mime_type?: string;
   };
+  const docTypeEnum = normalizeDocumentType(document_type);
 
-  const ext = mime_type?.split('/')[1] ?? 'bin';
-  const storagePath = `documents/${deal_id}/${party_type}/${document_type}_${Date.now()}.${ext}`;
+  // Resolve extension from mime BEFORE downloading. We may not have a mime
+  // hint from the agent yet — pass undefined and let downloadAndStoreMedia
+  // discover the real mime from Dialog360, then fix the storage path.
+  const provisionalExt = mime_type?.split('/')[1] ?? 'jpg';
+  const ts = Date.now();
+  const storagePath = `${deal_id}/${party_type}/${docTypeEnum}_${ts}.${provisionalExt}`;
 
-  const { publicUrl } = await downloadAndStoreMedia(media_id, storagePath);
+  const { publicUrl, mimeType: actualMime } = await downloadAndStoreMedia(media_id, storagePath);
 
   const doc = await dbStoreDocument({
     deal_id,
     party_type,
-    document_type,
+    document_type: docTypeEnum,            // normalized to the document_type enum
     storage_path: publicUrl,
-    mime_type,
+    mime_type: actualMime,                 // use the REAL mime from Dialog360, not the agent's hint
   });
 
   return { success: true, document_id: doc.id, storage_path: publicUrl };
@@ -166,9 +212,261 @@ export async function handle_get_extraction_results(input: ToolInput): Promise<T
   return {
     success: true,
     status: 'extracted',
-    extracted_data: result.extracted_data,
-    confidence_scores: result.confidence_scores,
+    fields: result.fields,                    // { field_name: { value, confidence } }
+    field_count: result.field_count,
+    average_confidence: result.average_confidence,
   };
+}
+
+// ─── Manual fallback / direct field capture ────────────────────────────────
+// These bypass extraction entirely — used when (a) the user types data instead
+// of uploading, or (b) extraction failed/low-confidence and we offered manual
+// entry. Either path writes the same buyer/seller row, so the deal can complete.
+
+const ALLOWED_BUYER_COLUMNS = new Set([
+  'full_name', 'id_number', 'date_of_birth', 'gender', 'nationality',
+  'email', 'physical_address', 'suburb', 'city', 'postal_code',
+  'employer_name', 'employment_duration', 'monthly_income',
+]);
+
+const ALLOWED_SELLER_COLUMNS = new Set([
+  'full_name', 'id_number', 'date_of_birth', 'email',
+  'physical_address', 'suburb', 'city', 'postal_code',
+]);
+
+async function upsertPartyRecord(
+  table: 'buyers' | 'sellers',
+  dealId: string,
+  fields: Record<string, unknown>,
+  allowed: Set<string>,
+  source: string,
+): Promise<ToolResult> {
+  const sb = getSupabaseClient();
+  // Whitelist + drop empties so the agent can't smuggle unknown columns.
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (!allowed.has(k)) continue;
+    if (v === null || v === '' || v === undefined) continue;
+    clean[k] = v;
+  }
+  if (Object.keys(clean).length === 0) {
+    return { success: false, error: 'No allowed fields supplied.' };
+  }
+  clean.updated_at = new Date().toISOString();
+
+  // Find existing row for this deal — we want a single buyer/seller per deal.
+  const { data: existing } = await sb
+    .from(table)
+    .select('id')
+    .eq('deal_id', dealId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let result;
+  if (existing?.id) {
+    result = await sb.from(table).update(clean).eq('id', existing.id).select().single();
+  } else {
+    result = await sb.from(table).insert({ deal_id: dealId, ...clean }).select().single();
+  }
+  if (result.error) return { success: false, error: result.error.message };
+
+  await dbLogAuditEvent({
+    deal_id: dealId,
+    event_type: `${table.slice(0,-1)}_data_${source ?? 'updated'}`,
+    description: `Updated ${table.slice(0,-1)} fields: ${Object.keys(clean).filter(k=>k!=='updated_at').join(', ')}`,
+    metadata: { source, fields: Object.keys(clean) },
+  });
+  return { success: true, [`${table.slice(0,-1)}_id`]: result.data.id, fields_set: Object.keys(clean).filter(k=>k!=='updated_at') };
+}
+
+// ─── Bulk populate from OTP extraction ────────────────────────────────────
+// One call writes buyer + seller + vehicle + deal price from the OTP fields.
+
+const ALLOWED_VEHICLE_COLUMNS = new Set([
+  'make', 'model', 'year', 'registration_number', 'vin', 'engine_number',
+  'colour', 'asking_price', 'odometer_reading',
+]);
+
+function readField(otp: Record<string, unknown>, key: string): unknown {
+  const f = otp[key] as { value?: unknown } | undefined;
+  if (!f) return null;
+  // Some agents pass {value, confidence}; others pass plain strings. Handle both.
+  if (typeof f === 'object' && 'value' in f) return f.value ?? null;
+  return f as unknown;
+}
+
+function asNumeric(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(String(v).replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function handle_bulk_populate_from_otp(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, otp_fields } = input as {
+    deal_id: string;
+    otp_fields: Record<string, unknown>;
+  };
+  const sb = getSupabaseClient();
+
+  // ── Buyer fields (whitelist via existing constant) ──
+  const buyerFields: Record<string, unknown> = {
+    full_name:        readField(otp_fields, 'buyer_full_name'),
+    id_number:        readField(otp_fields, 'buyer_id_number'),
+    physical_address: readField(otp_fields, 'buyer_address'),
+    email:            readField(otp_fields, 'buyer_email'),
+  };
+  await upsertPartyRecord('buyers', deal_id, buyerFields, ALLOWED_BUYER_COLUMNS, 'extraction_otp');
+
+  // ── Seller fields ──
+  const sellerFields: Record<string, unknown> = {
+    full_name:        readField(otp_fields, 'seller_full_name'),
+    id_number:        readField(otp_fields, 'seller_id_number'),
+    phone:            readField(otp_fields, 'seller_phone'),
+    email:            readField(otp_fields, 'seller_email'),
+    physical_address: readField(otp_fields, 'seller_address'),
+    bank_name:        readField(otp_fields, 'seller_bank_name'),
+    bank_account_number: readField(otp_fields, 'seller_bank_account'),
+  };
+  // Sellers table allows the columns above (incl. ones we just migrated). Use a
+  // dedicated upsert that doesn't go through the buyer-only ALLOWED_BUYER_COLUMNS.
+  const sellerClean: Record<string, unknown> = {};
+  const sellerAllowed = new Set([
+    'full_name','id_number','phone','email','physical_address','bank_name','bank_account_number',
+  ]);
+  for (const [k, v] of Object.entries(sellerFields)) {
+    if (!sellerAllowed.has(k)) continue;
+    if (v === null || v === undefined || v === '') continue;
+    sellerClean[k] = v;
+  }
+  if (Object.keys(sellerClean).length > 0) {
+    sellerClean.updated_at = new Date().toISOString();
+    const { data: existingSeller } = await sb
+      .from('sellers').select('id').eq('deal_id', deal_id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (existingSeller?.id) {
+      await sb.from('sellers').update(sellerClean).eq('id', existingSeller.id);
+    } else {
+      await sb.from('sellers').insert({ deal_id, ...sellerClean });
+    }
+  }
+
+  // ── Vehicle fields ──
+  const yearVal = readField(otp_fields, 'vehicle_year');
+  const yearNum = yearVal ? parseInt(String(yearVal), 10) : null;
+  const priceNum = asNumeric(readField(otp_fields, 'agreed_price'));
+  const vehicleFields: Record<string, unknown> = {
+    make:                readField(otp_fields, 'vehicle_make'),
+    model:               readField(otp_fields, 'vehicle_model'),
+    year:                Number.isFinite(yearNum) ? yearNum : null,
+    registration_number: readField(otp_fields, 'vehicle_registration'),
+    vin:                 readField(otp_fields, 'vehicle_vin'),
+    engine_number:       readField(otp_fields, 'vehicle_engine'),
+    colour:              readField(otp_fields, 'vehicle_colour'),
+    odometer_reading:    readField(otp_fields, 'vehicle_mileage')?.toString?.() ?? null,
+    asking_price:        priceNum,
+  };
+  const vehicleClean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(vehicleFields)) {
+    if (!ALLOWED_VEHICLE_COLUMNS.has(k)) continue;
+    if (v === null || v === undefined || v === '') continue;
+    vehicleClean[k] = v;
+  }
+  if (Object.keys(vehicleClean).length > 0) {
+    vehicleClean.updated_at = new Date().toISOString();
+    const { data: existingVehicle } = await sb
+      .from('vehicles').select('id').eq('deal_id', deal_id)
+      .order('created_at', { ascending: false }).limit(1).maybeSingle();
+    if (existingVehicle?.id) {
+      await sb.from('vehicles').update(vehicleClean).eq('id', existingVehicle.id);
+    } else {
+      await sb.from('vehicles').insert({ deal_id, ...vehicleClean });
+    }
+  }
+
+  // ── Deal: capture price into phase_state for affordability/quote later ──
+  const dealUpdates: Record<string, unknown> = {};
+  if (priceNum) {
+    const { data: deal } = await sb
+      .from('deals').select('phase_state').eq('id', deal_id).single();
+    const ps = (deal?.phase_state ?? {}) as Record<string, unknown>;
+    ps.agreed_price = priceNum;
+    dealUpdates.phase_state = ps;
+  }
+  if (Object.keys(dealUpdates).length > 0) {
+    await sb.from('deals').update(dealUpdates).eq('id', deal_id);
+  }
+
+  await dbLogAuditEvent({
+    deal_id,
+    event_type: 'otp_bulk_populated',
+    description: `OTP populated buyer/seller/vehicle (price R${priceNum ?? 'n/a'})`,
+    metadata: {
+      buyer_fields_set: Object.keys(buyerFields).filter((k) => buyerFields[k]),
+      seller_fields_set: Object.keys(sellerClean),
+      vehicle_fields_set: Object.keys(vehicleClean),
+      agreed_price: priceNum,
+    },
+  });
+
+  return {
+    success: true,
+    deal_id,
+    populated: {
+      buyer:   Object.keys(buyerFields).filter((k) => buyerFields[k]).length,
+      seller:  Object.keys(sellerClean).length,
+      vehicle: Object.keys(vehicleClean).length,
+    },
+    agreed_price: priceNum,
+  };
+}
+
+export async function handle_update_vehicle_record(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, fields, source } = input as {
+    deal_id: string; fields: Record<string, unknown>; source?: string;
+  };
+  const sb = getSupabaseClient();
+  const clean: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(fields)) {
+    if (!ALLOWED_VEHICLE_COLUMNS.has(k)) continue;
+    if (v === null || v === '' || v === undefined) continue;
+    clean[k] = v;
+  }
+  if (Object.keys(clean).length === 0) return { success: false, error: 'No allowed fields supplied.' };
+  clean.updated_at = new Date().toISOString();
+
+  const { data: existing } = await sb
+    .from('vehicles').select('id').eq('deal_id', deal_id)
+    .order('created_at', { ascending: false }).limit(1).maybeSingle();
+  let result;
+  if (existing?.id) {
+    result = await sb.from('vehicles').update(clean).eq('id', existing.id).select().single();
+  } else {
+    result = await sb.from('vehicles').insert({ deal_id, ...clean }).select().single();
+  }
+  if (result.error) return { success: false, error: result.error.message };
+
+  await dbLogAuditEvent({
+    deal_id,
+    event_type: `vehicle_data_${source ?? 'updated'}`,
+    description: `Vehicle fields updated: ${Object.keys(clean).filter((k)=>k!=='updated_at').join(', ')}`,
+    metadata: { source, fields: Object.keys(clean) },
+  });
+  return { success: true, vehicle_id: result.data.id, fields_set: Object.keys(clean).filter((k)=>k!=='updated_at') };
+}
+
+export async function handle_update_buyer_record(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, fields, source } = input as {
+    deal_id: string; fields: Record<string, unknown>; source?: string;
+  };
+  return upsertPartyRecord('buyers', deal_id, fields, ALLOWED_BUYER_COLUMNS, source ?? 'extraction');
+}
+
+export async function handle_update_seller_record(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, fields, source } = input as {
+    deal_id: string; fields: Record<string, unknown>; source?: string;
+  };
+  return upsertPartyRecord('sellers', deal_id, fields, ALLOWED_SELLER_COLUMNS, source ?? 'extraction');
 }
 
 export async function handle_confirm_buyer_data(input: ToolInput): Promise<ToolResult> {
@@ -277,6 +575,224 @@ export async function handle_send_whatsapp_message(input: ToolInput): Promise<To
   const { phone, message } = input as { phone: string; message: string };
   await sendTextMessage(phone, message);
   return { success: true, message: `WhatsApp message sent to ${phone}` };
+}
+
+// ─── Phase / state machine ─────────────────────────────────────────────────
+
+const VALID_PHASES = [
+  'POPIA_CONSENT', 'PRICE_GATE', 'ID_DOC', 'PROOF_OF_ADDRESS',
+  'BANK_STATEMENTS', 'AFFORDABILITY', 'CREDIT_DECISION',
+  'SELLER_DETAILS', 'INSPECTION_REVIEW', 'QUOTE', 'CONTRACT',
+  'HANDOVER', 'PAYOUT', 'DONE',
+] as const;
+
+export async function handle_get_deal_phase(input: ToolInput): Promise<ToolResult> {
+  const { phone } = input as { phone: string };
+  const sb = getSupabaseClient();
+
+  // 1. Look up an existing deal via buyers table (reverse FK).
+  let dealId: string | null = null;
+  const { data: buyerRow } = await sb
+    .from('buyers')
+    .select('deal_id')
+    .eq('phone', phone)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (buyerRow?.deal_id) dealId = buyerRow.deal_id;
+
+  // 2. Otherwise via sellers table.
+  if (!dealId) {
+    const { data: sellerRow } = await sb
+      .from('sellers')
+      .select('deal_id')
+      .eq('phone', phone)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (sellerRow?.deal_id) dealId = sellerRow.deal_id;
+  }
+
+  // 3. If found, return its phase state.
+  if (dealId) {
+    const { data: deal, error: dealErr } = await sb
+      .from('deals')
+      .select('id, current_phase, phase_state, completed_milestones')
+      .eq('id', dealId)
+      .single();
+    if (dealErr || !deal) {
+      return { success: false, error: `Deal ${dealId} lookup failed: ${dealErr?.message}` };
+    }
+    return {
+      success: true,
+      deal_id: deal.id,
+      phase: deal.current_phase,
+      state: deal.phase_state ?? {},
+      completed_milestones: deal.completed_milestones ?? [],
+      is_new: false,
+    };
+  }
+
+  // 4. No deal — auto-create a fresh one for this new buyer (deal + buyer row).
+  const { data: newDeal, error: dealInsErr } = await sb
+    .from('deals')
+    .insert({
+      status: 'APPLICATION_INITIATED',
+      current_phase: 'POPIA_CONSENT',
+      phase_state: {},
+      completed_milestones: [],
+    })
+    .select('id, current_phase, phase_state, completed_milestones')
+    .single();
+  if (dealInsErr || !newDeal) {
+    return { success: false, error: `Could not auto-create deal: ${dealInsErr?.message}` };
+  }
+
+  const { error: buyerInsErr } = await sb.from('buyers').insert({
+    deal_id: newDeal.id,
+    phone,
+  });
+  if (buyerInsErr) {
+    return { success: false, error: `Deal created but buyer row failed: ${buyerInsErr.message}` };
+  }
+
+  await dbLogAuditEvent({
+    deal_id: newDeal.id,
+    event_type: 'deal_created',
+    description: `New buyer deal auto-created from WhatsApp ${phone}`,
+    metadata: { phone },
+  });
+
+  return {
+    success: true,
+    deal_id: newDeal.id,
+    phase: newDeal.current_phase,
+    state: newDeal.phase_state ?? {},
+    completed_milestones: newDeal.completed_milestones ?? [],
+    is_new: true,
+  };
+}
+
+export async function handle_advance_deal_phase(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, to_phase, milestone, capture } = input as {
+    deal_id: string;
+    to_phase: string;
+    milestone: string;
+    capture?: Record<string, unknown>;
+  };
+  if (!VALID_PHASES.includes(to_phase as typeof VALID_PHASES[number])) {
+    return { success: false, error: `Unknown phase: ${to_phase}` };
+  }
+
+  const sb = getSupabaseClient();
+  // Read existing state so we can merge captures + append milestones.
+  const { data: existing, error: readErr } = await sb
+    .from('deals')
+    .select('phase_state, completed_milestones, current_phase')
+    .eq('id', deal_id)
+    .single();
+  if (readErr || !existing) {
+    return { success: false, error: `Deal ${deal_id} not found` };
+  }
+
+  const nextState = { ...(existing.phase_state ?? {}), ...(capture ?? {}) };
+  const nextMilestones = Array.from(
+    new Set([...(existing.completed_milestones ?? []), milestone]),
+  );
+
+  const { error: updErr } = await sb
+    .from('deals')
+    .update({
+      current_phase: to_phase,
+      phase_state: nextState,
+      completed_milestones: nextMilestones,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', deal_id);
+  if (updErr) return { success: false, error: updErr.message };
+
+  await dbLogAuditEvent({
+    deal_id,
+    event_type: 'phase_advanced',
+    description: `Phase: ${existing.current_phase} → ${to_phase} (milestone: ${milestone})`,
+    metadata: { from: existing.current_phase, to: to_phase, milestone, capture: capture ?? null },
+  });
+
+  return {
+    success: true,
+    deal_id,
+    phase: to_phase,
+    completed_milestones: nextMilestones,
+    state: nextState,
+  };
+}
+
+export async function handle_send_buttons(input: ToolInput): Promise<ToolResult> {
+  const { phone, body, buttons, header, footer } = input as {
+    phone: string;
+    body: string;
+    buttons: Button[];
+    header?: string;
+    footer?: string;
+  };
+  await sendInteractiveMessage(phone, body, buttons, header, footer);
+  return { success: true, message: `Sent ${buttons.length}-button message to ${phone}` };
+}
+
+export async function handle_send_list(input: ToolInput): Promise<ToolResult> {
+  const { phone, body, button_text, sections, header, footer } = input as {
+    phone: string;
+    body: string;
+    button_text: string;
+    sections: ListSection[];
+    header?: string;
+    footer?: string;
+  };
+  await sendListMessage(phone, body, button_text, sections, header, footer);
+  const total = sections.reduce((n, s) => n + s.rows.length, 0);
+  return { success: true, message: `Sent list (${total} rows) to ${phone}` };
+}
+
+export async function handle_notify_seller(input: ToolInput): Promise<ToolResult> {
+  const { deal_id } = input as { deal_id: string };
+  // Look up the deal + seller
+  const { getDealById } = await import('../services/supabase.js');
+  const deal = await getDealById(deal_id);
+  if (!deal) return { success: false, error: `Deal ${deal_id} not found` };
+
+  // Pull seller phone — schema has sellers.deal_id FK back to deals
+  const { getSupabaseClient } = await import('../services/supabase.js');
+  const sb = getSupabaseClient();
+  const { data: sellerRow } = await sb
+    .from('sellers')
+    .select('phone, full_name')
+    .eq('deal_id', deal_id)
+    .single();
+
+  if (!sellerRow?.phone) {
+    return {
+      success: false,
+      error: 'Seller phone not on deal — buyer must provide seller details first.',
+    };
+  }
+
+  const buyerName =
+    (deal as { buyer_full_name?: string }).buyer_full_name ?? 'a buyer';
+
+  const intro =
+    `Hi${sellerRow.full_name ? ` ${sellerRow.full_name.split(' ')[0]}` : ''}! 👋 ` +
+    `${buyerName} has applied to buy your vehicle through WesBank private deal. ` +
+    `I'm here to help you complete your part — it's all done over WhatsApp and ` +
+    `should take 10–15 minutes. Reply *START* whenever you're ready.`;
+
+  await sendTextMessage(sellerRow.phone, intro);
+  await dbLogAuditEvent({
+    deal_id,
+    event_type: 'seller_invited',
+    description: `Seller ${sellerRow.phone} invited via WhatsApp`,
+    metadata: {},
+  });
+  return { success: true, message: `Seller ${sellerRow.phone} notified.` };
 }
 
 export async function handle_send_sms(input: ToolInput): Promise<ToolResult> {
@@ -449,13 +965,22 @@ export const TOOL_HANDLERS: Record<string, (input: ToolInput) => Promise<ToolRes
   store_document: handle_store_document,
   trigger_extraction: handle_trigger_extraction,
   get_extraction_results: handle_get_extraction_results,
+  bulk_populate_from_otp: handle_bulk_populate_from_otp,
+  update_vehicle_record: handle_update_vehicle_record,
+  update_buyer_record: handle_update_buyer_record,
+  update_seller_record: handle_update_seller_record,
   confirm_buyer_data: handle_confirm_buyer_data,
   confirm_seller_data: handle_confirm_seller_data,
   store_vehicle_photo: handle_store_vehicle_photo,
   get_photo_progress: handle_get_photo_progress,
   trigger_photo_evaluation: handle_trigger_photo_evaluation,
   get_photo_evaluation: handle_get_photo_evaluation,
+  get_deal_phase: handle_get_deal_phase,
+  advance_deal_phase: handle_advance_deal_phase,
   send_whatsapp_message: handle_send_whatsapp_message,
+  send_buttons: handle_send_buttons,
+  send_list: handle_send_list,
+  notify_seller: handle_notify_seller,
   send_sms: handle_send_sms,
   send_email: handle_send_email,
   create_task: handle_create_task,

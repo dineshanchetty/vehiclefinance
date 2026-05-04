@@ -53,8 +53,20 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         },
         document_type: {
           type: 'string',
-          enum: ['id_document', 'proof_of_address', 'bank_statement', 'natis', 'registration', 'other'],
-          description: 'The type of document',
+          enum: [
+            'SA_ID_SMART_CARD',
+            'SA_ID_GREEN_BOOK',
+            'PROOF_OF_ADDRESS',
+            'BANK_STATEMENT',
+            'PAYSLIP',
+            'VEHICLE_NATIS',
+            'VEHICLE_REGISTRATION',
+            'SETTLEMENT_LETTER',
+            'VEHICLE_PHOTO',
+            'OTHER',
+          ],
+          description:
+            'Canonical document type. Must be one of the listed enum values (the database enforces this enum). Examples: a smart-card ID = SA_ID_SMART_CARD, a green book = SA_ID_GREEN_BOOK, a utility bill or municipal letter = PROOF_OF_ADDRESS, a bank statement (any of the 3) = BANK_STATEMENT, NATIS = VEHICLE_NATIS, vehicle registration papers = VEHICLE_REGISTRATION.',
         },
         media_id: {
           type: 'string',
@@ -90,6 +102,109 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         document_id: { type: 'string', description: 'The document UUID' },
       },
       required: ['document_id'],
+    },
+  },
+  {
+    name: 'bulk_populate_from_otp',
+    description:
+      'Single-call helper for the OTP-first flow. After get_extraction_results returns OTP fields, pass them ALL into this tool — it splits them into buyer/seller/vehicle/deal records in one transaction so you don\'t have to call update_buyer_record / update_seller_record / update_vehicle_record separately. Use this ONLY for OTP documents. Returns the deal_id and what was populated.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id: { type: 'string', description: 'The deal UUID' },
+        otp_fields: {
+          type: 'object',
+          description: 'Extracted OTP fields exactly as returned by get_extraction_results — keys like buyer_full_name, buyer_id_number, seller_full_name, seller_phone, vehicle_make, vehicle_year, vehicle_vin, agreed_price, etc.',
+          additionalProperties: true,
+        },
+      },
+      required: ['deal_id', 'otp_fields'],
+    },
+  },
+  {
+    name: 'update_vehicle_record',
+    description:
+      'Write or update vehicle details on the deal record. Vehicles table has: make, model, year, registration_number, vin, engine_number, colour, asking_price (Rands), odometer_reading. Use after extraction OR for manual capture. Pass only fields you have.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id: { type: 'string', description: 'The deal UUID' },
+        fields: {
+          type: 'object',
+          properties: {
+            make:                  { type: 'string' },
+            model:                 { type: 'string' },
+            year:                  { type: 'integer' },
+            registration_number:   { type: 'string' },
+            vin:                   { type: 'string', description: '17-char VIN' },
+            engine_number:         { type: 'string' },
+            colour:                { type: 'string' },
+            asking_price:          { type: 'number', description: 'Agreed price in Rands' },
+            odometer_reading:      { type: 'string', description: 'kilometres as a string' },
+          },
+          additionalProperties: false,
+        },
+        source: { type: 'string', enum: ['extraction', 'manual_entry', 'mixed'] },
+      },
+      required: ['deal_id', 'fields'],
+    },
+  },
+  {
+    name: 'update_buyer_record',
+    description:
+      'Write or update buyer details on the deal record. Use this both (a) after the buyer confirms extracted ID / address / bank-statement data, and (b) as a MANUAL FALLBACK when extraction fails or the buyer prefers to type the details themselves. Pass only the fields you have right now — partial updates are fine, you can call this multiple times. Always use this rather than skipping a step or escalating when the buyer is willing to type the data.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id: { type: 'string', description: 'The deal UUID' },
+        fields: {
+          type: 'object',
+          description: 'Buyer columns to set. Allowed keys: full_name, id_number, date_of_birth (YYYY-MM-DD), gender, nationality, email, physical_address, suburb, city, postal_code, employer_name, employment_duration, monthly_income.',
+          properties: {
+            full_name:           { type: 'string' },
+            id_number:           { type: 'string', description: '13-digit SA ID, or passport number' },
+            date_of_birth:       { type: 'string', description: 'ISO date YYYY-MM-DD' },
+            gender:              { type: 'string', enum: ['male','female','other'] },
+            nationality:         { type: 'string', description: 'ISO-3 country code or full name (e.g. ZAF or "South African")' },
+            email:               { type: 'string' },
+            physical_address:    { type: 'string' },
+            suburb:              { type: 'string' },
+            city:                { type: 'string' },
+            postal_code:         { type: 'string' },
+            employer_name:       { type: 'string' },
+            employment_duration: { type: 'string', description: 'e.g. "3 years" or months as number' },
+            monthly_income:      { type: 'number', description: 'Net monthly income in Rands' },
+          },
+          additionalProperties: false,
+        },
+        source: {
+          type: 'string',
+          enum: ['extraction', 'manual_entry', 'mixed'],
+          description: 'How the data was obtained — used for the audit trail.',
+        },
+      },
+      required: ['deal_id', 'fields'],
+    },
+  },
+  {
+    name: 'update_seller_record',
+    description:
+      'Same as update_buyer_record but for the seller. Use after extraction OR as manual fallback when the seller types details directly.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id: { type: 'string', description: 'The deal UUID' },
+        fields: {
+          type: 'object',
+          description: 'Seller columns to set. Allowed keys: full_name, id_number, date_of_birth, email, physical_address, suburb, city, postal_code.',
+          additionalProperties: true,
+        },
+        source: {
+          type: 'string',
+          enum: ['extraction', 'manual_entry', 'mixed'],
+        },
+      },
+      required: ['deal_id', 'fields'],
     },
   },
   {
@@ -202,11 +317,49 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
 
+  // ── Phase / state machine ─────────────────────────────────────────────────
+  {
+    name: 'get_deal_phase',
+    description:
+      'Read the structured phase state for a deal. ALWAYS call this at the start of every conversation turn so you know exactly where the user is in the flow. Returns { phase, state, completed_milestones }. If no deal exists for this user, this returns { phase: "POPIA_CONSENT", state: {}, completed_milestones: [], deal_id: null } — that means treat the user as a new buyer at step 1.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        phone: { type: 'string', description: 'The user\'s phone number (E.164 without +). Use the runtime conversation phone you were given in the system prompt.' },
+      },
+      required: ['phone'],
+    },
+  },
+  {
+    name: 'advance_deal_phase',
+    description:
+      'Advance a deal to the next phase ONLY after the current phase\'s acceptance criteria are met. Records the milestone, optionally captures phase data into phase_state, and updates current_phase. Acceptance criteria are listed in your system prompt — never skip a phase or advance without them.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id:   { type: 'string', description: 'The deal UUID' },
+        to_phase:  {
+          type: 'string',
+          description: 'The new phase to move to.',
+          enum: [
+            'POPIA_CONSENT', 'PRICE_GATE', 'ID_DOC', 'PROOF_OF_ADDRESS',
+            'BANK_STATEMENTS', 'AFFORDABILITY', 'CREDIT_DECISION',
+            'SELLER_DETAILS', 'INSPECTION_REVIEW', 'QUOTE', 'CONTRACT',
+            'HANDOVER', 'PAYOUT', 'DONE',
+          ],
+        },
+        milestone: { type: 'string', description: 'Milestone key being completed by this advance, e.g. "popia_consent", "price_captured", "id_verified".' },
+        capture:   { type: 'object', additionalProperties: true, description: 'Optional small values to merge into phase_state, e.g. {"agreed_price": 250000}.' },
+      },
+      required: ['deal_id', 'to_phase', 'milestone'],
+    },
+  },
+
   // ── Messaging ──────────────────────────────────────────────────────────────
   {
     name: 'send_whatsapp_message',
     description:
-      'Send a WhatsApp text message to a phone number via Dialog360. Use this when you need to send a message to a different number than the current conversation (e.g. to notify the seller from the buyer conversation).',
+      'Send a WhatsApp text message to a phone number via Dialog360. Use this when you need to send a message to a different number than the current conversation (e.g. to notify the seller from the buyer conversation). For yes/no choices prefer send_buttons; for menus of 4–10 options prefer send_list.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -214,6 +367,86 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         message: { type: 'string', description: 'The message text' },
       },
       required: ['phone', 'message'],
+    },
+  },
+  {
+    name: 'send_buttons',
+    description:
+      'Send a WhatsApp interactive message with up to 3 reply buttons. PREFER this over plain text whenever the next step is a small set of choices (yes/no, accept/decline, agree/disagree, retry/skip). The user taps a button and you receive their choice as the next message. Reduces typos and speeds up the flow dramatically.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        phone:   { type: 'string', description: 'Recipient phone number (E.164 without leading +)' },
+        body:    { type: 'string', description: 'Main message text shown above the buttons (≤1024 chars)' },
+        buttons: {
+          type: 'array',
+          maxItems: 3,
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              id:    { type: 'string', description: 'Stable id you receive back when tapped (e.g. "agree", "yes", "retake")' },
+              title: { type: 'string', description: 'Visible button label (≤20 chars)' },
+            },
+            required: ['id', 'title'],
+          },
+        },
+        header: { type: 'string', description: 'Optional short header text (≤60 chars)' },
+        footer: { type: 'string', description: 'Optional footer text (≤60 chars)' },
+      },
+      required: ['phone', 'body', 'buttons'],
+    },
+  },
+  {
+    name: 'send_list',
+    description:
+      'Send a WhatsApp interactive list (tap-to-open menu) with up to 10 rows across optional sections. USE THIS for: document type pickers, photo angle pickers, deal-status menus, "what would you like to do" hubs, FAQ topic pickers. Prefer over free text when there are 4+ structured choices.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        phone:       { type: 'string', description: 'Recipient phone number' },
+        body:        { type: 'string', description: 'Body text shown above the menu trigger (≤1024 chars)' },
+        button_text: { type: 'string', description: 'Label of the button that opens the list (≤20 chars), e.g. "Choose"' },
+        sections: {
+          type: 'array',
+          minItems: 1,
+          items: {
+            type: 'object',
+            properties: {
+              title: { type: 'string', description: 'Optional section header (≤24 chars)' },
+              rows:  {
+                type: 'array',
+                minItems: 1,
+                items: {
+                  type: 'object',
+                  properties: {
+                    id:          { type: 'string', description: 'Stable id returned when row is tapped' },
+                    title:       { type: 'string', description: 'Row title (≤24 chars)' },
+                    description: { type: 'string', description: 'Optional row subtitle (≤72 chars)' },
+                  },
+                  required: ['id', 'title'],
+                },
+              },
+            },
+            required: ['rows'],
+          },
+        },
+        header: { type: 'string', description: 'Optional header text' },
+        footer: { type: 'string', description: 'Optional footer text' },
+      },
+      required: ['phone', 'body', 'button_text', 'sections'],
+    },
+  },
+  {
+    name: 'notify_seller',
+    description:
+      'Trigger seller engagement on the deal: sends a WhatsApp introduction to the seller from the bot explaining their role and asking them to confirm. Call this AFTER the buyer has been credit-approved AND has provided seller contact details. The bot will then run the seller flow on that number — buyer should not have to coordinate this.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id: { type: 'string', description: 'The deal UUID' },
+      },
+      required: ['deal_id'],
     },
   },
   {
