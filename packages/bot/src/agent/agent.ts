@@ -11,7 +11,7 @@ import {
 import { getDealBySellerPhone } from '../services/supabase.js';
 import { sendTextMessage } from '../services/dialog360.js';
 
-const MODEL = 'claude-sonnet-4-20250514';
+const MODEL = 'claude-sonnet-4-6';
 const MAX_TOOL_ITERATIONS = 15;
 
 export class VehicleFinanceAgent {
@@ -28,8 +28,22 @@ export class VehicleFinanceAgent {
   ): Promise<void> {
     // 1. Determine party type by looking up the phone in the database
     const partyType = await this.resolvePartyType(phone);
-    const systemPrompt =
+    const basePrompt =
       partyType === 'seller' ? SELLER_SYSTEM_PROMPT : BUYER_SYSTEM_PROMPT;
+
+    // Inject the runtime phone so tools that send back to the user (send_buttons,
+    // send_list, send_whatsapp_message, etc.) always use the right number.
+    // Without this the model invents phones from user-typed text and Dialog360
+    // rejects with 400.
+    const systemPrompt = `${basePrompt}
+
+## Conversation context (runtime)
+
+- **The user you are talking to is on WhatsApp at phone: \`${phone}\` (E.164, no leading +).**
+- When you call **send_buttons**, **send_list**, or any **send_whatsapp_message** that targets *this same user*, you MUST pass \`phone="${phone}"\`.
+- Never pull a phone number out of the user's typed text and use it as the recipient. Numbers the user types (like a local "0821234567") are for your records, not for sending.
+- Only use a *different* phone number when explicitly addressing the seller (after notify_seller has been called and you know the seller's number from get_deal_info).
+`;
 
     // 2. Build the user message (append media context if present)
     const userContent = mediaId
@@ -116,11 +130,28 @@ export class VehicleFinanceAgent {
             try {
               toolOutput = await handler(block.input as Record<string, unknown>);
             } catch (err) {
-              const message = err instanceof Error ? err.message : String(err);
-              console.error(`[agent] Tool "${block.name}" failed:`, message);
+              const message =
+                err instanceof Error
+                  ? err.message
+                  : err && typeof err === 'object'
+                  ? (err as { message?: string }).message ??
+                    JSON.stringify(err, Object.getOwnPropertyNames(err))
+                  : String(err);
+              console.error(`[agent] Tool "${block.name}" failed:`, message, err);
               toolOutput = { success: false, error: message };
             }
           }
+
+          // Persist user-facing outbound messages so the next turn has them
+          // in conversation history. Without this, button/list replies are
+          // sent to WhatsApp but the agent forgets it asked the question, and
+          // re-asks the user to do something they already did.
+          await this.persistOutboundIfNeeded(
+            phone,
+            block.name,
+            block.input as Record<string, unknown>,
+            toolOutput,
+          );
 
           toolResults.push({
             type: 'tool_result',
@@ -144,6 +175,58 @@ export class VehicleFinanceAgent {
 
     console.warn(`[agent] Max tool iterations (${MAX_TOOL_ITERATIONS}) reached for ${phone}`);
     return "I'm sorry, I ran into a problem processing your request. Please try again or contact our support team.";
+  }
+
+  /**
+   * After a user-facing message-sending tool runs successfully, persist what
+   * was sent to conversation_messages so the next turn has it in history.
+   * Without this, send_buttons / send_list replies vanish from the agent's
+   * context and it re-asks for things the user already answered.
+   *
+   * Tools handled:
+   *   - send_whatsapp_message  → save the body
+   *   - send_buttons           → save the body + button titles
+   *   - send_list              → save the body + section/row titles
+   * Tools that target ANOTHER party (notify_seller etc) are skipped — those
+   * messages belong to the seller's history, not this conversation.
+   */
+  private async persistOutboundIfNeeded(
+    convoPhone: string,
+    toolName: string,
+    input: Record<string, unknown>,
+    output: unknown,
+  ): Promise<void> {
+    try {
+      const ok = (output as { success?: boolean })?.success !== false;
+      if (!ok) return;
+
+      const targetPhone = (input?.phone as string | undefined) ?? convoPhone;
+      // Only save when we're talking to the same user this turn is about.
+      if (targetPhone !== convoPhone) return;
+
+      let content: string | null = null;
+      if (toolName === 'send_whatsapp_message') {
+        content = (input.message as string) ?? null;
+      } else if (toolName === 'send_buttons') {
+        const body = (input.body as string) ?? '';
+        const buttons = (input.buttons as Array<{ title?: string }> | undefined) ?? [];
+        const labels = buttons.map((b) => `[${b.title ?? '?'}]`).join(' ');
+        content = `${body}\n\n${labels}`;
+      } else if (toolName === 'send_list') {
+        const body = (input.body as string) ?? '';
+        const sections = (input.sections as Array<{ rows?: Array<{ title?: string }> }> | undefined) ?? [];
+        const items = sections
+          .flatMap((s) => s.rows ?? [])
+          .map((r) => `• ${r.title ?? '?'}`)
+          .join('\n');
+        content = `${body}\n\n${items}`;
+      }
+      if (!content) return;
+
+      await saveMessage(convoPhone, 'assistant', content, { tool_use: { via_tool: toolName } });
+    } catch (e) {
+      console.warn('[agent] persistOutboundIfNeeded failed:', String(e));
+    }
   }
 }
 
