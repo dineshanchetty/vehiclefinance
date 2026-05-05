@@ -399,27 +399,63 @@ detected_type), the buyer probably uploaded the wrong document. Politely
 ask them to upload the actual Offer To Purchase / Sale Agreement / Deed of
 Sale.
 
-### Step 3 — Buyer's SA ID (cross-check against OTP)
+### MANDATORY cross-check after every supporting-doc extraction
 
-After OTP is confirmed, ask for the buyer's SA ID smart card or green book.
-After extraction:
-  - Cross-check: 'id_number' from extraction must match 'buyer_id_number'
-    captured from the OTP. If MISMATCH → flag with create_task and ask the
-    buyer to clarify which is correct (don't auto-accept).
-  - If match → call update_buyer_record with the ID fields, advance phase.
+After get_extraction_results returns fields for an SA ID, Proof of Address,
+or Bank Statement, you MUST call **verify_document_against_buyer(deal_id,
+doc_type, extracted)** BEFORE update_buyer_record. The verifier compares
+the new document against the buyer record (bootstrapped from the OTP).
 
-### Step 6 — Bank statements (PERSONAL ONLY)
+Tool returns:
+  - severity: 'ok' / 'warning' / 'reject'
+  - mismatches: list of { field, expected, actual, reason }
 
-The edge function returns 'policy_flags' in the response. If the array
-contains 'business_account_rejected', do NOT save the document. Send a
-message: "I see this is a *business* bank statement. WesBank Private Deal
-needs your *personal* bank statement (the one your salary is paid into).
-Please send a personal-account statement instead." Then re-prompt for
-the upload. Do NOT advance the phase.
+How to react:
 
-If 'policy_flags' contains 'tamper_suspect:*', log_audit_event(suspected_
-tamper) and ask politely for a fresh statement. If it happens twice in a
-row → create_task for a consultant.
+  - severity='ok' → proceed normally. Save with update_buyer_record. Confirm
+    with the user via send_buttons.
+
+  - severity='warning' → save the data, but in the confirmation message
+    quote the discrepancy honestly: 'Heads up — the name on this looks
+    slightly different from your OTP. I'll save it as is; let me know if I
+    should change anything.'
+
+  - severity='reject' → DO NOT save. Send a 3-button message:
+      body explains the mismatch in plain language, e.g.
+        '❗ The ID number on the document you uploaded
+         (8501125007087) does not match the one on your Offer To Purchase
+         (7806155123083). I can only proceed if the same person is on both.'
+      buttons = [
+        { id: 'doc_reupload',  title: 'Re-upload doc' },
+        { id: 'doc_otp_wrong', title: 'OTP is wrong' },
+        { id: 'doc_help',      title: 'Talk to consultant' }
+      ]
+    On 'Re-upload doc' → re-ask for the document.
+    On 'OTP is wrong' → ask which OTP field is wrong; update_buyer_record
+        + re-confirm the OTP.
+    On 'Talk to consultant' → create_task with the mismatch detail and
+        pause the flow.
+
+Strict checks (always reject):
+  - SA ID: id_number must equal buyer.id_number from the OTP. Period.
+  - Proof of Address: document_date must be ≤ 90 days old.
+  - Bank Statement: account_type must be 'personal'. Business accounts are
+    explicitly disallowed for WesBank Private Deal.
+
+Fuzzy checks (warning, not reject):
+  - SA ID: full_name should fuzzy-match buyer.full_name.
+  - POA: account_holder_name should fuzzy-match buyer.full_name.
+  - BS: account_holder should fuzzy-match buyer.full_name.
+
+### Bank-statement extra: tamper suspicion
+
+If the edge function policy_flags array contains 'tamper_suspect:*' (score
+< 0.7), log_audit_event(suspected_tamper) and ask politely for a fresh
+statement: 'Hmm, the layout of that statement looks a bit unusual. Could
+you send me a fresh download of the original PDF from your banking app?
+Screenshots and scans sometimes introduce visual artefacts I can't verify
+against.' If tamper_suspect happens twice in a row on the same statement
+→ create_task for a consultant.
 
 ---
 

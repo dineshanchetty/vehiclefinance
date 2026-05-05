@@ -122,6 +122,27 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: 'verify_document_against_buyer',
+    description:
+      'Cross-check that an extracted document genuinely belongs to the buyer on this deal. Call this RIGHT AFTER get_extraction_results returns fields, BEFORE update_buyer_record. Compares against the buyer record (which was bootstrapped from the Offer To Purchase). Returns { matches, mismatches: [...], severity: ok|warning|reject, action }. If severity is "reject" you MUST NOT save the data — show the user a 3-button message: Re-upload / Update OTP / Talk to consultant. If "warning" (small typo / fuzzy name match) — proceed but mention the discrepancy in the confirmation message.\n\nChecks per doc type:\n  - SA_ID_SMART_CARD / SA_ID_GREEN_BOOK: id_number must match the buyer.id_number from the OTP (strict). full_name should fuzzy-match (token overlap).\n  - PROOF_OF_ADDRESS: account_holder_name should fuzzy-match buyer.full_name. Document date must be within 90 days.\n  - BANK_STATEMENT: account_holder should fuzzy-match buyer.full_name. account_type must be "personal" (business is rejected by the edge fn already; this is a second check).',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id:   { type: 'string', description: 'The deal UUID' },
+        doc_type:  {
+          type: 'string',
+          enum: ['SA_ID_SMART_CARD','SA_ID_GREEN_BOOK','PROOF_OF_ADDRESS','BANK_STATEMENT'],
+        },
+        extracted: {
+          type: 'object',
+          description: 'The extracted fields object as returned by get_extraction_results.',
+          additionalProperties: true,
+        },
+      },
+      required: ['deal_id', 'doc_type', 'extracted'],
+    },
+  },
+  {
     name: 'update_vehicle_record',
     description:
       'Write or update vehicle details on the deal record. Vehicles table has: make, model, year, registration_number, vin, engine_number, colour, asking_price (Rands), odometer_reading. Use after extraction OR for manual capture. Pass only fields you have.',

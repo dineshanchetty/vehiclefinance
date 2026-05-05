@@ -280,6 +280,175 @@ async function upsertPartyRecord(
   return { success: true, [`${table.slice(0,-1)}_id`]: result.data.id, fields_set: Object.keys(clean).filter(k=>k!=='updated_at') };
 }
 
+// ─── Document-vs-buyer cross-check ─────────────────────────────────────────
+// Detects fraud / wrong-doc / typo cases by comparing what was just extracted
+// against the buyer record captured from the Offer To Purchase.
+
+function normaliseName(s: string | null | undefined): string[] {
+  if (!s) return [];
+  return s
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, ' ')
+    .split(/\s+/)
+    .filter((t) => t.length >= 2);
+}
+
+function nameSimilarity(a: string | null | undefined, b: string | null | undefined): number {
+  const ta = normaliseName(a);
+  const tb = normaliseName(b);
+  if (ta.length === 0 || tb.length === 0) return 0;
+  // Token-set overlap. SA names often appear as "SURNAME FIRSTNAME" on ID and
+  // "Firstname Surname" elsewhere — order shouldn't matter.
+  const sa = new Set(ta);
+  const sb = new Set(tb);
+  let common = 0;
+  for (const t of sa) if (sb.has(t)) common += 1;
+  return common / Math.max(sa.size, sb.size);
+}
+
+function readExtracted(extracted: Record<string, unknown>, key: string): string | null {
+  const f = extracted[key];
+  if (f && typeof f === 'object' && 'value' in (f as Record<string, unknown>)) {
+    const v = (f as { value?: unknown }).value;
+    return v == null ? null : String(v);
+  }
+  return f == null ? null : String(f);
+}
+
+export async function handle_verify_document_against_buyer(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, doc_type, extracted } = input as {
+    deal_id: string;
+    doc_type: string;
+    extracted: Record<string, unknown>;
+  };
+  const sb = getSupabaseClient();
+
+  const { data: buyer } = await sb
+    .from('buyers')
+    .select('full_name, id_number, physical_address, suburb, city, postal_code')
+    .eq('deal_id', deal_id)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (!buyer) {
+    return {
+      success: true, severity: 'warning',
+      mismatches: ['no_buyer_record_yet'],
+      message: 'No buyer captured yet (OTP not uploaded?). Proceeding with caution.',
+    };
+  }
+
+  const mismatches: Array<{ field: string; expected: unknown; actual: unknown; reason?: string }> = [];
+
+  if (doc_type === 'SA_ID_SMART_CARD' || doc_type === 'SA_ID_GREEN_BOOK') {
+    const idActual = readExtracted(extracted, 'id_number');
+    const nameActual = readExtracted(extracted, 'full_name');
+
+    // Strict: id_number must match OTP buyer_id_number
+    if (buyer.id_number && idActual && buyer.id_number !== idActual) {
+      mismatches.push({
+        field: 'id_number',
+        expected: buyer.id_number,
+        actual: idActual,
+        reason: 'ID number on the SA ID document does not match the buyer ID number on the Offer To Purchase.',
+      });
+    }
+    // Fuzzy: name should overlap meaningfully
+    const sim = nameSimilarity(buyer.full_name, nameActual);
+    if (buyer.full_name && nameActual && sim < 0.4) {
+      mismatches.push({
+        field: 'full_name',
+        expected: buyer.full_name,
+        actual: nameActual,
+        reason: `Name on ID does not match buyer name on OTP (token overlap ${Math.round(sim * 100)}%).`,
+      });
+    }
+  } else if (doc_type === 'PROOF_OF_ADDRESS') {
+    const holderActual = readExtracted(extracted, 'account_holder_name');
+    const dateActual = readExtracted(extracted, 'document_date');
+
+    const sim = nameSimilarity(buyer.full_name, holderActual);
+    if (buyer.full_name && holderActual && sim < 0.4) {
+      mismatches.push({
+        field: 'account_holder_name',
+        expected: buyer.full_name,
+        actual: holderActual,
+        reason: `Account holder on the proof of address does not match buyer name on OTP (overlap ${Math.round(sim * 100)}%).`,
+      });
+    }
+
+    // Document must be ≤ 90 days old
+    if (dateActual) {
+      const docDate = new Date(dateActual);
+      if (!Number.isNaN(docDate.getTime())) {
+        const ageDays = (Date.now() - docDate.getTime()) / (1000 * 60 * 60 * 24);
+        if (ageDays > 90) {
+          mismatches.push({
+            field: 'document_date',
+            expected: '≤ 90 days old',
+            actual: `${Math.round(ageDays)} days old`,
+            reason: `Proof of address is ${Math.round(ageDays)} days old; SA finance requires ≤ 90 days.`,
+          });
+        }
+      }
+    }
+  } else if (doc_type === 'BANK_STATEMENT') {
+    const holderActual = readExtracted(extracted, 'account_holder');
+    const accountType = readExtracted(extracted, 'account_type')?.toLowerCase() ?? '';
+
+    if (accountType === 'business') {
+      mismatches.push({
+        field: 'account_type',
+        expected: 'personal',
+        actual: 'business',
+        reason: 'WesBank Private Deal needs a personal bank statement, not a business one.',
+      });
+    }
+    const sim = nameSimilarity(buyer.full_name, holderActual);
+    if (buyer.full_name && holderActual && sim < 0.4) {
+      mismatches.push({
+        field: 'account_holder',
+        expected: buyer.full_name,
+        actual: holderActual,
+        reason: `Account holder on the bank statement does not match the buyer name on the ID/OTP (overlap ${Math.round(sim * 100)}%).`,
+      });
+    }
+  }
+
+  const hasStrictMismatch = mismatches.some((m) =>
+    m.field === 'id_number' || m.field === 'account_type' || m.field === 'document_date'
+  );
+  const severity = mismatches.length === 0 ? 'ok' : hasStrictMismatch ? 'reject' : 'warning';
+
+  // Audit any non-OK case so ops can see them later
+  if (mismatches.length > 0) {
+    await dbLogAuditEvent({
+      deal_id,
+      event_type: 'document_mismatch',
+      description: `${doc_type} did not fully match buyer record`,
+      metadata: { doc_type, severity, mismatches },
+    });
+  }
+
+  return {
+    success: true,
+    severity,
+    matches: mismatches.length === 0,
+    mismatches,
+    buyer_snapshot: {
+      full_name: buyer.full_name,
+      id_number: buyer.id_number,
+    },
+    action:
+      severity === 'reject'
+        ? 'Block. Show 3-button: "Re-upload" / "Fix the OTP" / "Talk to a consultant".'
+        : severity === 'warning'
+        ? 'Proceed but quote the discrepancy in the confirmation message.'
+        : 'Proceed normally.',
+  };
+}
+
 // ─── Bulk populate from OTP extraction ────────────────────────────────────
 // One call writes buyer + seller + vehicle + deal price from the OTP fields.
 
@@ -966,6 +1135,7 @@ export const TOOL_HANDLERS: Record<string, (input: ToolInput) => Promise<ToolRes
   trigger_extraction: handle_trigger_extraction,
   get_extraction_results: handle_get_extraction_results,
   bulk_populate_from_otp: handle_bulk_populate_from_otp,
+  verify_document_against_buyer: handle_verify_document_against_buyer,
   update_vehicle_record: handle_update_vehicle_record,
   update_buyer_record: handle_update_buyer_record,
   update_seller_record: handle_update_seller_record,
