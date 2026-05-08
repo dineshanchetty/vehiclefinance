@@ -28,6 +28,7 @@ const ENUM_TO_KEY: Record<string, string> = {
   RIGHT_SIDE: 'driver_side',     // SA right-hand drive
   LEFT_SIDE: 'passenger_side',
   INTERIOR_DASHBOARD: 'interior_front',
+  REAR_LEFT_ANGLE: 'interior_rear',   // bot repurposes this slot — see _shared/supabase-helpers.ts
   BOOT_INTERIOR: 'boot',
   ENGINE_BAY: 'engine_bay',
   ODOMETER: 'odometer',

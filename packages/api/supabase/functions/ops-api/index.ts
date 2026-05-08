@@ -19,11 +19,16 @@ import { handle_notify_seller } from "../_shared/tool-handlers.ts"
 import { getSupabaseClient } from "../_shared/supabase.ts"
 
 function corsHeaders(origin: string | null): HeadersInit {
-  const allow =
-    origin === "http://localhost:5173" || origin?.endsWith(".vercel.app") ? origin : ""
+  const allowed =
+    origin === "http://localhost:5173" ||
+    origin?.endsWith(".vercel.app") ||
+    origin?.endsWith(".azurestaticapps.net") ||
+    // Allow any Supabase project on the same family (the dashboard might be
+    // proxied through the Supabase functions URL when called from realtime).
+    origin?.endsWith(".supabase.co")
   return {
-    "Access-Control-Allow-Origin": allow ?? "",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Allow-Origin": allowed ? (origin ?? "") : "",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization, apikey, x-client-info",
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Vary": "Origin",
   }

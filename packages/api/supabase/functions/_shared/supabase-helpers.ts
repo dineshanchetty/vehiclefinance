@@ -100,10 +100,17 @@ export async function updateDocumentExtraction(
 
 // ── Vehicle photos ───────────────────────────────────────────────────────────
 
+// IMPORTANT: every angle gets its OWN unique enum slot. Earlier mapping
+// collided interior_rear and boot both onto BOOT_INTERIOR, which made the
+// dedupe-by-angle replace logic clobber one with the other. The
+// photo_angle DB enum doesn't have an INTERIOR_REAR value yet (would need a
+// migration); we re-purpose the unused REAR_LEFT_ANGLE slot for interior_rear
+// until the migration lands. The carousel maps it back to the human label.
 const ANGLE_TO_ENUM: Record<string, string> = {
   front: "FRONT_VIEW", rear: "REAR_VIEW",
   driver_side: "RIGHT_SIDE", passenger_side: "LEFT_SIDE",
-  interior_front: "INTERIOR_DASHBOARD", interior_rear: "BOOT_INTERIOR",
+  interior_front: "INTERIOR_DASHBOARD",
+  interior_rear: "REAR_LEFT_ANGLE",   // repurposed slot — see note above
   engine_bay: "ENGINE_BAY", boot: "BOOT_INTERIOR",
   odometer: "ODOMETER", other: "DAMAGE_CLOSEUP",
 }

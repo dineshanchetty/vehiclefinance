@@ -171,7 +171,7 @@ const ANGLE_TO_ENUM: Record<string, string> = {
   driver_side:     'RIGHT_SIDE',         // SA right-hand drive — driver = right
   passenger_side:  'LEFT_SIDE',
   interior_front:  'INTERIOR_DASHBOARD',
-  interior_rear:   'BOOT_INTERIOR',      // closest match (no INTERIOR_REAR enum)
+  interior_rear:   'REAR_LEFT_ANGLE',    // unused enum slot repurposed — was clashing with boot on BOOT_INTERIOR
   engine_bay:      'ENGINE_BAY',
   boot:            'BOOT_INTERIOR',
   odometer:        'ODOMETER',
