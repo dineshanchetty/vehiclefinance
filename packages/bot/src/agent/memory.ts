@@ -37,12 +37,23 @@ const DEFAULT_HISTORY_LIMIT = 30;
 export async function loadConversationHistory(
   phone: string,
   limit = DEFAULT_HISTORY_LIMIT,
+  partyType?: 'buyer' | 'seller',
 ): Promise<StoredMessage[]> {
   const sb = getSupabaseClient();
-  const { data, error } = await sb
+  let q = sb
     .from('conversation_messages')
     .select('*')
     .eq('phone', phone)
+  // Scope by party so a phone that's now seller doesn't replay its old
+  // buyer history — different system prompt, different role, different
+  // expected behaviour.
+  if (partyType) {
+    // Match either the requested party or rows with no party tag (legacy
+    // bot writes pre-party_type column being populated). Excludes the
+    // OPPOSITE party's history, which is the bleed we're fixing.
+    q = q.or(`party_type.eq.${partyType},party_type.is.null`)
+  }
+  const { data, error } = await q
     .order('created_at', { ascending: false })
     .limit(limit);
 

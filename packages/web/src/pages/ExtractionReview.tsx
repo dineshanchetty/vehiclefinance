@@ -85,7 +85,7 @@ function ConfidenceBar({ value }: { value: number }) {
 
 const STATUS_CFG: Record<FieldStatus, { label: string; cls: string }> = {
   ACCEPTED:   { label: 'Accepted',   cls: 'bg-green-100 text-green-800' },
-  OVERRIDDEN: { label: 'Overridden', cls: 'bg-blue-100 text-blue-800' },
+  OVERRIDDEN: { label: 'Overridden', cls: 'bg-indigo-100 text-indigo-800' },
   PENDING:    { label: 'Pending',    cls: 'bg-gray-100 text-gray-700' },
   FLAGGED:    { label: 'Flagged',    cls: 'bg-red-100 text-red-700' },
 }
@@ -412,7 +412,7 @@ export function ExtractionReview() {
           <button
             onClick={saveAll}
             disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
             {saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save Decisions
@@ -537,7 +537,7 @@ export function ExtractionReview() {
                       <td className="px-4 py-3 text-gray-700 font-mono text-xs max-w-[160px] truncate" title={displayValue ?? ''}>
                         {displayValue != null ? (
                           row.status === 'OVERRIDDEN' ? (
-                            <span className="text-blue-700">{displayValue}</span>
+                            <span className="text-indigo-700">{displayValue}</span>
                           ) : (
                             displayValue
                           )
@@ -572,7 +572,7 @@ export function ExtractionReview() {
                           <button
                             onClick={() => openOverride(row.key, row.value)}
                             title="Override value"
-                            className="rounded p-1 text-blue-600 hover:bg-blue-50"
+                            className="rounded p-1 text-indigo-600 hover:bg-indigo-50"
                           >
                             <Edit3 className="h-4 w-4" />
                           </button>
@@ -620,7 +620,7 @@ export function ExtractionReview() {
               onChange={(e) => setOverrideValue(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && saveOverride()}
               placeholder="Enter correct value…"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">
@@ -632,7 +632,7 @@ export function ExtractionReview() {
               </button>
               <button
                 onClick={saveOverride}
-                className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
               >
                 <Save className="h-4 w-4" /> Save Override
               </button>
@@ -658,7 +658,7 @@ export function ExtractionReview() {
               onChange={(e) => setFlagReason(e.target.value)}
               placeholder="Reason for flagging…"
               rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">

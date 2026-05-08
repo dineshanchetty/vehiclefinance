@@ -35,7 +35,11 @@ app.use(express.json({ limit: '10mb' }));
 // to call the internal API endpoints (e.g. /api/ops-send-message).
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin === 'http://localhost:5173' || origin?.endsWith('.vercel.app')) {
+  if (
+    origin === 'http://localhost:5173' ||
+    origin?.endsWith('.vercel.app') ||
+    origin?.endsWith('.azurestaticapps.net')
+  ) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -215,6 +219,57 @@ app.post('/api/ops-send-message', async (req, res) => {
     res.json({ success: true, message_id: data.id });
   } catch (err) {
     console.error('[api] ops-send-message error:', err);
+    res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
+  }
+});
+
+/**
+ * POST /api/notify-seller
+ * Triggered from the ops dashboard's Seller tab. Re-uses the existing
+ * `notify_seller` tool handler so the WhatsApp intro copy + audit-event
+ * are identical to the bot-driven path.
+ *
+ * Body: { deal_id, ops_user_id? }
+ * Returns: { success, message } or { success: false, error }
+ */
+app.post('/api/notify-seller', async (req, res) => {
+  const { deal_id, ops_user_id } = req.body as {
+    deal_id?: string;
+    ops_user_id?: string;
+  };
+
+  if (!deal_id) {
+    res.status(400).json({ error: 'deal_id is required' });
+    return;
+  }
+
+  try {
+    const { handle_notify_seller } = await import('./agent/tool-handlers.js');
+    const result = await handle_notify_seller({ deal_id });
+
+    if (!result.success) {
+      res.status(400).json({ success: false, error: result.error ?? 'notify_seller failed' });
+      return;
+    }
+
+    // Mark this as ops-initiated in the audit trail.
+    try {
+      const { getSupabaseClient } = await import('./services/supabase.js');
+      const sb = getSupabaseClient();
+      await sb.from('audit_events').insert({
+        deal_id,
+        event_type: 'ops_seller_notify_triggered',
+        actor_type: 'ops',
+        actor: ops_user_id ?? 'unknown',
+        details: { source: 'web-dashboard' },
+      });
+    } catch (auditErr) {
+      console.warn('[api] notify-seller audit insert failed:', auditErr);
+    }
+
+    res.json({ success: true, message: result.message });
+  } catch (err) {
+    console.error('[api] notify-seller error:', err);
     res.status(500).json({ error: err instanceof Error ? err.message : String(err) });
   }
 });

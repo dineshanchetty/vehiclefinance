@@ -11,7 +11,7 @@
  */
 
 import { Request, Response } from 'express';
-import { sendTextMessage } from '../services/dialog360.js';
+import { sendTextMessage, sendTypingIndicator } from '../services/dialog360.js';
 import { agent } from '../agent/agent.js';
 
 // ── Logging ──────────────────────────────────────────────────────────────────
@@ -33,7 +33,7 @@ interface D360MessageEntry {
     from: string;
     id: string;
     timestamp: string;
-    type: 'text' | 'image' | 'document' | 'video' | 'audio' | 'location' | 'interactive';
+    type: 'text' | 'image' | 'document' | 'video' | 'audio' | 'location' | 'interactive' | 'button';
     text?: { body: string };
     image?: { id: string; mime_type: string; sha256: string; caption?: string };
     document?: {
@@ -49,6 +49,9 @@ interface D360MessageEntry {
       button_reply?: { id: string; title: string };
       list_reply?: { id: string; title: string; description?: string };
     };
+    // Tapped quick-reply button on a TEMPLATE message — distinct shape from
+    // `interactive.button_reply`. Meta sends payload (button id) + text (label).
+    button?: { payload?: string; text: string };
   }>;
   statuses?: Array<{
     id: string;
@@ -132,6 +135,12 @@ export async function handleDialog360Webhook(req: Request, res: Response): Promi
               messageText = msg.interactive.list_reply.title;
             }
             break;
+          case 'button':
+            // Tapped quick-reply button on a TEMPLATE message (e.g. "START"
+            // on the seller_intro_v1 template). Use payload if present (button
+            // id), else fall back to the visible text label.
+            messageText = msg.button?.payload ?? msg.button?.text ?? '';
+            break;
           default:
             log('info', 'unsupported message type', { phone, type: msg.type });
             continue;
@@ -144,6 +153,21 @@ export async function handleDialog360Webhook(req: Request, res: Response): Promi
             log('error', 'throttle reply failed', { phone, e }),
           );
           continue;
+        }
+
+        // Mark inbound as read AND show "typing…" indicator. WhatsApp keeps
+        // it on for up to 25s or until our first outbound message — covers
+        // most agent latency. Fire-and-forget.
+        sendTypingIndicator(msg.id);
+
+        // Acknowledge media uploads immediately. Extraction can take 10-15s
+        // (Claude Vision) so without this the user sees silence. Fire-and-
+        // forget — the agent loop runs after.
+        if (mediaId) {
+          sendTextMessage(
+            phone,
+            "📎 Got it — I'm processing your file now. This should take about 10–15 seconds…",
+          ).catch((e) => log('error', 'media ack failed', { phone, e }));
         }
 
         agent.processMessage(phone, messageText, mediaId).catch((err) => {

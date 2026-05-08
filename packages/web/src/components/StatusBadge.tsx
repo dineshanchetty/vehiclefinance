@@ -29,7 +29,7 @@ const colorMap: Record<string, string> = {
   // Deal statuses
   LEAD:                 'bg-slate-100 text-slate-700',
   DOCS_PENDING:         'bg-yellow-100 text-yellow-800',
-  DOCS_REVIEW:          'bg-blue-100 text-blue-800',
+  DOCS_REVIEW:          'bg-indigo-100 text-indigo-800',
   FNI_REVIEW:           'bg-indigo-100 text-indigo-800',
   QUOTE_PENDING:        'bg-purple-100 text-purple-800',
   QUOTE_SENT:           'bg-violet-100 text-violet-800',
@@ -46,32 +46,32 @@ const colorMap: Record<string, string> = {
 
   // Generic
   PENDING:              'bg-yellow-100 text-yellow-800',
-  IN_PROGRESS:          'bg-blue-100 text-blue-800',
+  IN_PROGRESS:          'bg-indigo-100 text-indigo-800',
   COMPLETED:            'bg-green-100 text-green-800',
   ESCALATED:            'bg-red-100 text-red-800',
   APPROVED:             'bg-green-100 text-green-800',
   REJECTED:             'bg-red-100 text-red-800',
-  UPLOADED:             'bg-blue-100 text-blue-800',
+  UPLOADED:             'bg-indigo-100 text-indigo-800',
   UNDER_REVIEW:         'bg-indigo-100 text-indigo-800',
   EXPIRED:              'bg-gray-200 text-gray-600',
   RE_UPLOAD_REQUESTED:  'bg-orange-100 text-orange-800',
 
   // Contract / Quote
   DRAFT:                'bg-slate-100 text-slate-700',
-  SENT:                 'bg-blue-100 text-blue-800',
+  SENT:                 'bg-indigo-100 text-indigo-800',
   VIEWED:               'bg-indigo-100 text-indigo-800',
   SIGNED:               'bg-green-100 text-green-800',
 
   // Inspection / NATIS
   SCHEDULED:            'bg-sky-100 text-sky-800',
   FAILED:               'bg-red-200 text-red-900',
-  SUBMITTED:            'bg-blue-100 text-blue-800',
+  SUBMITTED:            'bg-indigo-100 text-indigo-800',
   PROCESSING:           'bg-indigo-100 text-indigo-800',
   COMPLETE:             'bg-green-100 text-green-800',
 
   // Priority
   LOW:                  'bg-slate-100 text-slate-600',
-  MEDIUM:               'bg-blue-100 text-blue-700',
+  MEDIUM:               'bg-indigo-100 text-indigo-700',
   HIGH:                 'bg-orange-100 text-orange-800',
   URGENT:               'bg-red-100 text-red-800',
   CRITICAL:             'bg-red-200 text-red-900 font-semibold',

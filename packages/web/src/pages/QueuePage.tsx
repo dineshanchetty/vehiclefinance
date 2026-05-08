@@ -1,13 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { format } from 'date-fns'
-import { User, ArrowUpCircle, CheckCircle2, ExternalLink, RefreshCw, AlertCircle } from 'lucide-react'
-import { StatusBadge } from '../components/StatusBadge'
-import { SLAIndicator } from '../components/SLAIndicator'
-import { listTasks, claimTask, completeTask, escalateTask } from '../lib/queries'
+import { useParams } from 'react-router-dom'
+import { RefreshCw, AlertCircle } from 'lucide-react'
+import { TaskWorkflowCard } from '../components/TaskWorkflowCard'
+import { listTasks } from '../lib/queries'
 import { useRealtimeTable } from '../lib/realtime'
 import { supabase } from '../lib/supabase'
-import { useProfile } from '../lib/auth'
 import type { Task, TaskWithDeal, TaskPriority } from '../types/database'
 
 // Queue names used by the bot + web portal. Not an enum in the DB — queue is
@@ -43,19 +40,12 @@ const PRIORITY_ORDER: Record<TaskPriority, number> = {
   URGENT: 0, HIGH: 1, NORMAL: 2, LOW: 3,
 }
 
-const priorityColor: Record<string, string> = {
-  LOW: 'bg-slate-100 text-slate-600', NORMAL: 'bg-blue-100 text-blue-700',
-  HIGH: 'bg-orange-100 text-orange-800', URGENT: 'bg-red-100 text-red-800',
-}
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function QueuePage() {
   const { queueName } = useParams<{ queueName: string }>()
-  const navigate = useNavigate()
   const queue = queueName ?? 'Q_BUYER_DOC_REVIEW'
   const meta = QUEUE_META[queue] ?? { label: queue.replace(/^Q_/, '').replace(/_/g, ' '), description: '' }
-  const profile = useProfile()
 
   const [tasks, setTasks] = useState<TaskWithDeal[]>([])
   const [loading, setLoading] = useState(true)
@@ -98,36 +88,10 @@ export function QueuePage() {
     },
   )
 
-  const handleClaim = async (id: string) => {
-    try {
-      // Real user UUID is required — the tasks.assigned_to column is uuid.
-      let agentId = profile?.id ?? null
-      if (!agentId) {
-        const { data } = await supabase.auth.getUser()
-        agentId = data.user?.id ?? null
-      }
-      if (!agentId) {
-        alert('No authenticated user — cannot claim task')
-        return
-      }
-      const updated = await claimTask(id, agentId)
-      setTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...updated } : t))
-    } catch { alert('Failed to claim task') }
-  }
-
-  const handleComplete = async (id: string) => {
-    try {
-      await completeTask(id)
-      setTasks((prev) => prev.filter((t) => t.id !== id))
-    } catch { alert('Failed to complete task') }
-  }
-
-  const handleEscalate = async (id: string) => {
-    try {
-      const updated = await escalateTask(id)
-      setTasks((prev) => prev.map((t) => t.id === id ? { ...t, ...updated } : t))
-    } catch { alert('Failed to escalate task') }
-  }
+  // Per-task actions live inside <TaskWorkflowCard /> via the workflow
+  // registry — claim/complete/escalate handlers were retired here. supabase
+  // is still imported for the realtime hook above.
+  void supabase
 
   const filtered = tasks
     .filter((t) => !statusFilter || t.status === statusFilter)
@@ -181,7 +145,7 @@ export function QueuePage() {
               {counts.escalated} escalated
             </span>
           )}
-          <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-600">
+          <span className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-medium text-indigo-600">
             Live
           </span>
         </div>
@@ -191,7 +155,7 @@ export function QueuePage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none"
           >
             <option value="">All Statuses</option>
             <option value="PENDING">Pending</option>
@@ -201,7 +165,7 @@ export function QueuePage() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-blue-500 focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none"
           >
             <option value="">All Priorities</option>
             <option value="CRITICAL">Critical</option>
@@ -222,126 +186,22 @@ export function QueuePage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="flex-1 overflow-auto p-6">
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <table className="w-full min-w-[800px] text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Deal #</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Task</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Priority</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Status</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Created</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">SLA</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Assigned To</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {loading && (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-sm text-gray-400">
-                    <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-300" />
-                    Loading…
-                  </td>
-                </tr>
-              )}
-              {!loading && !error && filtered.length === 0 && (
-                <tr>
-                  <td colSpan={8} className="py-12 text-center text-sm text-gray-400">
-                    No tasks in this queue.
-                  </td>
-                </tr>
-              )}
-              {!loading && filtered.map((task) => (
-                <tr
-                  key={task.id}
-                  className={`hover:bg-gray-50/50 transition-colors ${
-                    task.status === 'ESCALATED' ? 'bg-red-50/30' : ''
-                  }`}
-                >
-                  <td className="px-4 py-3.5">
-                    <button
-                      onClick={() => navigate(`/deals/${task.deal_id}`)}
-                      className="flex items-center gap-1 font-semibold text-blue-700 hover:text-blue-900"
-                    >
-                      {task.deal?.deal_number ?? task.deal_id}
-                      <ExternalLink className="h-3 w-3 opacity-60" />
-                    </button>
-                    {task.deal?.buyer && (
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {task.deal.buyer.full_name ?? '—'}
-                      </p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <p className="font-medium text-gray-900">{task.task_type}</p>
-                    {task.status === 'ESCALATED' && task.notes && (
-                      <p className="mt-0.5 text-xs text-red-600">{task.notes}</p>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${priorityColor[task.priority]}`}>
-                      {task.priority}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge status={task.status} variant="sm" />
-                  </td>
-                  <td className="px-4 py-3.5 text-xs text-gray-500">
-                    {format(new Date(task.created_at), 'dd MMM HH:mm')}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <SLAIndicator dueAt={task.due_at ?? null} />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {task.assigned_to
-                      ? <span className="flex items-center gap-1 text-xs text-gray-700">
-                          <User className="h-3.5 w-3.5 text-gray-400" />
-                          {task.assigned_to}
-                        </span>
-                      : <span className="text-xs text-gray-400">Unassigned</span>}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1">
-                      {task.status === 'PENDING' && (
-                        <button
-                          onClick={() => handleClaim(task.id)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-blue-700 hover:bg-blue-50"
-                        >
-                          <User className="h-3.5 w-3.5" /> Claim
-                        </button>
-                      )}
-                      {task.status === 'IN_PROGRESS' && (
-                        <button
-                          onClick={() => handleComplete(task.id)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-green-700 hover:bg-green-50"
-                        >
-                          <CheckCircle2 className="h-3.5 w-3.5" /> Complete
-                        </button>
-                      )}
-                      {task.status !== 'ESCALATED' && (
-                        <button
-                          onClick={() => handleEscalate(task.id)}
-                          className="flex items-center gap-1 rounded px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                        >
-                          <ArrowUpCircle className="h-3.5 w-3.5" /> Escalate
-                        </button>
-                      )}
-                      <button
-                        onClick={() => navigate(`/deals/${task.deal_id}`)}
-                        className="rounded px-2 py-1 text-xs font-medium text-gray-600 hover:bg-gray-100"
-                      >
-                        View Deal
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      {/* Workflow cards */}
+      <div className="flex-1 overflow-auto p-6 space-y-3">
+        {loading && (
+          <div className="rounded-xl border border-gray-200 bg-white p-12 text-center text-sm text-gray-400">
+            <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-300" />
+            Loading…
+          </div>
+        )}
+        {!loading && !error && filtered.length === 0 && (
+          <div className="rounded-xl border border-dashed border-gray-300 bg-white p-12 text-center text-sm text-gray-500">
+            No tasks in this queue.
+          </div>
+        )}
+        {!loading && filtered.map((task) => (
+          <TaskWorkflowCard key={task.id} task={task} onChanged={fetchTasks} />
+        ))}
       </div>
     </div>
   )

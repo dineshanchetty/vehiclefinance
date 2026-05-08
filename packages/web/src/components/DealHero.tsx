@@ -57,11 +57,11 @@ export function DealHero({ deal }: DealHeroProps) {
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-2xl font-bold text-gray-900">{completedCount}</span>
             <span className="text-sm text-gray-500">of {TOTAL}</span>
-            <span className="text-xs font-semibold text-blue-600">{pct}%</span>
+            <span className="text-xs font-semibold text-indigo-600">{pct}%</span>
           </div>
           <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
             <div
-              className="h-full rounded-full bg-blue-500 transition-all"
+              className="h-full rounded-full bg-indigo-500 transition-all"
               style={{ width: `${pct}%` }}
             />
           </div>
@@ -85,7 +85,7 @@ export function DealHero({ deal }: DealHeroProps) {
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <p className="text-base font-semibold text-gray-900">{phaseName}</p>
             {isInProgress && (
-              <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-blue-700">
+              <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-indigo-700">
                 In progress
               </span>
             )}

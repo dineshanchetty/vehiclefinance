@@ -2,9 +2,10 @@
   "name": "@vehiclefinance/web",
   "version": "0.0.1",
   "private": true,
+  "type": "module",
   "description": "React internal portal for loan officers and ops team",
   "scripts": {
-    "dev": "vite",
+    "dev": "NODE_OPTIONS=--max-http-header-size=32768 vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",

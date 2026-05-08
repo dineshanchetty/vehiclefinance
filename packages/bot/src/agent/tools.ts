@@ -269,7 +269,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
   {
     name: 'store_vehicle_photo',
     description:
-      'Record a vehicle photo with its angle classification. Downloads from Dialog360 and stores in Supabase Storage.',
+      'Record a vehicle photo, downloading from Dialog360 and storing in Supabase Storage. Pass angle="auto" (or omit) and the bot will classify the image with Claude Vision into one of the 9 mandatory angles. Returns the classified angle plus remaining missing angles so you can update the seller in one reply.',
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -277,6 +277,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
         angle: {
           type: 'string',
           enum: [
+            'auto',
             'front',
             'rear',
             'driver_side',
@@ -287,7 +288,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
             'boot',
             'odometer',
           ],
-          description: 'The angle/view of the photo',
+          description: 'Pass "auto" (default) to let Claude Vision classify. Only override when the seller explicitly told you which angle they\'re sending.',
         },
         media_id: {
           type: 'string',
@@ -298,7 +299,7 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
           description: 'The MIME type (e.g. image/jpeg)',
         },
       },
-      required: ['deal_id', 'angle', 'media_id'],
+      required: ['deal_id', 'media_id'],
     },
   },
   {

@@ -8,7 +8,7 @@ import {
   buildMessagesArray,
   pruneOldMessages,
 } from './memory.js';
-import { getDealBySellerPhone } from '../services/supabase.js';
+import { getDealBySellerPhone, getDealByBuyerPhone } from '../services/supabase.js';
 import { sendTextMessage } from '../services/dialog360.js';
 
 const MODEL = 'claude-sonnet-4-6';
@@ -31,6 +31,15 @@ export class VehicleFinanceAgent {
     const basePrompt =
       partyType === 'seller' ? SELLER_SYSTEM_PROMPT : BUYER_SYSTEM_PROMPT;
 
+    // Resolve deal_id so saved messages are correctly linked to the deal.
+    // Without this the dashboard's Conversation tab can't find them by deal.
+    const dealId = await this.resolveDealId(phone, partyType);
+
+    // Snapshot the deal state for the model so it doesn't re-ask for things
+    // already done. Without this snapshot the seller flow (in particular)
+    // loops POPIA every time because the system prompt has no ground truth.
+    const stateSnapshot = await this.buildStateSnapshot(dealId, partyType);
+
     // Inject the runtime phone so tools that send back to the user (send_buttons,
     // send_list, send_whatsapp_message, etc.) always use the right number.
     // Without this the model invents phones from user-typed text and Dialog360
@@ -42,7 +51,9 @@ export class VehicleFinanceAgent {
 - **The user you are talking to is on WhatsApp at phone: \`${phone}\` (E.164, no leading +).**
 - When you call **send_buttons**, **send_list**, or any **send_whatsapp_message** that targets *this same user*, you MUST pass \`phone="${phone}"\`.
 - Never pull a phone number out of the user's typed text and use it as the recipient. Numbers the user types (like a local "0821234567") are for your records, not for sending.
-- Only use a *different* phone number when explicitly addressing the seller (after notify_seller has been called and you know the seller's number from get_deal_info).
+- Only use a *different* phone number when explicitly addressing the other party.
+
+${stateSnapshot}
 `;
 
     // 2. Build the user message (append media context if present)
@@ -51,10 +62,10 @@ export class VehicleFinanceAgent {
       : message;
 
     // 3. Persist the incoming user message
-    await saveMessage(phone, 'user', userContent, { party_type: partyType });
+    await saveMessage(phone, 'user', userContent, { party_type: partyType, deal_id: dealId ?? undefined });
 
     // 4. Load conversation history (excluding the message we just saved — we'll add it manually)
-    const history = await loadConversationHistory(phone, 29);
+    const history = await loadConversationHistory(phone, 29, partyType);
     const messagesArray = buildMessagesArray(history.slice(0, -1), userContent);
 
     // 5. Run the agentic loop
@@ -63,7 +74,7 @@ export class VehicleFinanceAgent {
     // 6. Send the final reply to the customer via Dialog360
     if (agentReply) {
       await sendTextMessage(phone, agentReply);
-      await saveMessage(phone, 'assistant', agentReply, { party_type: partyType });
+      await saveMessage(phone, 'assistant', agentReply, { party_type: partyType, deal_id: dealId ?? undefined });
     }
 
     // 7. Prune conversation to keep context manageable
@@ -71,6 +82,75 @@ export class VehicleFinanceAgent {
       // Non-critical — log and continue
       console.warn(`[agent] Failed to prune messages for ${phone}`);
     });
+  }
+
+  /**
+   * Build a state snapshot block for the system prompt so the model has ground
+   * truth on what's already done — prevents loops like re-asking for POPIA
+   * after the seller already agreed.
+   */
+  private async buildStateSnapshot(
+    dealId: string | null,
+    partyType: 'buyer' | 'seller',
+  ): Promise<string> {
+    if (!dealId) return ''
+    try {
+      const { getDealById } = await import('../services/supabase.js')
+      const deal = await getDealById(dealId)
+      if (!deal) return ''
+      const d = deal as {
+        deal_number?: string
+        status?: string
+        current_phase?: string
+        completed_milestones?: string[]
+        buyers?: Array<{ full_name?: string; consent_status?: boolean }>
+        sellers?: Array<{ full_name?: string; consent_status?: boolean; bank_account_number?: string | null }>
+        vehicles?: Array<{ make?: string; model?: string; year?: number }>
+      }
+      const buyer = d.buyers?.[0]
+      const seller = d.sellers?.[0]
+      const vehicle = d.vehicles?.[0]
+      const lines: string[] = []
+      lines.push('## Deal state snapshot (truth — use this, don\'t re-ask things already true)')
+      lines.push('')
+      lines.push(`- **Deal #**: ${d.deal_number ?? dealId}`)
+      lines.push(`- **Status**: ${d.status ?? 'unknown'} · **Phase**: ${d.current_phase ?? 'unknown'}`)
+      lines.push(`- **Milestones done**: ${(d.completed_milestones ?? []).join(', ') || '(none)'}`)
+      if (vehicle) lines.push(`- **Vehicle**: ${[vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(' ')}`)
+      if (buyer)   lines.push(`- **Buyer**: ${buyer.full_name ?? 'unknown'} · POPIA consent: ${buyer.consent_status ? '✅ granted' : '❌ pending'}`)
+      if (seller)  lines.push(`- **Seller**: ${seller.full_name ?? 'unknown'} · POPIA consent: ${seller.consent_status ? '✅ granted' : '❌ pending'} · Banking: ${seller.bank_account_number ? 'on file' : 'missing'}`)
+      lines.push('')
+      if (partyType === 'seller') {
+        lines.push('### Seller-flow rules (enforce strictly)')
+        if (seller?.consent_status) {
+          lines.push('- **POPIA already granted — DO NOT ask for consent again.** Move directly to the next outstanding step.')
+        } else {
+          lines.push('- POPIA NOT yet granted. After the seller taps "I agree", call `update_seller_record` with `{ consent_status: true, consent_timestamp: <ISO now> }` BEFORE moving on.')
+        }
+      } else {
+        lines.push('### Buyer-flow rules (enforce strictly)')
+        if (buyer?.consent_status) {
+          lines.push('- POPIA already granted — DO NOT re-ask. Move to the next outstanding milestone.')
+        }
+      }
+      return lines.join('\n')
+    } catch (err) {
+      console.warn('[agent] buildStateSnapshot failed:', err)
+      return ''
+    }
+  }
+
+  private async resolveDealId(phone: string, partyType: 'buyer' | 'seller'): Promise<string | null> {
+    try {
+      if (partyType === 'seller') {
+        const d = await getDealBySellerPhone(phone);
+        return d?.id ?? null;
+      }
+      const d = await getDealByBuyerPhone(phone);
+      return d?.id ?? null;
+    } catch {
+      return null;
+    }
   }
 
   private async resolvePartyType(phone: string): Promise<'buyer' | 'seller'> {
@@ -223,7 +303,14 @@ export class VehicleFinanceAgent {
       }
       if (!content) return;
 
-      await saveMessage(convoPhone, 'assistant', content, { tool_use: { via_tool: toolName } });
+      // Best-effort dealId lookup so this row is queryable by deal.
+      const buyerDeal = await getDealByBuyerPhone(convoPhone).catch(() => null);
+      const sellerDeal = !buyerDeal ? await getDealBySellerPhone(convoPhone).catch(() => null) : null;
+      const dealId = buyerDeal?.id ?? sellerDeal?.id;
+      await saveMessage(convoPhone, 'assistant', content, {
+        tool_use: { via_tool: toolName },
+        deal_id: dealId,
+      });
     } catch (e) {
       console.warn('[agent] persistOutboundIfNeeded failed:', String(e));
     }

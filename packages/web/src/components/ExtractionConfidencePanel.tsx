@@ -12,7 +12,7 @@ interface Props {
 // Map the DB `verification_status` enum onto the UI labels.
 const statusConfig: Record<VerificationStatus, { label: string; cls: string }> = {
   VERIFIED:   { label: 'Accepted',   cls: 'bg-green-100 text-green-800' },
-  OVERRIDDEN: { label: 'Overridden', cls: 'bg-blue-100 text-blue-800' },
+  OVERRIDDEN: { label: 'Overridden', cls: 'bg-indigo-100 text-indigo-800' },
   PENDING:    { label: 'Pending',    cls: 'bg-gray-100 text-gray-700' },
   MISMATCH:   { label: 'Flagged',    cls: 'bg-red-100 text-red-700' },
 }
@@ -108,8 +108,8 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <span className="text-amber-700">{lowConfidence} low confidence</span>
         </div>
-        <div className="flex items-center gap-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 text-sm">
-          <span className="text-blue-700">{pending} pending review</span>
+        <div className="flex items-center gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm">
+          <span className="text-indigo-700">{pending} pending review</span>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
                   </td>
                   <td className="px-4 py-3 text-gray-700 font-mono text-xs">
                     {row.verification_status === 'OVERRIDDEN'
-                      ? <span className="text-blue-700">{row.customer_confirmed_value}</span>
+                      ? <span className="text-indigo-700">{row.customer_confirmed_value}</span>
                       : row.extracted_value ?? <span className="italic text-gray-400">not extracted</span>}
                   </td>
                   <td className="px-4 py-3"><ConfidenceBar value={conf} /></td>
@@ -168,7 +168,7 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
                           setOverrideValue(row.customer_confirmed_value ?? row.extracted_value ?? '')
                         }}
                         title="Override"
-                        className="rounded p-1 text-blue-600 hover:bg-blue-50"
+                        className="rounded p-1 text-indigo-600 hover:bg-indigo-50"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
@@ -208,12 +208,12 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
               value={overrideValue}
               onChange={(e) => setOverrideValue(e.target.value)}
               placeholder="Enter correct value…"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setOverrideModal(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button onClick={saveOverride} className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
+              <button onClick={saveOverride} className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700">
                 <Save className="h-4 w-4" /> Save Override
               </button>
             </div>
@@ -236,7 +236,7 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
               onChange={(e) => setFlagReason(e.target.value)}
               placeholder="Reason for flagging…"
               rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">

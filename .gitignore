@@ -55,3 +55,9 @@ coverage/
 # Vercel
 .vercel/
 deno.lock
+
+# Supabase CLI cache (anywhere in the tree)
+**/supabase/.temp/
+
+# Per-environment Vite env files (values live in SWA / Supabase secrets)
+.env.production

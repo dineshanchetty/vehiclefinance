@@ -77,7 +77,7 @@ export function LoginPage() {
             <button
               type="button"
               onClick={() => { setState('idle'); setEmail('') }}
-              className="mt-4 text-sm font-medium text-blue-600 hover:text-blue-800"
+              className="mt-4 text-sm font-medium text-indigo-600 hover:text-indigo-800"
             >
               Use a different email
             </button>
@@ -100,7 +100,7 @@ export function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@vehiclefinance.co.za"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
               />
             </div>
 
@@ -113,7 +113,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={state === 'sending' || !email.trim()}
-              className="w-full rounded-lg bg-blue-700 py-2.5 text-sm font-semibold text-white hover:bg-blue-800 disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg bg-indigo-700 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800 disabled:opacity-50 transition-colors"
             >
               {state === 'sending' ? 'Sending…' : 'Send magic link'}
             </button>

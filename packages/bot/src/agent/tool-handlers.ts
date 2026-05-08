@@ -232,6 +232,10 @@ const ALLOWED_BUYER_COLUMNS = new Set([
 const ALLOWED_SELLER_COLUMNS = new Set([
   'full_name', 'id_number', 'date_of_birth', 'email',
   'physical_address', 'suburb', 'city', 'postal_code',
+  // POPIA: bot writes these once the seller taps "I agree".
+  'consent_status', 'consent_timestamp',
+  // Banking for payout — captured during seller onboarding.
+  'bank_name', 'bank_account_number',
 ]);
 
 async function upsertPartyRecord(
@@ -671,16 +675,31 @@ export async function handle_confirm_seller_data(input: ToolInput): Promise<Tool
 }
 
 export async function handle_store_vehicle_photo(input: ToolInput): Promise<ToolResult> {
-  const { deal_id, angle, media_id, mime_type } = input as {
+  const { deal_id, angle: angleHint, media_id, mime_type } = input as {
     deal_id: string;
-    angle: string;
+    angle?: string;            // now optional — agent can pass 'auto'
     media_id: string;
     mime_type?: string;
   };
 
-  const ext = mime_type?.split('/')[1] ?? 'jpg';
-  const storagePath = `vehicle-photos/${deal_id}/${angle}_${Date.now()}.${ext}`;
+  // Auto-classify if no explicit angle was supplied OR the hint is 'auto'.
+  let angle = angleHint && angleHint !== 'auto' ? angleHint : null;
 
+  // Pull the bytes once. If we need to classify, reuse them; otherwise just
+  // store directly.
+  const { downloadMedia } = await import('../services/dialog360.js');
+  const { buffer, mimeType: actualMime } = await downloadMedia(media_id);
+  const effectiveMime = mime_type ?? actualMime ?? 'image/jpeg';
+
+  if (!angle) {
+    angle = await classifyVehiclePhotoAngle(buffer, effectiveMime);
+  }
+
+  // Store the bytes via the storage helper. We re-download via
+  // downloadAndStoreMedia for the side-effect of writing to Supabase Storage
+  // (it has the proper public-URL plumbing). Cheap second call.
+  const ext = effectiveMime.split('/')[1] ?? 'jpg';
+  const storagePath = `vehicle-photos/${deal_id}/${angle}_${Date.now()}.${ext}`;
   const { publicUrl } = await downloadAndStoreMedia(media_id, storagePath);
 
   const photo = await dbStoreVehiclePhoto({
@@ -689,7 +708,77 @@ export async function handle_store_vehicle_photo(input: ToolInput): Promise<Tool
     storage_path: publicUrl,
   });
 
-  return { success: true, photo_id: photo.id, angle, storage_path: publicUrl };
+  // Compute remaining angles so the agent can give a clean progress update
+  // back to the seller in one go.
+  const all = await getVehiclePhotos(deal_id);
+  const receivedAngles = all.map((p: { angle: string }) => p.angle);
+  const missingAngles = MANDATORY_ANGLES.filter((a) => !receivedAngles.includes(a));
+
+  return {
+    success: true,
+    photo_id: photo.id,
+    classified_angle: angle,
+    auto_classified: !angleHint || angleHint === 'auto',
+    replaced: (photo as { replaced?: boolean }).replaced === true,
+    storage_path: publicUrl,
+    received: receivedAngles.length,
+    total_required: MANDATORY_ANGLES.length,
+    missing_angles: missingAngles,
+    complete: missingAngles.length === 0,
+  };
+}
+
+/**
+ * Use Claude Vision to classify a vehicle photo into one of the 9 mandatory
+ * angles. Returns the best match. If Claude is unsure, returns 'other' which
+ * the agent can present back to the user for confirmation.
+ */
+async function classifyVehiclePhotoAngle(buffer: Buffer, mime: string): Promise<string> {
+  const Anthropic = (await import('@anthropic-ai/sdk')).default;
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const base64 = buffer.toString('base64');
+
+  const prompt =
+    `You are classifying a single photo of a SOUTH AFRICAN car (right-hand drive). Return ONE of these ids and nothing else:\n\n` +
+    `**Exterior (whole-car shots — at least one whole side of the car visible):**\n` +
+    `- front:           Headlights + grille + bumper visible. Camera in front of the car.\n` +
+    `- rear:            Taillights + number plate visible from behind. Camera behind the car. (NOT interior_rear.)\n` +
+    `- driver_side:     RIGHT side profile of the car (driver door visible, RHD market).\n` +
+    `- passenger_side:  LEFT side profile of the car (passenger door visible, RHD market).\n\n` +
+    `**Interior (camera INSIDE the cabin):**\n` +
+    `- interior_front:  Front seats + door card or steering wheel from the seat side. Steering wheel visible but NOT the dashboard cluster as the main subject.\n` +
+    `- interior_rear:   Rear bench / back seats / rear door cards from inside.\n` +
+    `- odometer:        Close-up of the **instrument cluster** — speedometer, tachometer, kilometre / mileage reading is the primary subject. Typically dominated by round dials and a digital number.\n\n` +
+    `**Compartments (something is OPEN):**\n` +
+    `- engine_bay:      Bonnet/hood open, engine visible.\n` +
+    `- boot:            Boot/trunk open, cargo area visible. (Not "boot from outside while closed" — that's "rear".)\n\n` +
+    `### Tie-breakers\n` +
+    `- If steering wheel is visible AND the speedo/tacho fills most of the frame → **odometer**.\n` +
+    `- If steering wheel is visible AND you also see the door / windscreen / centre console → **interior_front**.\n` +
+    `- If the photo shows the back of the car from outside (number plate, taillights, closed boot) → **rear**, NEVER interior_rear or boot.\n` +
+    `- If the car is at an angle (front-3/4, rear-3/4) pick the dominant side: more headlights/grille → front; more taillights → rear; more side panels → driver_side / passenger_side.\n\n` +
+    `Output EXACTLY ONE of: front, rear, driver_side, passenger_side, interior_front, interior_rear, engine_bay, boot, odometer\n` +
+    `If genuinely ambiguous and none is clearly dominant, output: other`;
+
+  try {
+    const resp = await anthropic.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 32,
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'image' as const, source: { type: 'base64' as const, media_type: mime as 'image/jpeg', data: base64 } },
+          { type: 'text' as const, text: prompt },
+        ],
+      }],
+    });
+    const text = (resp.content.find((b) => b.type === 'text') as { text?: string } | undefined)?.text?.trim().toLowerCase() ?? '';
+    const match = MANDATORY_ANGLES.find((a) => text.startsWith(a) || text === a);
+    return match ?? 'other';
+  } catch (err) {
+    console.warn('[classifyVehiclePhotoAngle] vision call failed:', err);
+    return 'other';
+  }
 }
 
 export async function handle_get_photo_progress(input: ToolInput): Promise<ToolResult> {
@@ -945,23 +1034,71 @@ export async function handle_notify_seller(input: ToolInput): Promise<ToolResult
     };
   }
 
-  const buyerName =
-    (deal as { buyer_full_name?: string }).buyer_full_name ?? 'a buyer';
+  // getDealById returns nested relations as ARRAYS:
+  //   { buyers: [...], sellers: [...], vehicles: [...] }
+  // (Supabase always returns arrays for one-to-many even with a single row.)
+  // Previous code read flat properties (deal.buyer_full_name etc) which don't
+  // exist — that sent the template with literal "a buyer" / "your vehicle".
+  type DealRel = {
+    buyers?: Array<{ full_name?: string | null }> | null
+    vehicles?: Array<{ year?: number | string | null; make?: string | null; model?: string | null }> | null
+    phase_state?: { agreed_price?: number } | null
+    agreed_price?: number
+  }
+  const d = deal as DealRel
+  const buyer0   = d.buyers?.[0]
+  const vehicle0 = d.vehicles?.[0]
+  const buyerName = buyer0?.full_name ?? 'a buyer'
+  const sellerFirstName = sellerRow.full_name?.split(' ')[0] ?? 'there'
+  const vehicleSummary =
+    [vehicle0?.year, vehicle0?.make, vehicle0?.model]
+      .filter(Boolean).join(' ').trim() || 'your vehicle'
+  const agreedPrice = d.phase_state?.agreed_price ?? d.agreed_price;
+  const priceStr = agreedPrice != null
+    ? `R ${Number(agreedPrice).toLocaleString('en-ZA', { maximumFractionDigits: 0 })}`
+    : 'the agreed amount';
 
-  const intro =
-    `Hi${sellerRow.full_name ? ` ${sellerRow.full_name.split(' ')[0]}` : ''}! 👋 ` +
-    `${buyerName} has applied to buy your vehicle through WesBank private deal. ` +
-    `I'm here to help you complete your part — it's all done over WhatsApp and ` +
-    `should take 10–15 minutes. Reply *START* whenever you're ready.`;
+  // Outside the 24h customer-care window, Meta requires a pre-approved
+  // Message Template to start the conversation. We use the seller_intro_v1
+  // template (see ops docs for the approval text). If MINDEE_WHATSAPP_TEMPLATE_NAME
+  // is unset (dev / pre-approval), fall back to a plain text message — this
+  // ONLY works if the seller has messaged us in the last 24h.
+  const templateName = process.env.WHATSAPP_TEMPLATE_SELLER_INTRO;
+  const templateLang = process.env.WHATSAPP_TEMPLATE_SELLER_INTRO_LANG ?? 'en';
 
-  await sendTextMessage(sellerRow.phone, intro);
+  if (templateName) {
+    const { sendTemplate } = await import('../services/dialog360.js');
+    await sendTemplate(sellerRow.phone, templateName, templateLang, [
+      sellerFirstName, // {{1}}
+      buyerName,       // {{2}}
+      vehicleSummary,  // {{3}}
+      priceStr,        // {{4}}
+    ]);
+  } else {
+    const intro =
+      `Hi ${sellerFirstName}! 👋 ` +
+      `${buyerName} has applied to buy ${vehicleSummary} for ${priceStr} through WesBank Private Deal. ` +
+      `I'm here to help you complete your side — done entirely over WhatsApp, ~10–15 minutes. ` +
+      `Reply *START* whenever you're ready.`;
+    await sendTextMessage(sellerRow.phone, intro);
+  }
+
   await dbLogAuditEvent({
     deal_id,
     event_type: 'seller_invited',
-    description: `Seller ${sellerRow.phone} invited via WhatsApp`,
-    metadata: {},
+    description: `Seller ${sellerRow.phone} invited via WhatsApp${templateName ? ` (template: ${templateName})` : ' (text fallback)'}`,
+    metadata: {
+      template_name: templateName ?? null,
+      seller_first_name: sellerFirstName,
+      buyer_name: buyerName,
+      vehicle_summary: vehicleSummary,
+      agreed_price: agreedPrice ?? null,
+    },
   });
-  return { success: true, message: `Seller ${sellerRow.phone} notified.` };
+  return {
+    success: true,
+    message: `Seller ${sellerRow.phone} notified${templateName ? ` via template '${templateName}'` : ' (text)'}.`,
+  };
 }
 
 export async function handle_send_sms(input: ToolInput): Promise<ToolResult> {

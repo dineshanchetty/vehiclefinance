@@ -56,11 +56,81 @@ export interface Button {
 }
 
 /**
+ * Mark an incoming message as read AND show the "typing…" indicator to the
+ * user. The indicator stays on for up to 25 seconds or until you send the
+ * next outbound message — perfect for covering agent latency.
+ *
+ * Cloud API endpoint: POST /messages with status=read + typing_indicator.
+ * Requires the wa_message_id of an INBOUND message (not one we sent).
+ *
+ * Fire-and-forget — never block the agent loop on this. Errors are logged
+ * but don't propagate.
+ *
+ * @param messageId  The `id` of the inbound message (msg.id from the webhook)
+ */
+export async function sendTypingIndicator(messageId: string): Promise<void> {
+  try {
+    await client().post('/messages', {
+      messaging_product: 'whatsapp',
+      status: 'read',
+      message_id: messageId,
+      typing_indicator: { type: 'text' },
+    });
+  } catch (err) {
+    log('error', 'sendTypingIndicator failed', { messageId, err });
+  }
+}
+
+/**
  * Send a plain text WhatsApp message.
  *
  * @param phone  - E.164 phone number without leading '+', e.g. "27821234567"
  * @param message - Message body (max 4096 chars)
  */
+/**
+ * Send a pre-approved WhatsApp Message Template.
+ *
+ * Required when initiating a conversation with a user who has not messaged
+ * us in the last 24 hours (e.g. cold-contacting a seller). Meta requires the
+ * template to be reviewed + approved in WhatsApp Manager / Dialog360 before
+ * it can be sent.
+ *
+ * The template body uses positional variables ({{1}}, {{2}}, …) that are
+ * filled by the `bodyParams` array, in order.
+ *
+ * @example
+ *   sendTemplate("27834567890", "seller_intro_v1", "en", [
+ *     "Thabo", "Dineshan", "VW Golf 7 GTI", "R 285,000",
+ *   ])
+ */
+export async function sendTemplate(
+  phone: string,
+  templateName: string,
+  languageCode: string,
+  bodyParams: string[],
+): Promise<void> {
+  log('info', 'sendTemplate', { phone, templateName });
+  try {
+    await client().post('/messages', {
+      messaging_product: 'whatsapp',
+      recipient_type: 'individual',
+      to: phone,
+      type: 'template',
+      template: {
+        name: templateName,
+        language: { code: languageCode },
+        components: bodyParams.length > 0 ? [{
+          type: 'body',
+          parameters: bodyParams.map((text) => ({ type: 'text', text })),
+        }] : [],
+      },
+    });
+  } catch (err) {
+    log('error', 'sendTemplate failed', { phone, templateName, err });
+    throw err;
+  }
+}
+
 export async function sendTextMessage(phone: string, message: string): Promise<void> {
   log('info', 'sendTextMessage', { phone });
   try {
@@ -128,6 +198,71 @@ export async function sendInteractiveMessage(
   }
 }
 
+// ─── Lists (interactive menus, up to 10 rows across multiple sections) ──────
+
+export interface ListRow {
+  id: string;
+  title: string;       // ≤24 chars
+  description?: string; // ≤72 chars
+}
+export interface ListSection {
+  title?: string;      // ≤24 chars
+  rows: ListRow[];     // 1–10 rows total across all sections
+}
+
+/**
+ * Send an interactive list message — opens a tappable menu in WhatsApp.
+ * Use when there are more than 3 choices, or when a structured menu is clearer
+ * than free-text. Reply comes back as msg.interactive.list_reply.title (handled
+ * by webhook.ts).
+ */
+export async function sendListMessage(
+  phone: string,
+  body: string,
+  buttonText: string,           // label on the menu trigger button, ≤20 chars
+  sections: ListSection[],
+  header?: string,
+  footer?: string,
+): Promise<void> {
+  const totalRows = sections.reduce((n, s) => n + s.rows.length, 0);
+  if (totalRows > 10) throw new Error('WhatsApp list messages support max 10 rows total');
+  if (totalRows < 1)  throw new Error('WhatsApp list messages require at least 1 row');
+
+  log('info', 'sendListMessage', { phone, sections: sections.length, totalRows });
+
+  const payload: Record<string, unknown> = {
+    messaging_product: 'whatsapp',
+    recipient_type: 'individual',
+    to: phone,
+    type: 'interactive',
+    interactive: {
+      type: 'list',
+      body: { text: body },
+      action: {
+        button: buttonText,
+        sections: sections.map((s) => ({
+          ...(s.title ? { title: s.title } : {}),
+          rows: s.rows.map((r) => ({
+            id: r.id,
+            title: r.title,
+            ...(r.description ? { description: r.description } : {}),
+          })),
+        })),
+      },
+    },
+  };
+  const interactive = payload.interactive as Record<string, unknown>;
+  if (header) interactive.header = { type: 'text', text: header };
+  if (footer) interactive.footer = { text: footer };
+
+  try {
+    await client().post('/messages', payload);
+  } catch (err) {
+    log('error', 'sendListMessage failed', { phone, err });
+    throw err;
+  }
+}
+
 /**
  * Send an image message with an optional caption.
  *
@@ -189,9 +324,15 @@ export async function sendDocumentMessage(
 }
 
 /**
- * Download a media file by its Dialog360 media ID.
+ * Download a media file by its Dialog360 media ID (Cloud API v2).
  *
- * Flow: GET /media/{mediaId} → retrieve download URL → GET URL → Buffer + MIME type
+ * Flow:
+ *   1. GET /{mediaId}  with D360-API-KEY → JSON { url, mime_type, … }
+ *      The url is on lookaside.fbsbx.com (Meta's CDN) but is NOT directly
+ *      callable with the D360 key.
+ *   2. Replace the host with waba-v2.360dialog.io to route through 360dialog's
+ *      auth-injecting proxy, then GET that URL with D360-API-KEY → bytes.
+ *   3. URL is valid for 5 minutes; resolve + download in one go.
  *
  * @param mediaId - The `id` field from an inbound media message
  * @returns Raw file bytes as a Buffer and the MIME type
@@ -201,14 +342,21 @@ export async function downloadMedia(
 ): Promise<{ buffer: Buffer; mimeType: string }> {
   log('info', 'downloadMedia', { mediaId });
   try {
-    // Step 1: resolve the download URL
+    // Step 1: resolve the download URL (Cloud API v2: no /media prefix).
     const metaRes = await client().get<{ url: string; mime_type: string; file_size: number }>(
-      `/media/${mediaId}`,
+      `/${mediaId}`,
     );
-    const { url: downloadUrl, mime_type: mimeType } = metaRes.data;
+    const { url: lookasideUrl, mime_type: mimeType } = metaRes.data;
 
-    // Step 2: download the binary
-    const fileRes = await client().get<ArrayBuffer>(downloadUrl, {
+    // Step 2: rewrite the host to the 360dialog proxy so D360-API-KEY auth works.
+    const baseHost = process.env.DIALOG360_API_URL ?? 'https://waba-v2.360dialog.io';
+    const proxiedUrl = lookasideUrl.replace(
+      /^https:\/\/lookaside\.fbsbx\.com/,
+      baseHost.replace(/\/$/, ''),
+    );
+
+    // Step 3: download the binary via the proxy.
+    const fileRes = await client().get<ArrayBuffer>(proxiedUrl, {
       responseType: 'arraybuffer',
     });
 
