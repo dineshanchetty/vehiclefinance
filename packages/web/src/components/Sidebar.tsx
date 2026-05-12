@@ -8,9 +8,9 @@ import {
 import { useSession } from '../lib/auth'
 
 /**
- * Sidebar — grouped navigation with section headings, search, and a
- * profile footer. Uses a layered indigo dark palette with a left accent
- * stripe on the active item for clearer visual hierarchy than a flat list.
+ * Sidebar — quieter, denser nav. WesBank navy backdrop with a yellow
+ * left-stripe accent on the active item. Group headings are small and
+ * tracked; the Queues group is collapsible to keep the list short.
  */
 
 interface NavItem {
@@ -19,6 +19,7 @@ interface NavItem {
   icon: React.ReactNode
   badge?: string | number
   children?: NavItem[]
+  defaultCollapsed?: boolean
 }
 
 interface NavGroup {
@@ -49,7 +50,7 @@ const navGroups: NavGroup[] = [
   {
     heading: 'Operations',
     items: [
-      { label: 'Queues', icon: <ClipboardList className="h-4 w-4" />, children: queueItems },
+      { label: 'Queues', icon: <ClipboardList className="h-4 w-4" />, children: queueItems, defaultCollapsed: true },
     ],
   },
   {
@@ -60,40 +61,42 @@ const navGroups: NavGroup[] = [
   },
 ]
 
-// Layered indigo palette — solid base with a subtle gradient sheen.
+// WesBank navy backdrop — gradient from navy-darker to deeper navy.
 const SIDEBAR_STYLE: React.CSSProperties = {
-  background: 'linear-gradient(180deg, #1e1b4b 0%, #1a173f 100%)',
+  background: 'linear-gradient(180deg, #001A3D 0%, #00102B 100%)',
 }
 
 function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
   const location = useLocation()
   const [open, setOpen] = useState(() => {
     if (!item.children) return false
-    return item.children.some((c) => c.path && location.pathname.startsWith(c.path))
+    const anyActive = item.children.some((c) => c.path && location.pathname.startsWith(c.path))
+    if (anyActive) return true
+    return !item.defaultCollapsed
   })
 
   if (item.children) {
     const anyChildActive = item.children.some((c) => c.path && location.pathname.startsWith(c.path))
     return (
-      <div className="space-y-0.5">
+      <div>
         <button
           onClick={() => setOpen((v) => !v)}
-          className={`group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+          className={`group flex h-8 w-full items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors ${
             anyChildActive
-              ? 'text-white bg-white/[0.06]'
-              : 'text-indigo-100/80 hover:text-white hover:bg-white/[0.06]'
+              ? 'text-white bg-white/[0.06] font-semibold'
+              : 'text-white/70 hover:text-white hover:bg-white/[0.05]'
           }`}
         >
-          <span className={anyChildActive ? 'text-indigo-300' : 'text-indigo-300/60 group-hover:text-indigo-200'}>
+          <span className={anyChildActive ? 'text-wesbank-yellow' : 'text-white/50 group-hover:text-white/80'}>
             {item.icon}
           </span>
           <span className="flex-1 text-left">{item.label}</span>
-          <span className={`transition-transform ${open ? 'rotate-0' : '-rotate-90'} text-indigo-300/60`}>
+          <span className={`transition-transform ${open ? 'rotate-0' : '-rotate-90'} text-white/40`}>
             <ChevronDown className="h-3.5 w-3.5" />
           </span>
         </button>
         {open && (
-          <div className="ml-3.5 border-l border-white/10 pl-2 space-y-0.5">
+          <div className="ml-3.5 mt-0.5 border-l border-white/10 pl-2">
             {item.children.map((child) => (
               <NavItemLink key={child.path ?? child.label} item={child} depth={depth + 1} />
             ))}
@@ -108,23 +111,23 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
       to={item.path!}
       end={item.path === '/'}
       className={({ isActive }) =>
-        `group relative flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm transition-colors ` +
+        `group relative flex h-8 items-center gap-2.5 rounded-md px-2.5 text-sm transition-colors ` +
         (isActive
-          ? 'bg-white/10 text-white font-semibold'
-          : 'text-indigo-100/70 hover:text-white hover:bg-white/[0.06]')
+          ? 'bg-white/[0.08] text-white font-semibold'
+          : 'text-white/70 hover:text-white hover:bg-white/[0.05]')
       }
     >
       {({ isActive }) => (
         <>
           {isActive && (
-            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-indigo-300" aria-hidden />
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-wesbank-yellow" aria-hidden />
           )}
-          <span className={isActive ? 'text-indigo-200' : 'text-indigo-300/60 group-hover:text-indigo-200'}>
+          <span className={isActive ? 'text-wesbank-yellow' : 'text-white/50 group-hover:text-white/80'}>
             {item.icon}
           </span>
           <span className="flex-1">{item.label}</span>
           {item.badge != null && (
-            <span className="rounded-full bg-indigo-500/30 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-100">
+            <span className="rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-white">
               {item.badge}
             </span>
           )}
@@ -136,7 +139,7 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
 
 function GroupHeading({ children }: { children: React.ReactNode }) {
   return (
-    <p className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-indigo-300/60">
+    <p className="px-2.5 mb-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/40">
       {children}
     </p>
   )
@@ -146,8 +149,6 @@ export function Sidebar() {
   const [filter, setFilter] = useState('')
   const session = useSession()
 
-  // Filter nav items by the search box. We never hide a parent group entirely
-  // unless every item misses the filter.
   const matches = (label: string) => label.toLowerCase().includes(filter.toLowerCase())
   const filteredGroups = filter
     ? navGroups
@@ -173,38 +174,35 @@ export function Sidebar() {
 
   return (
     <aside
-      className="flex h-screen w-64 flex-shrink-0 flex-col text-indigo-100"
+      className="flex h-screen w-56 flex-shrink-0 flex-col text-white"
       style={SIDEBAR_STYLE}
     >
       {/* Brand */}
-      <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500 to-indigo-700 shadow-lg shadow-indigo-900/40">
-          <Sparkles className="h-4 w-4 text-white" />
+      <div className="flex items-center gap-2 px-3 pt-3 pb-2.5">
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-wesbank-navy-dark to-wesbank-navy ring-1 ring-white/10">
+          <Sparkles className="h-3.5 w-3.5 text-wesbank-yellow" />
         </div>
-        <div>
-          <p className="text-sm font-bold text-white leading-tight">VehicleFinance</p>
-          <p className="text-[10px] text-indigo-300/70 uppercase tracking-wider">Operations Portal</p>
-        </div>
+        <p className="text-xs font-bold text-white leading-tight tracking-tight">VehicleFinance</p>
       </div>
 
       {/* Search */}
-      <div className="px-3 pb-3">
+      <div className="px-3 pb-2">
         <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-indigo-300/60" />
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/40" />
           <input
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Search…"
-            className="w-full rounded-lg bg-white/5 border border-white/10 pl-7 pr-3 py-1.5 text-xs text-white placeholder-indigo-300/50 focus:border-indigo-400 focus:outline-none focus:ring-1 focus:ring-indigo-400 transition-colors"
+            className="w-full rounded-md bg-white/5 border border-white/10 pl-7 pr-2.5 py-1.5 text-xs text-white placeholder-white/40 focus:border-white/30 focus:outline-none focus:ring-0 transition-colors"
           />
         </div>
       </div>
 
       {/* Grouped nav */}
-      <nav className="flex-1 overflow-y-auto px-3 py-1 space-y-4">
+      <nav className="flex-1 overflow-y-auto px-3 py-1 space-y-3">
         {filteredGroups.length === 0 && (
-          <p className="px-2.5 text-xs italic text-indigo-300/50">No matches.</p>
+          <p className="px-2.5 text-xs italic text-white/40">No matches.</p>
         )}
         {filteredGroups.map((group) => (
           <div key={group.heading}>
@@ -219,21 +217,23 @@ export function Sidebar() {
       </nav>
 
       {/* Profile footer */}
-      <div className="border-t border-white/10 px-3 py-3">
-        <div className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-white/[0.06] transition-colors">
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-indigo-400 to-indigo-700 text-xs font-bold text-white">
+      <div className="border-t border-white/10 px-3 py-2.5">
+        <div
+          className="flex items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-white/[0.05] transition-colors"
+          title={`v1.0 · ${session.profile?.role ?? 'guest'}`}
+        >
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-wesbank-navy to-wesbank-navy-dark text-[10px] font-bold text-white ring-1 ring-white/10">
             {userInitials}
           </div>
           <div className="min-w-0 flex-1">
             <p className="truncate text-xs font-semibold text-white">
               {session.profile?.full_name ?? session.user?.email ?? 'Signed out'}
             </p>
-            <p className="truncate text-[10px] text-indigo-300/70 uppercase tracking-wide">
+            <p className="truncate text-[10px] text-white/50 uppercase tracking-wide">
               {session.profile?.role ?? 'Guest'}
             </p>
           </div>
         </div>
-        <p className="mt-2 px-2 text-[10px] text-indigo-300/40">v1.0 · ops portal</p>
       </div>
     </aside>
   )

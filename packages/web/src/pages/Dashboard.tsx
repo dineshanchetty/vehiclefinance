@@ -163,7 +163,7 @@ export function Dashboard() {
           <h2 className="text-base font-semibold text-gray-900">Recent Deal Activity</h2>
           <button
             onClick={() => navigate('/deals')}
-            className="text-sm font-medium text-indigo-600 hover:text-indigo-800"
+            className="text-sm font-medium text-wesbank-navy hover:text-wesbank-navy-dark"
           >
             View all
           </button>

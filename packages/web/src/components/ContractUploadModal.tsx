@@ -61,7 +61,7 @@ export function ContractUploadModal({ dealId, defaultType, onClose, onUploaded }
             <select
               value={contractType}
               onChange={(e) => setContractType(e.target.value as ContractType)}
-              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+              className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
             >
               {TYPE_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>{o.label}</option>
@@ -75,7 +75,7 @@ export function ContractUploadModal({ dealId, defaultType, onClose, onUploaded }
               type="file"
               accept="application/pdf"
               onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-              className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+              className="block w-full text-sm text-gray-600 file:mr-3 file:rounded-lg file:border-0 file:bg-wesbank-navy/5 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-wesbank-navy-dark hover:file:bg-wesbank-navy/10"
             />
             {file && (
               <p className="mt-1 text-xs text-gray-500">
@@ -103,7 +103,7 @@ export function ContractUploadModal({ dealId, defaultType, onClose, onUploaded }
             <button
               type="submit"
               disabled={busy || !file}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
             >
               <Upload className="h-3.5 w-3.5" />
               {busy ? 'Uploading…' : 'Upload'}

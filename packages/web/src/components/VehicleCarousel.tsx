@@ -282,7 +282,7 @@ export function VehicleCarousel({ photos }: { photos: VehiclePhoto[] }) {
                 count === 0
                   ? 'bg-gray-50 text-gray-300 cursor-not-allowed line-through'
                   : isActive
-                  ? 'bg-indigo-600 text-white'
+                  ? 'bg-wesbank-navy text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
@@ -306,13 +306,13 @@ export function VehicleCarousel({ photos }: { photos: VehiclePhoto[] }) {
                 type="button"
                 onClick={() => setActiveId(p.id)}
                 className={`relative aspect-square rounded-md overflow-hidden border-2 transition-all ${
-                  isActive ? 'border-indigo-500 shadow-md ring-2 ring-indigo-200' : 'border-gray-200 hover:border-indigo-300'
+                  isActive ? 'border-wesbank-navy shadow-md ring-2 ring-wesbank-navy/20' : 'border-gray-200 hover:border-wesbank-navy/30'
                 }`}
                 title={`${p.label}${p.upload_timestamp ? ` · ${new Date(p.upload_timestamp).toLocaleTimeString()}` : ''}`}
               >
                 <img src={p.url} alt={p.label} className="h-full w-full object-cover" />
                 <div className={`absolute inset-x-0 bottom-0 px-1 py-0.5 text-[8px] font-semibold leading-none truncate ${
-                  isActive ? 'bg-indigo-600 text-white' : 'bg-black/60 text-white'
+                  isActive ? 'bg-wesbank-navy text-white' : 'bg-black/60 text-white'
                 }`}>
                   {p.label}
                 </div>

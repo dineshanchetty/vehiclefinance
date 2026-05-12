@@ -71,7 +71,7 @@ export function DealStatusModal({
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
             placeholder="Filter…"
-            className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none"
+            className="w-full rounded-lg border border-gray-200 px-3 py-1.5 text-xs focus:border-wesbank-navy focus:outline-none"
           />
         </div>
 
@@ -100,12 +100,12 @@ export function DealStatusModal({
                         disabled={busy || isCurrent}
                         className={`group flex items-center gap-1 rounded-lg px-2 py-1 transition-colors ${
                           isCurrent
-                            ? 'ring-2 ring-indigo-500 ring-offset-1 cursor-default'
+                            ? 'ring-2 ring-wesbank-navy ring-offset-1 cursor-default'
                             : 'hover:bg-gray-50 cursor-pointer'
                         }`}
                       >
                         <StatusBadge status={s} variant="sm" />
-                        {isCurrent && <span className="text-[10px] text-indigo-600 font-medium">current</span>}
+                        {isCurrent && <span className="text-[10px] text-wesbank-navy font-medium">current</span>}
                       </button>
                     )
                   })}

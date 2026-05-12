@@ -45,14 +45,14 @@ const TONE_PILL: Record<Tone, string> = {
   green: 'bg-green-100 text-green-700',
   amber: 'bg-amber-100 text-amber-700',
   red:   'bg-red-100 text-red-700',
-  blue:  'bg-indigo-100 text-indigo-700',
+  blue:  'bg-wesbank-navy/10 text-wesbank-navy-dark',
   gray:  'bg-gray-100 text-gray-600',
 }
 const TONE_DOT: Record<Tone, string> = {
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red:   'bg-red-500',
-  blue:  'bg-indigo-500',
+  blue:  'bg-wesbank-navy',
   gray:  'bg-gray-300',
 }
 
@@ -93,60 +93,54 @@ function TabbedSection({ title, subtitle, icon, panes }: TabbedSectionProps) {
 
   return (
     <section className="rounded-xl border border-gray-200 bg-white">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 pt-3.5 pb-2.5">
-        <div className="flex items-center gap-2">
-          <span className="text-gray-500">{icon}</span>
-          <span className="text-sm font-semibold text-gray-800">{title}</span>
-          {subtitle && <span className="text-xs text-gray-400">· {subtitle}</span>}
+      {/* Combined header + tab bar — one row */}
+      <div className="flex items-center gap-3 px-3 pt-2 border-b border-gray-100 overflow-x-auto">
+        <div className="flex items-center gap-2 flex-shrink-0 pb-2">
+          <span className="text-wesbank-navy">{icon}</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-wesbank-navy">{title}</span>
+          {subtitle && <span className="text-xs text-gray-400 hidden md:inline">· {subtitle}</span>}
+        </div>
+        <div className="flex items-center gap-1 ml-auto">
+          {panes.map((p) => {
+            const isActive = p.id === activeId
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setActiveId(p.id)}
+                className={`subtab-btn flex items-center gap-1.5 h-9 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  isActive
+                    ? 'border-wesbank-navy text-gray-900'
+                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                }`}
+              >
+                <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-wesbank-navy' : 'text-gray-400'}`}>{p.icon}</span>
+                {p.label}
+                {p.status && (
+                  <span className={`inline-block h-1.5 w-1.5 rounded-full ${TONE_DOT[p.status.tone]}`} />
+                )}
+              </button>
+            )
+          })}
         </div>
       </div>
 
-      {/* Tab bar */}
-      <div className="flex items-center gap-1 px-2 border-b border-gray-100 overflow-x-auto">
-        {panes.map((p) => {
-          const isActive = p.id === activeId
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => setActiveId(p.id)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-                isActive
-                  ? 'border-indigo-600 text-gray-900'
-                  : 'border-transparent text-gray-500 hover:text-gray-800'
-              }`}
-            >
-              <span className={isActive ? 'text-indigo-600' : 'text-gray-400'}>{p.icon}</span>
-              {p.label}
-              {p.status && (
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${TONE_DOT[p.status.tone]}`} />
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Active pane */}
-      <div className="px-4 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-            <span className="text-gray-400">{active.icon}</span>
-            {active.label}
-          </div>
-          {active.status && (
+      {/* Active pane — no inner duplicate title, only the status pill + open link */}
+      <div className="px-4 py-3">
+        {active.status && (
+          <div className="flex justify-end mb-2">
             <span className={`text-[10px] uppercase tracking-wide font-semibold px-2 py-0.5 rounded-full ${TONE_PILL[active.status.tone]}`}>
               {active.status.label}
             </span>
-          )}
-        </div>
+          </div>
+        )}
         <div className="text-sm text-gray-700">{active.body}</div>
         <button
           type="button"
           onClick={active.onOpen}
-          className="mt-4 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800"
+          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-wesbank-navy hover:underline"
         >
-          Open full {active.label.toLowerCase()} tab <ArrowRight className="h-3 w-3" />
+          Open {active.label.toLowerCase()} <ArrowRight className="h-3 w-3" />
         </button>
       </div>
     </section>
@@ -259,7 +253,7 @@ export function DealOverviewDashboard({
         <>
           <Row label="Statements processed" value={`${bsCount} of 3`} />
           <Row label="Vehicle price"        value={fmtMoney(agreedPrice)} />
-          <Row label="Detail"               value={<span className="text-indigo-600">Open Affordability →</span>} />
+          <Row label="Detail"               value={<span className="text-wesbank-navy">Open Affordability →</span>} />
         </>
       ),
     },

@@ -39,10 +39,6 @@ function dealMatchesFilter(deal: DealWithRelations, f: QuickFilter): boolean {
   return true
 }
 
-// Deal statuses must match the `deal_status` enum in
-// packages/api/supabase/migrations/20260415000000_baseline_schema.sql.
-// A curated subset is exposed in the filter dropdown — not every enum value
-// is useful to filter on in the ops UI.
 const DEAL_STATUSES: DealStatus[] = [
   'APPLICATION_INITIATED',
   'BUYER_DOCS_PENDING',
@@ -133,7 +129,7 @@ export function DealList() {
     stuck: deals.filter(isStuck).length,
   }), [deals])
 
-  const phaseCount = PHASES.length // 15 phases
+  const phaseCount = PHASES.length
   const phaseProgress = (deal: DealWithRelations): { done: number; total: number } => {
     const milestones = (deal as { completed_milestones?: string[] | null }).completed_milestones ?? []
     const currentPhase = (deal as { current_phase?: string | null }).current_phase
@@ -153,117 +149,115 @@ export function DealList() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Page header */}
-      <div className="border-b border-gray-200 bg-white px-6 py-4">
+      {/* Page header: refresh + metrics + filter bar */}
+      <div className="border-b border-gray-200 bg-white px-6 pt-4 pb-3">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900">Deals</h1>
-            <p className="text-sm text-gray-500">{loading ? 'Loading…' : `${filtered.length} deals`}</p>
-          </div>
+          <p className="text-xs text-gray-500">{loading ? 'Loading…' : `${filtered.length} deals`}</p>
           <button
             onClick={fetchDeals}
             disabled={loading}
-            className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:border-wesbank-navy hover:text-wesbank-navy disabled:opacity-50 transition-colors"
           >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>
 
-        {/* Metric cards */}
-        <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {/* Compact metric cards — h-16, uniform shape, just icon + colour varies */}
+        <div className="mt-3 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
           <MetricCard
-            icon={<Briefcase className="h-4 w-4 text-indigo-600" />}
-            label="Total deals"
+            icon={<Briefcase className="h-4 w-4" />}
+            label="Total"
             value={metrics.total}
-            tone="blue"
+            tone="navy"
           />
           <MetricCard
-            icon={<Clock className="h-4 w-4 text-amber-600" />}
+            icon={<Clock className="h-4 w-4" />}
             label="In progress"
             value={metrics.inProgress}
             tone="amber"
           />
           <MetricCard
-            icon={<AlertCircle className="h-4 w-4 text-indigo-600" />}
+            icon={<AlertCircle className="h-4 w-4" />}
             label="Awaiting decision"
             value={metrics.awaiting}
-            tone="indigo"
+            tone="sky"
           />
           <MetricCard
-            icon={<AlertTriangle className="h-4 w-4 text-rose-600" />}
-            label={`Stuck (>${STUCK_THRESHOLD_HOURS}h)`}
+            icon={<AlertTriangle className="h-4 w-4" />}
+            label={`Stuck >${STUCK_THRESHOLD_HOURS}h`}
             value={metrics.stuck}
             tone="rose"
           />
         </div>
 
-        {/* Quick filter chips */}
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          {([
-            { id: 'all',                label: 'All' },
-            { id: 'in_progress',        label: 'In progress' },
-            { id: 'awaiting_decision',  label: 'Awaiting decision' },
-            { id: 'stuck',              label: `Stuck` },
-            { id: 'done',               label: 'Done' },
-          ] as { id: QuickFilter; label: string }[]).map(({ id, label }) => {
-            const active = quickFilter === id
-            return (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setQuickFilter(id)}
-                className={`px-3 py-1 text-xs font-medium rounded-full border transition-colors ${
-                  active
-                    ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                }`}
-              >
-                {label}
-              </button>
-            )
-          })}
-        </div>
+        {/* Unified filter bar: chips left, search + filters right */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {([
+              { id: 'all',                label: 'All' },
+              { id: 'in_progress',        label: 'In progress' },
+              { id: 'awaiting_decision',  label: 'Awaiting decision' },
+              { id: 'stuck',              label: 'Stuck' },
+              { id: 'done',               label: 'Done' },
+            ] as { id: QuickFilter; label: string }[]).map(({ id, label }) => {
+              const active = quickFilter === id
+              return (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setQuickFilter(id)}
+                  className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
+                    active
+                      ? 'bg-wesbank-navy text-white border-wesbank-navy'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-wesbank-navy hover:text-wesbank-navy'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+          </div>
 
-        {/* Filters */}
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search name, phone, deal #…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-56 rounded-md border border-gray-200 bg-white py-1.5 pl-8 pr-2.5 text-xs placeholder-gray-400 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
+              />
+            </div>
+
+            <div className="flex items-center gap-1">
+              <Filter className="h-3.5 w-3.5 text-gray-400" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value as DealStatus | '')}
+                className="rounded-md border border-gray-200 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-700 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
+              >
+                <option value="">All statuses</option>
+                {DEAL_STATUSES.map((s) => (
+                  <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
+                ))}
+              </select>
+            </div>
+
             <input
-              type="text"
-              placeholder="Search name, phone, deal number…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm placeholder-gray-400 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-md border border-gray-200 bg-white py-1.5 px-2 text-xs text-gray-700 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
+            />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-md border border-gray-200 bg-white py-1.5 px-2 text-xs text-gray-700 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
             />
           </div>
-
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as DealStatus | '')}
-              className="rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-8 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-            >
-              <option value="">All Statuses</option>
-              {DEAL_STATUSES.map((s) => (
-                <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>
-              ))}
-            </select>
-          </div>
-
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-          />
         </div>
       </div>
 
@@ -281,25 +275,23 @@ export function DealList() {
         </div>
       )}
 
-      {/* Table */}
+      {/* Table — 5 columns (Deal # · Parties · Vehicle/Progress · Status · Last activity) */}
       <div className="flex-1 overflow-auto p-6">
-        <div className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
-          <table className="w-full min-w-[900px] text-sm">
+        <div className="rounded-lg border border-gray-200 bg-white shadow-sm overflow-hidden">
+          <table className="w-full min-w-[860px] text-sm">
             <thead className="bg-gray-50">
               <tr>
                 {[
                   { key: 'deal_number' as SortKey, label: 'Deal #' },
-                  { key: null, label: 'Buyer' },
-                  { key: null, label: 'Seller' },
-                  { key: null, label: 'Vehicle' },
+                  { key: null, label: 'Parties' },
+                  { key: null, label: 'Vehicle · Progress' },
                   { key: 'status' as SortKey, label: 'Status' },
-                  { key: null, label: 'Progress' },
                   { key: 'updated_at' as SortKey, label: 'Last activity' },
                 ].map(({ key, label }) => (
                   <th
                     key={label}
                     onClick={() => key && toggleSort(key)}
-                    className={`border-b border-gray-200 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-gray-500 ${key ? 'cursor-pointer select-none hover:text-gray-800' : ''}`}
+                    className={`border-b border-gray-200 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500 ${key ? 'cursor-pointer select-none hover:text-wesbank-navy' : ''}`}
                   >
                     <div className="flex items-center gap-1">
                       {label}
@@ -309,10 +301,10 @@ export function DealList() {
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
+                  <td colSpan={5} className="py-12 text-center text-sm text-gray-400">
                     <RefreshCw className="mx-auto mb-2 h-5 w-5 animate-spin text-gray-300" />
                     Loading deals…
                   </td>
@@ -320,76 +312,75 @@ export function DealList() {
               )}
               {!loading && !error && filtered.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="py-12 text-center text-sm text-gray-400">
+                  <td colSpan={5} className="py-12 text-center text-sm text-gray-400">
                     No deals found
                   </td>
                 </tr>
               )}
-              {!loading && filtered.map((deal) => (
-                <tr
-                  key={deal.id}
-                  onClick={() => navigate(`/deals/${deal.id}`)}
-                  className="cursor-pointer hover:bg-indigo-50/50 transition-colors"
-                >
-                  <td className="px-4 py-3.5">
-                    <span className="font-semibold text-gray-900">{deal.deal_number ?? '—'}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {deal.buyer
-                      ? <div>
-                          <p className="font-medium text-gray-900">{deal.buyer.full_name ?? '—'}</p>
-                          <p className="text-xs text-gray-400">{deal.buyer.phone}</p>
+              {!loading && filtered.map((deal, idx) => {
+                const { done, total } = phaseProgress(deal)
+                const pct = total > 0 ? Math.round((done / total) * 100) : 0
+                return (
+                  <tr
+                    key={deal.id}
+                    onClick={() => navigate(`/deals/${deal.id}`)}
+                    className={`cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${
+                      idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'
+                    } hover:bg-wesbank-navy/[0.04]`}
+                  >
+                    <td className="px-4 py-3 align-top">
+                      <span className="font-semibold text-gray-900">{deal.deal_number ?? '—'}</span>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      <div className="space-y-0.5">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 w-10">Buy</span>
+                          <span className="text-sm text-gray-900 truncate">
+                            {deal.buyer?.full_name ?? <span className="text-gray-400">—</span>}
+                          </span>
                         </div>
-                      : <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3.5 text-gray-700">
-                    {deal.seller
-                      ? (deal.seller.full_name ?? '—')
-                      : <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {deal.vehicle
-                      ? <div>
-                          <p className="font-medium text-gray-900">
-                            {deal.vehicle.year ?? ''} {deal.vehicle.make ?? ''} {deal.vehicle.model ?? ''}
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            {deal.vehicle.registration_number}
-                            {deal.vehicle.odometer_reading ? ` · ${deal.vehicle.odometer_reading}` : ''}
-                          </p>
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 w-10">Sell</span>
+                          <span className="text-xs text-gray-600 truncate">
+                            {deal.seller?.full_name ?? <span className="text-gray-400">—</span>}
+                          </span>
                         </div>
-                      : <span className="text-gray-400">—</span>}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StatusBadge status={deal.status} />
-                    {isStuck(deal) && (
-                      <span className="ml-1.5 inline-flex items-center text-[10px] font-semibold uppercase tracking-wide text-rose-600" title={`No update in over ${STUCK_THRESHOLD_HOURS}h`}>
-                        <AlertTriangle className="h-3 w-3 mr-0.5" /> Stuck
-                      </span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3.5">
-                    {(() => {
-                      const { done, total } = phaseProgress(deal)
-                      const pct = total > 0 ? Math.round((done / total) * 100) : 0
-                      return (
-                        <div className="flex items-center gap-2 min-w-[120px]">
-                          <div className="flex-1 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${pct >= 100 ? 'bg-emerald-500' : 'bg-indigo-500'}`}
-                              style={{ width: `${Math.max(pct, 4)}%` }}
-                            />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 align-top">
+                      {deal.vehicle ? (
+                        <div className="min-w-[180px]">
+                          <p className="font-medium text-gray-900 text-sm truncate">
+                            {[deal.vehicle.year, deal.vehicle.make, deal.vehicle.model].filter(Boolean).join(' ') || '—'}
+                          </p>
+                          <div className="mt-1 flex items-center gap-2">
+                            <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${pct >= 100 ? 'bg-emerald-500' : 'bg-wesbank-navy'}`}
+                                style={{ width: `${Math.max(pct, 4)}%` }}
+                              />
+                            </div>
+                            <span className="text-[10px] tabular-nums text-gray-500 whitespace-nowrap">{done}/{total}</span>
                           </div>
-                          <span className="text-[11px] tabular-nums text-gray-500">{done}/{total}</span>
                         </div>
-                      )
-                    })()}
-                  </td>
-                  <td className="px-4 py-3.5 text-xs text-gray-500" title={format(new Date(deal.updated_at), 'dd MMM yyyy HH:mm')}>
-                    {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}
-                  </td>
-                </tr>
-              ))}
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-top whitespace-nowrap">
+                      <StatusBadge status={deal.status} />
+                      {isStuck(deal) && (
+                        <span className="ml-1.5 inline-flex items-center text-[10px] font-semibold uppercase tracking-wide text-rose-600" title={`No update in over ${STUCK_THRESHOLD_HOURS}h`}>
+                          <AlertTriangle className="h-3 w-3 mr-0.5" /> Stuck
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 align-top text-xs text-gray-500 whitespace-nowrap" title={format(new Date(deal.updated_at), 'dd MMM yyyy HH:mm')}>
+                      {formatDistanceToNow(new Date(deal.updated_at), { addSuffix: true })}
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         </div>
@@ -404,23 +395,25 @@ function MetricCard({
   icon: React.ReactNode
   label: string
   value: number
-  tone: 'blue' | 'amber' | 'indigo' | 'rose'
+  tone: 'navy' | 'amber' | 'sky' | 'rose'
 }) {
-  const toneAccent: Record<typeof tone, string> = {
-    blue:   'border-indigo-200 bg-gradient-to-br from-indigo-50 to-white',
-    amber:  'border-amber-200  bg-gradient-to-br from-amber-50  to-white',
-    indigo: 'border-sky-200    bg-gradient-to-br from-sky-50    to-white',
-    rose:   'border-rose-200   bg-gradient-to-br from-rose-50   to-white',
+  const iconColor: Record<typeof tone, string> = {
+    navy:  'text-wesbank-navy bg-wesbank-navy/10',
+    amber: 'text-amber-600 bg-amber-100',
+    sky:   'text-sky-600 bg-sky-100',
+    rose:  'text-rose-600 bg-rose-100',
   }
   return (
-    <div className={`rounded-xl border ${toneAccent[tone]} p-3`}>
-      <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-600">
-        {icon}{label}
+    <div className="flex h-16 items-center gap-3 rounded-lg border border-gray-200 bg-white px-3">
+      <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md ${iconColor[tone]}`}>
+        {icon}
       </div>
-      <p className="mt-1 text-2xl font-bold text-gray-900 tabular-nums">{value}</p>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500 truncate">{label}</p>
+        <p className="text-lg font-bold text-gray-900 tabular-nums leading-tight">{value}</p>
+      </div>
     </div>
   )
 }
 
 void CheckCircle2
-

@@ -108,9 +108,9 @@ export function PhaseTimeline({ currentPhase, completedMilestones, phaseState, o
                 <div
                   className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold ${
                     completed
-                      ? 'bg-green-500 text-white'
+                      ? 'bg-emerald-600 text-white'
                       : current
-                      ? 'bg-indigo-600 text-white animate-pulse'
+                      ? 'bg-wesbank-yellow text-wesbank-navy ring-2 ring-wesbank-navy animate-pulse'
                       : 'bg-gray-200 text-gray-400'
                   }`}
                 >
@@ -121,11 +121,11 @@ export function PhaseTimeline({ currentPhase, completedMilestones, phaseState, o
               {/* Right column */}
               <div className="flex-1 min-w-0 pt-0.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className={`text-sm ${current ? 'font-bold text-gray-900' : 'font-medium text-gray-800'} ${clickable ? 'group-hover:text-indigo-700' : ''}`}>
+                  <p className={`text-sm ${current ? 'font-bold text-gray-900' : 'font-medium text-gray-800'} ${clickable ? 'group-hover:text-wesbank-navy-dark' : ''}`}>
                     {phase.name}
                   </p>
                   {current && (
-                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-indigo-700">
+                    <span className="rounded-full bg-wesbank-navy/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-wesbank-navy-dark">
                       In progress
                     </span>
                   )}

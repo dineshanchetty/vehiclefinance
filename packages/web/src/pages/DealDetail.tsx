@@ -181,7 +181,7 @@ function BuyerTab({
                     </div>
                     <StatusBadge status={doc.status} variant="sm" />
                     {doc.file_url && (
-                      <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700">
+                      <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-wesbank-navy hover:text-wesbank-navy-dark">
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     )}
@@ -332,7 +332,7 @@ function SellerTab({
           <button
             onClick={handleNotify}
             disabled={notifying || !seller?.phone}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
             title={!seller?.phone ? 'Seller phone required' : 'Send WhatsApp intro to the seller'}
           >
             <Send className="h-3.5 w-3.5" />
@@ -374,7 +374,7 @@ function SellerTab({
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-700">Seller Profile</h3>
           {!editing && !isEmpty && (
-            <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800">
+            <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 text-xs text-wesbank-navy hover:text-wesbank-navy-dark">
               <Pencil className="h-3.5 w-3.5" /> Edit
             </button>
           )}
@@ -419,7 +419,7 @@ function SellerTab({
             )}
 
             <div className="flex items-center gap-2">
-              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50">
+              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50">
                 <Save className="h-4 w-4" /> {saving ? 'Saving…' : 'Save seller'}
               </button>
               {!isEmpty && (
@@ -471,7 +471,7 @@ function SellerTab({
               </div>
               <StatusBadge status={doc.status} variant="sm" />
               {doc.file_url && (
-                <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700">
+                <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-wesbank-navy hover:text-wesbank-navy-dark">
                   <ExternalLink className="h-4 w-4" />
                 </a>
               )}
@@ -543,7 +543,7 @@ function SellerField({
       <input
         type="text" value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled}
-        className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
+        className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-wesbank-navy focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
       />
       {hint && <span className="mt-1 block text-[10px] italic text-gray-400">{hint}</span>}
     </label>
@@ -586,13 +586,13 @@ function SellerDocRow({
         <>
           <StatusBadge status={doc.status} variant="sm" />
           {doc.file_url && (
-            <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-indigo-500 hover:text-indigo-700">
+            <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-wesbank-navy hover:text-wesbank-navy-dark">
               <ExternalLink className="h-4 w-4" />
             </a>
           )}
         </>
       ) : (
-        <label className="inline-flex items-center gap-1 cursor-pointer text-xs text-indigo-600 hover:text-indigo-800">
+        <label className="inline-flex items-center gap-1 cursor-pointer text-xs text-wesbank-navy hover:text-wesbank-navy-dark">
           <Upload className="h-3.5 w-3.5" />
           {uploading ? 'Uploading…' : 'Upload'}
           <input
@@ -762,7 +762,7 @@ function QuoteTab({
                 <h3 className="text-sm font-semibold text-gray-700">Quote</h3>
                 <StatusBadge status={q.status} />
                 {sentMarker && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-200">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-wesbank-navy/5 px-2 py-0.5 text-xs font-medium text-wesbank-navy-dark ring-1 ring-inset ring-wesbank-navy/20">
                     <Send className="h-3 w-3" /> Sent to buyer
                   </span>
                 )}
@@ -784,7 +784,7 @@ function QuoteTab({
                     type="button"
                     disabled={busy}
                     onClick={() => handleSend(q)}
-                    className="inline-flex items-center gap-1 rounded-md border border-transparent bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-transparent bg-wesbank-navy px-2 py-1 text-xs font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
                     title="Send to buyer"
                   >
                     <Send className="h-3.5 w-3.5" /> Send
@@ -846,7 +846,7 @@ function QuoteTab({
       <button
         type="button"
         onClick={() => { setEditing(null); setModalOpen(true) }}
-        className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+        className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
       >
         <Plus className="h-4 w-4" /> New Quote
       </button>
@@ -959,7 +959,7 @@ function ContractsTab({
           <button
             type="button"
             onClick={() => setShowUpload(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
           >
             <Upload className="h-3.5 w-3.5" /> Upload contract
           </button>
@@ -995,7 +995,7 @@ function ContractsTab({
                           href={c.file_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800"
+                          className="inline-flex items-center gap-1.5 text-sm text-wesbank-navy hover:text-wesbank-navy-dark"
                         >
                           <ExternalLink className="h-4 w-4" /> View / Download PDF
                         </a>
@@ -1005,7 +1005,7 @@ function ContractsTab({
                           href={c.signing_link}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800"
+                          className="inline-flex items-center gap-1.5 text-sm text-wesbank-navy hover:text-wesbank-navy-dark"
                         >
                           <ExternalLink className="h-4 w-4" /> Signing link
                         </a>
@@ -1202,7 +1202,7 @@ function InspectionTab({
             </p>
             <button
               onClick={() => setShowSchedule(true)}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
             >
               <Plus className="h-4 w-4" /> Schedule one
             </button>
@@ -1235,7 +1235,7 @@ function InspectionTab({
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                 isComplete ? 'bg-green-100 text-green-800'
                   : isFailed ? 'bg-red-100 text-red-800'
-                  : 'bg-indigo-100 text-indigo-800'
+                  : 'bg-wesbank-navy/10 text-wesbank-navy-dark'
               }`}
             >
               {inspection.status}
@@ -1258,13 +1258,13 @@ function InspectionTab({
                   value={notesDraft}
                   onChange={(e) => setNotesDraft(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={handleSaveNotes}
                     disabled={busy}
-                    className="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-wesbank-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
                   >
                     Save
                   </button>
@@ -1283,7 +1283,7 @@ function InspectionTab({
                 </span>
                 <button
                   onClick={() => { setNotesDraft(inspection.notes ?? ''); setEditingNotes(true) }}
-                  className="text-gray-400 hover:text-indigo-600"
+                  className="text-gray-400 hover:text-wesbank-navy"
                   aria-label="Edit notes"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -1298,7 +1298,7 @@ function InspectionTab({
             href={inspection.report_url}
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm text-indigo-600 hover:text-indigo-800"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-wesbank-navy hover:text-wesbank-navy-dark"
           >
             <ExternalLink className="h-4 w-4" /> View / download report
           </a>
@@ -1309,7 +1309,7 @@ function InspectionTab({
           {isScheduled && !showResults && (
             <button
               onClick={() => setShowResults(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
             >
               <CheckSquare className="h-4 w-4" /> Record results
             </button>
@@ -1390,7 +1390,7 @@ function ScheduleForm({
             type="date"
             value={schedDate}
             onChange={(e) => setSchedDate(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
           />
         </label>
         <label className="block">
@@ -1400,7 +1400,7 @@ function ScheduleForm({
             value={schedInspector}
             onChange={(e) => setSchedInspector(e.target.value)}
             placeholder="e.g. Hartcon — John Smith"
-            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
           />
         </label>
       </div>
@@ -1411,14 +1411,14 @@ function ScheduleForm({
           onChange={(e) => setSchedNotes(e.target.value)}
           rows={3}
           placeholder="Site address, contact instructions, etc."
-          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
         />
       </label>
       <div className="mt-4 flex gap-2">
         <button
           onClick={onSubmit}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
         >
           {busy ? 'Scheduling…' : 'Schedule'}
         </button>
@@ -1496,7 +1496,7 @@ function ResultsForm({
             type="date"
             value={completed}
             onChange={(e) => setCompleted(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
           />
         </label>
         <label className="block">
@@ -1504,7 +1504,7 @@ function ResultsForm({
           <select
             value={condition}
             onChange={(e) => setCondition(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
           >
             <option value="">— select —</option>
             <option value="EXCELLENT">Excellent</option>
@@ -1521,7 +1521,7 @@ function ResultsForm({
           value={damage}
           onChange={(e) => setDamage(e.target.value)}
           rows={2}
-          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
         />
       </label>
 
@@ -1531,7 +1531,7 @@ function ResultsForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none"
+          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
         />
       </label>
 
@@ -1544,7 +1544,7 @@ function ResultsForm({
             type="file"
             accept="application/pdf"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700 hover:file:bg-indigo-100"
+            className="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-wesbank-navy/5 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-wesbank-navy-dark hover:file:bg-wesbank-navy/10"
           />
           {file && (
             <button
@@ -1577,7 +1577,7 @@ function ResultsForm({
         <button
           onClick={onSubmit}
           disabled={busy || passed === null}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
         >
           <Upload className="h-4 w-4" /> {busy ? 'Saving…' : 'Save results'}
         </button>
@@ -1630,7 +1630,7 @@ function NATISTab({
           <button
             disabled={busy}
             onClick={() => wrap(() => createNatisFulfilment(dealId))}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Start fulfilment
           </button>
@@ -1771,7 +1771,7 @@ function NatisStageCard({
 }
 
 const natisInputCls =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500'
+  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy'
 
 function NatisFieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="text-xs font-medium text-gray-600 mb-1 block">{children}</label>
@@ -1791,7 +1791,7 @@ function NatisCollectionForm({
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
   return (
-    <NatisStageCard title="Mark Collected" icon={<CheckSquare className="h-4 w-4 text-indigo-600" />}>
+    <NatisStageCard title="Mark Collected" icon={<CheckSquare className="h-4 w-4 text-wesbank-navy" />}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <NatisFieldLabel>Collection date</NatisFieldLabel>
@@ -1818,7 +1818,7 @@ function NatisCollectionForm({
             collector_name: name.trim(),
             notes: notes.trim() || undefined,
           })}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
         >
           Save collection
         </button>
@@ -1837,7 +1837,7 @@ function NatisTransferForm({
   const [ref, setRef] = useState('')
   const [notes, setNotes] = useState('')
   return (
-    <NatisStageCard title="Mark Transferred (eNaTIS)" icon={<FileSignature className="h-4 w-4 text-indigo-600" />}>
+    <NatisStageCard title="Mark Transferred (eNaTIS)" icon={<FileSignature className="h-4 w-4 text-wesbank-navy" />}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <NatisFieldLabel>Transfer date</NatisFieldLabel>
@@ -1864,7 +1864,7 @@ function NatisTransferForm({
             reference_number: ref.trim() || undefined,
             notes: notes.trim() || undefined,
           })}
-          className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
         >
           Save transfer
         </button>
@@ -1883,7 +1883,7 @@ function NatisDeliveryForm({
   const [tracking, setTracking] = useState('')
   const [notes, setNotes] = useState('')
   return (
-    <NatisStageCard title="Mark Delivered to Customer" icon={<Truck className="h-4 w-4 text-indigo-600" />}>
+    <NatisStageCard title="Mark Delivered to Customer" icon={<Truck className="h-4 w-4 text-wesbank-navy" />}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <NatisFieldLabel>Sent date</NatisFieldLabel>
@@ -1910,7 +1910,7 @@ function NatisDeliveryForm({
             courier_tracking: tracking.trim() || undefined,
             notes: notes.trim() || undefined,
           })}
-          className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
         >
           <Send className="h-4 w-4" /> Save delivery
         </button>
@@ -1979,7 +1979,7 @@ function TasksTab({
   onEscalate: (id: string) => Promise<void>
 }) {
   const priorityColor: Record<string, string> = {
-    LOW: 'bg-slate-100 text-slate-600', NORMAL: 'bg-indigo-100 text-indigo-700',
+    LOW: 'bg-slate-100 text-slate-600', NORMAL: 'bg-wesbank-navy/10 text-wesbank-navy-dark',
     HIGH: 'bg-orange-100 text-orange-800', URGENT: 'bg-red-100 text-red-800',
   }
 
@@ -2018,7 +2018,7 @@ function TasksTab({
               )}
               <div className="flex gap-1 mt-1">
                 {task.status === 'PENDING' && (
-                  <button onClick={() => onClaim(task.id)} className="text-xs text-indigo-700 hover:underline">Claim</button>
+                  <button onClick={() => onClaim(task.id)} className="text-xs text-wesbank-navy-dark hover:underline">Claim</button>
                 )}
                 {task.status === 'IN_PROGRESS' && (
                   <button onClick={() => onComplete(task.id)} className="text-xs text-green-700 hover:underline">Complete</button>
@@ -2105,7 +2105,7 @@ function AuditTab({ events }: { events: AuditFeedItem[] }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     {ev.actor_type && (
-                      <span className="rounded-full px-1.5 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-800">
+                      <span className="rounded-full px-1.5 py-0.5 text-xs font-medium bg-wesbank-navy/10 text-wesbank-navy-dark">
                         {ev.actor_type}
                       </span>
                     )}
@@ -2115,7 +2115,7 @@ function AuditTab({ events }: { events: AuditFeedItem[] }) {
                 <td className="px-4 py-3">
                   <button
                     onClick={() => toggle(ev.id)}
-                    className="text-xs text-indigo-600 hover:text-indigo-800"
+                    className="text-xs text-wesbank-navy hover:text-wesbank-navy-dark"
                   >
                     {expanded.has(ev.id) ? 'Hide' : 'View'} details
                   </button>
@@ -2256,7 +2256,7 @@ export function DealDetail() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-indigo-400" />
+        <RefreshCw className="h-8 w-8 animate-spin text-wesbank-navy/40" />
       </div>
     )
   }
@@ -2266,7 +2266,7 @@ export function DealDetail() {
       <div className="flex h-full flex-col items-center justify-center gap-3">
         <AlertCircle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-gray-600">{error ?? 'Deal not found'}</p>
-        <button onClick={() => navigate('/deals')} className="text-sm text-indigo-600 underline">Back to Deals</button>
+        <button onClick={() => navigate('/deals')} className="text-sm text-wesbank-navy underline">Back to Deals</button>
       </div>
     )
   }
@@ -2280,55 +2280,56 @@ export function DealDetail() {
     completed_milestones?: string[] | null
   }
 
+  // Tab grouping — primary (the most-used four), then decisioning, then ops.
+  // A subtle divider sits between groups so 12 tabs don't read as one wall.
+  const TAB_GROUPS: TabId[][] = [
+    ['overview', 'buyer', 'seller', 'vehicle'],
+    ['affordability', 'quote', 'contracts'],
+    ['inspection', 'natis', 'tasks', 'conversation', 'audit'],
+  ]
+
   return (
     <div className="flex flex-col h-full">
-      {/* Header — back link + title + hero + phase strip + tab nav (in that order) */}
-      <div className="border-b border-gray-200 bg-white px-6 pt-4 pb-0">
+      {/* Header — single compact block: title row, status bar, phase strip, tabs. */}
+      <div className="border-b border-gray-200 bg-white px-6 pt-3 pb-0">
         <button
           onClick={() => navigate('/deals')}
-          className="mb-3 flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-700"
+          className="mb-2 flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700"
         >
-          <ArrowLeft className="h-4 w-4" /> Back to Deals
+          <ArrowLeft className="h-3.5 w-3.5" /> Back to Deals
         </button>
 
-        <div className="flex flex-wrap items-start gap-4 justify-between">
-          <div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <h1 className="text-xl font-bold text-gray-900">{deal.deal_number ?? deal.id}</h1>
-              <button
-                type="button"
-                onClick={() => setShowStatusModal(true)}
-                title="Click to change status"
-                className="rounded-lg ring-offset-1 hover:ring-2 hover:ring-indigo-300 transition"
-              >
-                <StatusBadge status={deal.status} />
-              </button>
-            </div>
-            {deal.vehicle?.registration_number && (
-              <p className="mt-1 text-sm text-gray-500">
-                <User className="mr-1 inline h-3.5 w-3.5 text-gray-400" />
-                Reg {deal.vehicle.registration_number}
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+        {/* Title row — deal number + status + reg + agent chips, all on one line */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <h1 className="text-lg font-bold text-wesbank-navy">#{deal.deal_number ?? deal.id.slice(0, 8)}</h1>
+          <button
+            type="button"
+            onClick={() => setShowStatusModal(true)}
+            title="Click to change status"
+            className="rounded-lg ring-offset-1 hover:ring-2 hover:ring-wesbank-yellow/60 transition"
+          >
+            <StatusBadge status={deal.status} />
+          </button>
+          {deal.vehicle?.registration_number && (
+            <span className="text-xs text-gray-500">Reg {deal.vehicle.registration_number}</span>
+          )}
+          <div className="ml-auto flex items-center gap-1.5 text-[11px] text-gray-500">
             {deal.assigned_fni_analyst && (
-              <span className="rounded-full bg-indigo-50 border border-indigo-200 px-2.5 py-1 text-indigo-700">
-                F&I: {deal.assigned_fni_analyst}
-              </span>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5">F&amp;I: {deal.assigned_fni_analyst}</span>
             )}
             {deal.assigned_seller_agent && (
-              <span className="rounded-full bg-gray-100 border border-gray-200 px-2.5 py-1 text-gray-700">
-                Seller: {deal.assigned_seller_agent}
-              </span>
+              <span className="rounded-full bg-gray-100 px-2 py-0.5">Seller: {deal.assigned_seller_agent}</span>
             )}
           </div>
         </div>
 
-        {/* Hero card + phase strip — moved above the tab bar so the journey is
-            always in view regardless of which sub-tab is active. */}
-        <div className="mt-4 space-y-3">
+        {/* Thin status bar (replaces the old DealHero card) */}
+        <div className="mt-2">
           <DealHero deal={dealWithPhase} />
+        </div>
+
+        {/* Compact phase strip — dots only, current phase labelled below */}
+        <div className="mt-3 pb-5">
           <PhaseStrip
             currentPhase={dealWithPhase.current_phase ?? null}
             completedMilestones={dealWithPhase.completed_milestones ?? []}
@@ -2337,22 +2338,33 @@ export function DealDetail() {
           />
         </div>
 
-        {/* Tab nav — sits at the bottom of the header so it visually attaches
-            to the tab content area below. */}
-        <div className="mt-4 flex gap-0.5 overflow-x-auto -mb-px">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-1.5 rounded-t-lg px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors ${
-                activeTab === tab.id
-                  ? 'border-b-2 border-indigo-600 bg-indigo-50 text-indigo-700'
-                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-            </button>
+        {/* Tab nav — grouped with dividers between segments */}
+        <div className="mt-2 flex items-center gap-0.5 overflow-x-auto -mb-px">
+          {TAB_GROUPS.map((group, gi) => (
+            <div key={gi} className="flex items-center gap-0.5">
+              {gi > 0 && <span className="mx-1 h-4 w-px bg-gray-200" aria-hidden="true" />}
+              {group.map((tabId) => {
+                const tab = TABS.find((t) => t.id === tabId)
+                if (!tab) return null
+                const isActive = activeTab === tab.id
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-1.5 h-9 px-3 text-xs font-medium whitespace-nowrap transition-colors border-b-2 ${
+                      isActive
+                        ? 'border-wesbank-yellow text-wesbank-navy'
+                        : 'border-transparent text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-wesbank-navy' : 'text-gray-400'}`}>
+                      {tab.icon}
+                    </span>
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
           ))}
         </div>
       </div>

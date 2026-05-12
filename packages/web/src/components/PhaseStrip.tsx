@@ -2,10 +2,9 @@ import { Check } from 'lucide-react'
 import { PHASES } from './PhaseTimeline'
 
 /**
- * PhaseStrip — horizontal compact version of PhaseTimeline. Shows the same 15
- * phases as a single-row strip, sized to fit at the top of a deal detail page.
- * Same source-of-truth logic: completed_milestones (with aliases) plus
- * "current phase implies prior phases done".
+ * PhaseStrip — compact horizontal journey strip. 6px dots for non-current
+ * phases, ~16px dot for the current one. Only the current phase shows a label
+ * below the strip; everything else surfaces full phase name on hover.
  */
 interface PhaseStripProps {
   currentPhase: string | null | undefined
@@ -29,58 +28,57 @@ export function PhaseStrip({ currentPhase, completedMilestones, phaseState, onPh
     return false
   }
 
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <div className="mb-3 flex items-baseline justify-between">
-        <h3 className="text-sm font-semibold text-gray-700">Deal Journey</h3>
-        <span className="text-xs text-gray-500">{currentPhase ? `Now: ${PHASES.find(p => p.key === currentPhase)?.name ?? currentPhase}` : '—'}</span>
-      </div>
-      <ol className="flex items-center overflow-x-auto pb-1">
-        {PHASES.map((p, idx) => {
-          const completed = isCompleted(idx, p.key, p.milestones)
-          const current = currentPhase === p.key
-          const next = PHASES[idx + 1]
-          const nextCompleted = next ? isCompleted(idx + 1, next.key, next.milestones) : false
-          const clickable = !!onPhaseClick
+  const currentName = currentPhase
+    ? PHASES.find((p) => p.key === currentPhase)?.name ?? currentPhase
+    : null
 
-          return (
-            <li
-              key={p.key}
-              className={`flex items-center ${idx < PHASES.length - 1 ? 'flex-1' : ''} min-w-[64px]`}
-              title={p.description}
+  return (
+    <ol className="flex items-center">
+      {PHASES.map((p, idx) => {
+        const completed = isCompleted(idx, p.key, p.milestones)
+        const current = currentPhase === p.key
+        const next = PHASES[idx + 1]
+        const nextCompleted = next ? isCompleted(idx + 1, next.key, next.milestones) : false
+        const clickable = !!onPhaseClick
+
+        return (
+          <li
+            key={p.key}
+            className={`flex items-center ${idx < PHASES.length - 1 ? 'flex-1' : ''}`}
+            title={p.name}
+          >
+            <button
+              type="button"
+              onClick={clickable ? () => onPhaseClick?.(p.key) : undefined}
+              disabled={!clickable}
+              aria-label={p.name}
+              className="relative flex flex-col items-center disabled:cursor-default group"
             >
-              <button
-                type="button"
-                onClick={clickable ? () => onPhaseClick?.(p.key) : undefined}
-                disabled={!clickable}
-                className="flex flex-col items-center gap-1 disabled:cursor-default"
-              >
-                <div
-                  className={`flex h-7 w-7 items-center justify-center rounded-full text-[10px] font-semibold transition ${
-                    completed
-                      ? 'bg-green-500 text-white'
-                      : current
-                      ? 'bg-indigo-600 text-white animate-pulse ring-4 ring-indigo-100'
-                      : 'bg-gray-100 text-gray-400'
-                  }`}
-                >
-                  {completed ? <Check className="h-3.5 w-3.5" /> : idx + 1}
+              {current ? (
+                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-wesbank-yellow text-wesbank-navy ring-2 ring-wesbank-navy">
+                  <span className="h-1.5 w-1.5 rounded-full bg-wesbank-navy" />
                 </div>
-                <span className={`text-[10px] font-medium leading-tight text-center max-w-[72px] truncate ${
-                  current ? 'text-indigo-700' : completed ? 'text-gray-700' : 'text-gray-400'
-                }`}>
-                  {p.name}
-                </span>
-              </button>
-              {idx < PHASES.length - 1 && (
-                <div className={`h-0.5 mx-1 mb-4 flex-1 ${
-                  completed && nextCompleted ? 'bg-green-400' : completed ? 'bg-gradient-to-r from-green-400 to-gray-200' : 'bg-gray-200'
-                }`} />
+              ) : completed ? (
+                <div className="flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white">
+                  <Check className="h-2 w-2" strokeWidth={4} />
+                </div>
+              ) : (
+                <div className="h-1.5 w-1.5 rounded-full bg-gray-300 group-hover:bg-gray-400" />
               )}
-            </li>
-          )
-        })}
-      </ol>
-    </div>
+              {current && currentName && (
+                <span className="absolute top-full mt-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-wesbank-navy">
+                  {currentName}
+                </span>
+              )}
+            </button>
+            {idx < PHASES.length - 1 && (
+              <div className={`h-px flex-1 mx-1 ${
+                completed && nextCompleted ? 'bg-wesbank-navy' : completed ? 'bg-gradient-to-r from-wesbank-navy to-gray-200' : 'bg-gray-200'
+              }`} />
+            )}
+          </li>
+        )
+      })}
+    </ol>
   )
 }

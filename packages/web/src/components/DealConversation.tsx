@@ -404,14 +404,14 @@ export function DealConversation({ dealId }: DealConversationProps) {
                 onKeyDown={handleKeyDown}
                 placeholder="Send a WhatsApp message…"
                 rows={1}
-                className="min-h-[36px] flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-indigo-500 focus:outline-none disabled:opacity-50"
+                className="min-h-[36px] flex-1 resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 placeholder-gray-400 focus:border-wesbank-navy focus:outline-none disabled:opacity-50"
                 disabled={sending || !composeTarget?.phone}
               />
               <button
                 type="button"
                 onClick={() => void handleSend()}
                 disabled={sending || !draft.trim() || !composeTarget?.phone}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-gray-300"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:cursor-not-allowed disabled:bg-gray-300"
                 title="Cmd/Ctrl+Enter to send"
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
@@ -471,7 +471,7 @@ function TabButton({
     >
       {children}
       {unread && (
-        <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-indigo-500 align-middle" />
+        <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-wesbank-navy align-middle" />
       )}
     </button>
   )
@@ -503,7 +503,7 @@ function MessageBubble({
   const bubbleColor = isUser
     ? 'bg-emerald-100 border-emerald-200 text-gray-900'
     : opsSent
-      ? 'bg-indigo-50 border-indigo-200 text-gray-900'
+      ? 'bg-wesbank-navy/5 border-wesbank-navy/20 text-gray-900'
       : isAssistant
         ? 'bg-white border-gray-200 text-gray-900'
         : 'bg-amber-50 border-amber-200 text-gray-700'
