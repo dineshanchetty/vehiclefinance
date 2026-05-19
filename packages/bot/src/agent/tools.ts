@@ -612,6 +612,52 @@ export const AGENT_TOOLS: Anthropic.Tool[] = [
       required: ['deal_id', 'response'],
     },
   },
+  // ── Manual OTP capture (when buyer has no signed OTP yet) ─────────────────
+  {
+    name: 'generate_otp_draft',
+    description:
+      'Generate a draft Offer To Purchase PDF from the buyer/seller/vehicle data currently on the deal. Use this AFTER you have walked the buyer through manual capture (when they answered "No" to "Do you already have a signed OTP?"). The PDF is saved to Supabase Storage and a documents row is inserted with status="draft". Returns { public_url, document_id, missing_fields }. If missing_fields is non-empty, prompt the user to fill those before sending the draft.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id: { type: 'string', description: 'The deal UUID' },
+      },
+      required: ['deal_id'],
+    },
+  },
+  {
+    name: 'send_otp_for_signature',
+    description:
+      'Send the draft Offer To Purchase to the buyer (or seller) for signing. **STUB for now** — sends the PDF link via WhatsApp and a placeholder signing URL. Real e-sign integration is deferred. Use after generate_otp_draft.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id:     { type: 'string', description: 'The deal UUID' },
+        document_id: { type: 'string', description: 'Document UUID returned by generate_otp_draft' },
+        party:       { type: 'string', enum: ['buyer', 'seller'], description: 'Recipient party' },
+      },
+      required: ['deal_id', 'document_id', 'party'],
+    },
+  },
+  {
+    name: 'find_alternative_vehicles',
+    description:
+      'Suggest 3-5 alternative vehicle listings on cars.co.za in the buyer\'s price band. Call this when inspection fails, when the buyer is priced out, or when the buyer asks for alternatives. Composes deep-link search URLs (no scraping) and posts them as a WhatsApp message.',
+    input_schema: {
+      type: 'object' as const,
+      properties: {
+        deal_id:        { type: 'string', description: 'The deal UUID' },
+        phone:          { type: 'string', description: 'WhatsApp phone of the recipient (buyer)' },
+        make:           { type: 'string' },
+        model:          { type: 'string' },
+        body_type:      { type: 'string' },
+        min_price:      { type: 'number' },
+        max_price:      { type: 'number' },
+        max_mileage_km: { type: 'number' },
+      },
+      required: ['deal_id', 'phone'],
+    },
+  },
   {
     name: 'send_contract_link',
     description:

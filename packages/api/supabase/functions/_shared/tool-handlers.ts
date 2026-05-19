@@ -11,11 +11,14 @@
 // to the original.
 
 import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.89.0"
+import { callCloudflareVision } from "./extraction.ts"
 import {
   downloadAndStoreMedia, downloadMedia,
   sendTextMessage, sendInteractiveMessage, sendListMessage, sendTemplate,
+  sendDocumentMessage,
   type Button, type ListSection,
 } from "./dialog360.ts"
+import { uploadFileToStorage } from "./supabase-helpers.ts"
 import { sendSMS as bulkSmsSend, sendEmail as sgSendEmail } from "./notify.ts"
 import {
   getDealByBuyerPhone, getDealBySellerPhone,
@@ -505,7 +508,6 @@ function bytesToBase64(bytes: Uint8Array): string {
 }
 
 async function classifyVehiclePhotoAngle(bytes: Uint8Array, mime: string): Promise<string> {
-  const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! })
   const base64 = bytesToBase64(bytes)
   // Stricter prompt — earlier version mis-bucketed odometer as interior_front
   // and many rear shots as left/right. Forces the model to look for specific
@@ -531,7 +533,25 @@ async function classifyVehiclePhotoAngle(bytes: Uint8Array, mime: string): Promi
     `- If the car is at an angle (front-3/4, rear-3/4) pick the dominant side: more headlights/grille → front; more taillights → rear; more side panels → driver_side / passenger_side.\n\n` +
     `Output EXACTLY ONE of: front, rear, driver_side, passenger_side, interior_front, interior_rear, engine_bay, boot, odometer\n` +
     `If genuinely ambiguous and none is clearly dominant, output: other`
+
+  const matchAngle = (raw: string): string => {
+    const text = raw.trim().toLowerCase()
+    const match = MANDATORY_ANGLES.find((a) => text.startsWith(a) || text === a || text.includes(a))
+    return match ?? "other"
+  }
+
+  // Cloudflare Workers AI first — Llama 3.2 11B Vision. Cheap and fast.
   try {
+    const cf = await callCloudflareVision(bytes, mime, prompt)
+    console.log("[classifyVehiclePhotoAngle] engine=cloudflare-llama-vision")
+    return matchAngle(cf.text)
+  } catch (cfErr) {
+    console.warn("[classifyVehiclePhotoAngle] Cloudflare AI failed, falling back to Claude:", cfErr)
+  }
+
+  // Claude fallback.
+  try {
+    const anthropic = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY")! })
     const resp = await anthropic.messages.create({
       model: "claude-sonnet-4-5", max_tokens: 32,
       messages: [{
@@ -543,9 +563,9 @@ async function classifyVehiclePhotoAngle(bytes: Uint8Array, mime: string): Promi
       }],
     })
     const text = (resp.content.find((b: { type: string }) => b.type === "text") as { text?: string } | undefined)
-      ?.text?.trim().toLowerCase() ?? ""
-    const match = MANDATORY_ANGLES.find((a) => text.startsWith(a) || text === a)
-    return match ?? "other"
+      ?.text ?? ""
+    console.log("[classifyVehiclePhotoAngle] engine=claude-fallback")
+    return matchAngle(text)
   } catch (err) {
     console.warn("[classifyVehiclePhotoAngle] vision call failed:", err)
     return "other"
@@ -889,6 +909,261 @@ export async function handle_send_contract_link(input: ToolInput): Promise<ToolR
   return { success: true, message: `Contract signing link sent to ${phone}` }
 }
 
+// ── Manual OTP capture (no signed OTP) ───────────────────────────────────────
+
+/** Escape a string so it can be embedded safely in a PDF content stream. */
+function pdfEscape(s: string): string {
+  return String(s ?? "").replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)")
+}
+
+/**
+ * Build a minimal single-page A4 PDF from a list of text lines. No external
+ * deps — emits raw PDF bytes that Acrobat, Chrome and WhatsApp preview cleanly.
+ * Font: Helvetica (PDF built-in, no embedding needed).
+ */
+function buildSimplePdf(title: string, lines: string[]): Uint8Array {
+  const PAGE_W = 595, PAGE_H = 842, MARGIN_LEFT = 50, MARGIN_TOP = 800
+  const LINE_H = 16
+  const ops: string[] = []
+  ops.push("BT")
+  ops.push("/F1 18 Tf")
+  ops.push(`1 0 0 1 ${MARGIN_LEFT} ${MARGIN_TOP} Tm`)
+  ops.push(`(${pdfEscape(title)}) Tj`)
+  ops.push("ET")
+  ops.push("BT")
+  ops.push("/F1 11 Tf")
+  let y = MARGIN_TOP - 30
+  for (const ln of lines) {
+    ops.push(`1 0 0 1 ${MARGIN_LEFT} ${y} Tm`)
+    ops.push(`(${pdfEscape(ln)}) Tj`)
+    y -= LINE_H
+    if (y < 50) break
+  }
+  ops.push("ET")
+  const stream = ops.join("\n")
+  const streamBytes = new TextEncoder().encode(stream)
+  const objects: string[] = []
+  objects.push("<< /Type /Catalog /Pages 2 0 R >>")
+  objects.push("<< /Type /Pages /Kids [3 0 R] /Count 1 >>")
+  objects.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PAGE_W} ${PAGE_H}] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>`)
+  objects.push(`<< /Length ${streamBytes.length} >>\nstream\n${stream}\nendstream`)
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
+
+  const encoder = new TextEncoder()
+  const chunks: Uint8Array[] = []
+  const offsets: number[] = []
+  let cursor = 0
+  const push = (s: string | Uint8Array) => {
+    const b = typeof s === "string" ? encoder.encode(s) : s
+    chunks.push(b); cursor += b.length
+  }
+  push("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n")
+  objects.forEach((obj, i) => {
+    offsets.push(cursor)
+    push(`${i + 1} 0 obj\n${obj}\nendobj\n`)
+  })
+  const xrefStart = cursor
+  let xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`
+  for (const off of offsets) xref += `${off.toString().padStart(10, "0")} 00000 n \n`
+  push(xref)
+  push(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefStart}\n%%EOF\n`)
+  const total = chunks.reduce((n, c) => n + c.length, 0)
+  const out = new Uint8Array(total)
+  let o = 0
+  for (const c of chunks) { out.set(c, o); o += c.length }
+  return out
+}
+
+function strOrEmpty(v: unknown): string {
+  if (v == null) return ""
+  return String(v)
+}
+
+export async function handle_generate_otp_draft(input: ToolInput): Promise<ToolResult> {
+  const { deal_id } = input as { deal_id: string }
+  const sb = getSupabaseClient()
+  const { data: buyer } = await sb.from("buyers").select("*")
+    .eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+  const { data: seller } = await sb.from("sellers").select("*")
+    .eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+  const { data: vehicle } = await sb.from("vehicles").select("*")
+    .eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+
+  const required: Record<string, unknown> = {
+    buyer_full_name: buyer?.full_name,
+    buyer_id_number: buyer?.id_number,
+    seller_full_name: seller?.full_name,
+    seller_phone: seller?.phone,
+    vehicle_make: vehicle?.make,
+    vehicle_model: vehicle?.model,
+    vehicle_vin: vehicle?.vin,
+    vehicle_registration: vehicle?.registration_number,
+    agreed_price: vehicle?.asking_price,
+  }
+  const missing_fields = Object.entries(required).filter(([, v]) => !v).map(([k]) => k)
+
+  const price = vehicle?.asking_price
+  const priceStr = price != null
+    ? `R ${Number(price).toLocaleString("en-ZA", { maximumFractionDigits: 0 })}`
+    : "________"
+
+  const today = new Date().toISOString().slice(0, 10)
+  const lines: string[] = [
+    `Draft generated: ${today}`,
+    `Deal reference: ${deal_id}`,
+    "",
+    "1. SELLER",
+    `   Full name: ${strOrEmpty(seller?.full_name) || "________________________"}`,
+    `   ID number: ${strOrEmpty(seller?.id_number) || "________________________"}`,
+    `   Phone: ${strOrEmpty(seller?.phone) || "________________________"}`,
+    `   Email: ${strOrEmpty(seller?.email) || "________________________"}`,
+    `   Address: ${strOrEmpty(seller?.physical_address) || "________________________"}`,
+    `   Bank: ${strOrEmpty(seller?.bank_name) || "________"}    Acct: ${strOrEmpty(seller?.bank_account_number) || "________"}`,
+    "",
+    "2. BUYER",
+    `   Full name: ${strOrEmpty(buyer?.full_name) || "________________________"}`,
+    `   ID number: ${strOrEmpty(buyer?.id_number) || "________________________"}`,
+    `   Phone: ${strOrEmpty(buyer?.phone) || "________________________"}`,
+    "",
+    "3. VEHICLE",
+    `   Make / Model / Year: ${strOrEmpty(vehicle?.make)} ${strOrEmpty(vehicle?.model)} ${strOrEmpty(vehicle?.year)}`,
+    `   Registration: ${strOrEmpty(vehicle?.registration_number) || "________"}`,
+    `   VIN: ${strOrEmpty(vehicle?.vin) || "_________________"}`,
+    `   Engine number: ${strOrEmpty(vehicle?.engine_number) || "________"}`,
+    `   Colour: ${strOrEmpty(vehicle?.colour) || "________"}`,
+    `   Odometer (km): ${strOrEmpty(vehicle?.odometer_reading) || "________"}`,
+    "",
+    "4. AGREED PRICE",
+    `   ${priceStr}`,
+    "",
+    "5. CONDITIONS",
+    "   - Sale subject to WesBank Private Deal credit approval.",
+    "   - Vehicle to pass roadworthy + technical inspection.",
+    "   - WesBank pays the seller within 1 business day after handover.",
+    "",
+    "6. SIGNATURES",
+    "   Seller: ______________________   Date: __________",
+    "   Buyer:  ______________________   Date: __________",
+    "",
+    "*** DRAFT - generated by WesBank Private Deal WhatsApp assistant ***",
+  ]
+
+  const pdfBytes = buildSimplePdf("OFFER TO PURCHASE (DRAFT)", lines)
+  const ts = Date.now()
+  const storagePath = `${deal_id}/buyer/OTP_DRAFT_${ts}.pdf`
+  const publicUrl = await uploadFileToStorage("documents", storagePath, pdfBytes, "application/pdf")
+
+  const { data: doc, error: docErr } = await sb.from("documents").insert({
+    deal_id, party: "BUYER", doc_type: "OTHER",
+    storage_path: publicUrl, file_url: publicUrl,
+    file_name: "otp_draft.pdf", mime_type: "application/pdf",
+    status: "draft", upload_timestamp: new Date().toISOString(),
+  }).select().single()
+  if (docErr) return { success: false, error: `doc insert failed: ${docErr.message}` }
+
+  await dbLogAuditEvent({
+    deal_id, event_type: "otp_draft_generated",
+    description: `Generated draft OTP PDF (${missing_fields.length} missing fields)`,
+    metadata: { document_id: doc.id, public_url: publicUrl, missing_fields },
+  })
+
+  return { success: true, public_url: publicUrl, document_id: doc.id, missing_fields }
+}
+
+export async function handle_send_otp_for_signature(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, document_id, party } = input as {
+    deal_id: string; document_id: string; party: "buyer" | "seller"
+  }
+  const sb = getSupabaseClient()
+  const { data: doc } = await sb.from("documents").select("storage_path, file_url, file_name")
+    .eq("id", document_id).single()
+  if (!doc) return { success: false, error: "Draft document not found" }
+
+  const table = party === "buyer" ? "buyers" : "sellers"
+  const { data: partyRow } = await sb.from(table).select("phone, full_name")
+    .eq("deal_id", deal_id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+  if (!partyRow?.phone) return { success: false, error: `No ${party} phone on deal` }
+
+  const url = (doc.storage_path ?? doc.file_url) as string
+  const placeholderUrl = `https://wesbank.example/e-sign/${document_id}`
+
+  await sendDocumentMessage(partyRow.phone, url, doc.file_name ?? "otp_draft.pdf",
+    "Draft Offer To Purchase for your review.")
+  await sendTextMessage(partyRow.phone,
+    `📄 I've sent you the draft Offer To Purchase.\n\n` +
+    `Please review it with the seller. Once you're both happy, print it, sign it together, and send me a photo of the signed copy.\n\n` +
+    `(E-signing will be available soon — placeholder link: ${placeholderUrl})`)
+
+  await dbLogAuditEvent({
+    deal_id, event_type: "otp_draft_sent",
+    description: `Draft OTP sent to ${party} (${partyRow.phone}) — awaiting signed photo`,
+    metadata: { document_id, party, signing_link_placeholder: placeholderUrl },
+  })
+
+  return {
+    success: true, sent_to_phone: partyRow.phone,
+    signing_link_placeholder: placeholderUrl,
+  }
+}
+
+export async function handle_find_alternative_vehicles(input: ToolInput): Promise<ToolResult> {
+  const { deal_id, phone, make, model, body_type, min_price, max_price, max_mileage_km } = input as {
+    deal_id: string; phone: string;
+    make?: string; model?: string; body_type?: string;
+    min_price?: number; max_price?: number; max_mileage_km?: number
+  }
+
+  // Derive defaults from the deal if the agent didn't pass overrides.
+  let effMake = make, effModel = model, effMin = min_price, effMax = max_price, effMileage = max_mileage_km
+  if (!effMake || !effMax) {
+    const deal = await getDealById(deal_id) as {
+      vehicles?: Array<{ make?: string; model?: string; odometer_reading?: string }>
+      phase_state?: { agreed_price?: number }
+    } | null
+    const v = deal?.vehicles?.[0]
+    if (!effMake) effMake = v?.make ?? undefined
+    if (!effModel) effModel = v?.model ?? undefined
+    const price = deal?.phase_state?.agreed_price
+    if (!effMin && typeof price === "number") effMin = Math.round(price * 0.85)
+    if (!effMax && typeof price === "number") effMax = Math.round(price * 1.10)
+    if (!effMileage && v?.odometer_reading) {
+      const km = parseInt(String(v.odometer_reading).replace(/\D/g, ""), 10)
+      if (Number.isFinite(km)) effMileage = km
+    }
+  }
+
+  const supaUrl = Deno.env.get("SUPABASE_URL")!
+  const res = await fetch(`${supaUrl}/functions/v1/cars-alternatives`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      make: effMake, model: effModel, body_type, year_min: undefined,
+      min_price: effMin, max_price: effMax, max_mileage_km: effMileage,
+    }),
+  })
+  if (!res.ok) {
+    return { success: false, error: `cars-alternatives ${res.status}: ${await res.text()}` }
+  }
+  const { results } = await res.json() as { results: Array<{ label: string; url: string; hint: string }> }
+  if (!results?.length) {
+    return { success: false, error: "No alternatives generated — missing make/price context." }
+  }
+
+  // Format as a plain text message — WhatsApp auto-detects URLs.
+  const body =
+    `Here are some alternatives in your price range on cars.co.za 🚗\n\n` +
+    results.map((r, i) => `${i + 1}. *${r.label}*\n   ${r.hint}\n   ${r.url}`).join("\n\n") +
+    `\n\nTap any link to see real listings. Refine the filters on cars.co.za if you want.`
+
+  await sendTextMessage(phone, body)
+  await dbLogAuditEvent({
+    deal_id, event_type: "alternatives_suggested",
+    description: `Sent ${results.length} cars.co.za deep-links to ${phone}`,
+    metadata: { make: effMake, model: effModel, min_price: effMin, max_price: effMax, count: results.length },
+  })
+  return { success: true, sent_to_phone: phone, alternatives: results }
+}
+
 // ── Dispatch map ─────────────────────────────────────────────────────────────
 
 export const TOOL_HANDLERS: Record<string, (input: ToolInput) => Promise<ToolResult>> = {
@@ -923,4 +1198,7 @@ export const TOOL_HANDLERS: Record<string, (input: ToolInput) => Promise<ToolRes
   present_quote: handle_present_quote,
   record_quote_response: handle_record_quote_response,
   send_contract_link: handle_send_contract_link,
+  generate_otp_draft: handle_generate_otp_draft,
+  send_otp_for_signature: handle_send_otp_for_signature,
+  find_alternative_vehicles: handle_find_alternative_vehicles,
 }

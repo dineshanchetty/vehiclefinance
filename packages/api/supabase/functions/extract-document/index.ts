@@ -14,7 +14,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 import Anthropic from "https://esm.sh/@anthropic-ai/sdk@0.89.0"
 import {
   flattenMindeeFields, normaliseForDocType, selfValidateID,
-  persistExtraction, summariseBankTransactions,
+  persistExtraction, summariseBankTransactions, callCloudflareVision,
   type ExtractedData, type KnownType,
 } from "../_shared/extraction.ts"
 
@@ -216,19 +216,34 @@ serve(async (req: Request) => {
         .eq("id", body.document_id)
     }
 
-    // OTP path — Claude inline (no Mindee model for sale agreements).
+    // OTP path — Cloudflare Workers AI (Llama 3.2 Vision) first, Claude as
+    // fallback. PDF OTPs always fall through to Claude (CF vision models
+    // don't accept PDF). Image-based OTPs try CF first for ~free inference.
     if (effectiveType === "OFFER_TO_PURCHASE") {
-      const r = await callClaudeVision(bytes, inputMime, OTP_PROMPT)
+      let text: string
+      let engine: string
+      let usage: Record<string, number> | undefined
+      try {
+        const cf = await callCloudflareVision(bytes, inputMime, OTP_PROMPT)
+        text = cf.text
+        engine = cf.engine
+      } catch (cfErr) {
+        console.warn("[extract-document] Cloudflare AI failed, falling back to Claude:", cfErr)
+        const r = await callClaudeVision(bytes, inputMime, OTP_PROMPT)
+        text = r.text
+        engine = "claude-fallback"
+        usage = r.usage
+      }
       let extracted: ExtractedData
-      try { extracted = JSON.parse(stripFences(r.text)) }
-      catch { throw new Error(`Claude returned non-JSON: ${r.text.slice(0, 200)}`) }
-      const persisted = await persistExtraction(supabase, body.document_id, extracted, effectiveType, "claude")
+      try { extracted = JSON.parse(stripFences(text)) }
+      catch { throw new Error(`${engine} returned non-JSON: ${text.slice(0, 200)}`) }
+      const persisted = await persistExtraction(supabase, body.document_id, extracted, effectiveType, engine)
       return new Response(JSON.stringify({
         success: true, document_id: body.document_id, status: "extracted",
         detected_type: effectiveType, classification_confidence: classified.confidence,
         average_confidence: persisted.avg_confidence, field_count: persisted.field_count,
         policy_flags: persisted.policy_flags, classify_model: CLASSIFY_MODEL,
-        engine: "claude", usage: r.usage,
+        engine, ...(usage ? { usage } : {}),
       }), { status: 200, headers: { "Content-Type": "application/json" } })
     }
 

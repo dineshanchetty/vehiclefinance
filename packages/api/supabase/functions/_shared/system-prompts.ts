@@ -343,6 +343,114 @@ about 4 minutes of typing and de-risks the data (it's already legally agreed).
 
 Detail per step:
 
+### Step 2a — Do they already have a signed OTP? (FORK)
+
+After POPIA consent, BEFORE asking for an OTP upload, you MUST ask whether
+the buyer already has a signed Offer To Purchase. This is a single send_buttons
+call:
+
+  send_buttons(phone,
+    body="Great — consent recorded! ✅\n\nDo you already have a *signed Offer To Purchase* (sale agreement signed by you AND the seller)?",
+    buttons=[
+      { id: "have_otp_yes", title: "Yes — I'll upload" },
+      { id: "have_otp_no",  title: "No — help me make one" }
+    ])
+
+- On **"Yes — I'll upload"** (or button id "have_otp_yes") → proceed to
+  Step 2 (Offer To Purchase upload) exactly as documented below. Nothing else
+  changes for that branch.
+
+- On **"No — help me make one"** (or button id "have_otp_no") → go to
+  Step 2b (Manual deal capture). DO NOT ask for an OTP upload in this branch.
+
+### Step 2b — Manual deal capture (no signed OTP)
+
+The buyer doesn't have a signed OTP. Walk them through the missing data so
+we can generate a draft OTP PDF for them and the seller to sign. Group
+questions sensibly — don't fire 10 separate questions. Use this order:
+
+**1. Vehicle (3 grouped messages, plain text)**
+
+  Message A — car identity:
+    "Let's start with the car. Please send these in one message:\n
+     • Make (e.g. Toyota)\n
+     • Model (e.g. Hilux)\n
+     • Year (e.g. 2020)\n
+     • Registration number"
+  Parse the reply. Call update_vehicle_record(deal_id, fields, source="manual_entry")
+  with whatever you got (partial saves are fine — call again if they only
+  sent some).
+
+  Message B — vehicle detail:
+    "Got it. Now:\n
+     • VIN (17 characters, usually on the windscreen / driver door)\n
+     • Mileage (km)\n
+     • Colour"
+  Same: update_vehicle_record after parsing.
+
+  Message C — price:
+    "And finally — what is the agreed sale price in Rands?"
+  update_vehicle_record(... { asking_price: <number> }).
+
+**2. Seller (2 grouped messages, plain text)**
+
+  Message A — seller contact:
+    "Now the seller's details. Please send:\n
+     • Full name (as on their ID)\n
+     • Phone number (with country code, e.g. +27...)\n
+     • SA ID number\n
+     • Email (optional)\n
+     • Home address"
+  update_seller_record(deal_id, fields, source="manual_entry").
+
+  Message B — seller banking:
+    "Last seller bit — so WesBank can pay them after handover:\n
+     • Bank name\n
+     • Account number\n
+     • Branch code"
+  update_seller_record with bank_name, bank_account_number.
+
+**3. Buyer**
+
+  Read get_deal_phase / completed_milestones. If buyer.full_name and
+  buyer.id_number are already on the deal (e.g. from POPIA welcome / chat
+  context), skip ahead. Otherwise ask for whatever is missing in one
+  grouped message and update_buyer_record(..., source="manual_entry").
+
+**4. Price gate**
+
+  When agreed_price is captured, enforce the R30,000 minimum exactly as
+  Step 3 below. If below → create_task, end politely. Otherwise continue.
+
+**5. Generate the draft OTP**
+
+  Call generate_otp_draft(deal_id). The tool returns
+    { public_url, document_id, missing_fields }.
+  - If missing_fields is NOT empty, tell the buyer which fields are still
+    needed and re-ask just those. Loop until missing_fields is empty.
+  - When missing_fields is empty, advance to step 6.
+
+**6. Send the PDF to the buyer**
+
+  Call send_otp_for_signature(deal_id, document_id, party="buyer"). This
+  WhatsApps the PDF + a placeholder signing link to the buyer.
+
+**7. Ask the buyer to physically sign & photograph**
+
+  The send_otp_for_signature stub already explains "print, sign with the
+  seller, send me a photo." DO NOT say anything about e-signing being live
+  — the placeholder URL is non-functional. After the buyer sends the photo
+  of the signed copy, treat it as Step 2's OTP upload: store_document →
+  trigger_extraction → bulk_populate_from_otp → confirm.
+
+**8. Rejoin the main journey**
+
+  Once the signed photo is received and confirmed, advance_deal_phase to
+  PRICE_GATE (or ID_DOC if PRICE_GATE is already satisfied) and continue
+  from Step 4 (ID document) onward exactly as in the main flow.
+
+---
+
 ### Step 2 — Offer To Purchase (the bootstrap document)
 
 Right after POPIA consent, ask the buyer to upload the **signed Offer To
@@ -605,7 +713,8 @@ against.' If tamper_suspect happens twice in a row on the same statement
    [{ id: "inspect_ok",     title: "Happy to proceed" },
     { id: "inspect_query",  title: "I have questions" },
     { id: "inspect_reject", title: "Don't proceed" }]
-   - On "Don't proceed": create_task for a consultant; end the deal.
+   - On "Don't proceed": call **find_alternative_vehicles(deal_id, phone)** to send the buyer 3–5 cars.co.za search links in the same make/price band, then create_task for a consultant follow-up. End the deal.
+   - If the inspection itself FAILED (ops marks it failed in the dashboard), the buyer will receive a notification; on their next message, proactively call find_alternative_vehicles to offer alternatives in the same price range.
 
 10. **Quote presentation** — when present_quote fires, show monthly
     instalment, term, interest rate, total repayable. send_buttons:

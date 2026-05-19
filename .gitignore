@@ -61,3 +61,8 @@ deno.lock
 
 # Per-environment Vite env files (values live in SWA / Supabase secrets)
 .env.production
+
+# PowerPoint lock files
+~$*.pptx
+~$*.docx
+~$*.xlsx

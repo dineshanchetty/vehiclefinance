@@ -4,6 +4,75 @@
 
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2"
 
+// ── Cloudflare Workers AI vision helper ────────────────────────────────────
+// Two-tier vision strategy for OTP extraction + photo angle classification:
+// Cloudflare first (cheap), Claude as fallback (accurate). Mindee continues
+// to own ID / POA / BS — untouched.
+//
+// Env required:
+//   CLOUDFLARE_ACCOUNT_ID
+//   CLOUDFLARE_API_TOKEN
+//
+// API shape (verified against Cloudflare Workers AI docs for
+// @cf/meta/llama-3.2-11b-vision-instruct):
+//   POST https://api.cloudflare.com/client/v4/accounts/{id}/ai/run/{model}
+//   Authorization: Bearer <token>
+//   Body: { prompt: string, image: number[] }   // image = Array.from(Uint8Array)
+//   Response: { result: { response: string }, success: boolean, errors: [...] }
+//
+// PDF input is NOT supported by the vision models — caller must rasterise
+// (or send the underlying image directly). For OTP this means PDF-only OTPs
+// will hit Claude; image-based OTPs hit Cloudflare.
+//
+// Throws on any non-2xx OR if env is missing — caller handles fallback.
+const CF_MODEL_PRIMARY = "@cf/meta/llama-3.2-11b-vision-instruct"
+
+export async function callCloudflareVision(
+  bytes: Uint8Array,
+  mime: string,
+  prompt: string,
+  model: string = CF_MODEL_PRIMARY,
+): Promise<{ text: string; engine: string }> {
+  const accountId = Deno.env.get("CLOUDFLARE_ACCOUNT_ID")
+  const token = Deno.env.get("CLOUDFLARE_API_TOKEN")
+  if (!accountId || !token) {
+    throw new Error("Cloudflare env missing (CLOUDFLARE_ACCOUNT_ID / CLOUDFLARE_API_TOKEN)")
+  }
+  if (mime === "application/pdf") {
+    // Workers AI vision models do not accept PDFs. Force fallback.
+    throw new Error("Cloudflare vision: PDF input not supported")
+  }
+
+  // Workers AI Llama-3.2-Vision expects the image as an array of byte values
+  // (NOT base64). See https://developers.cloudflare.com/workers-ai/models/llama-3.2-11b-vision-instruct/
+  const imageArray: number[] = Array.from(bytes)
+
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/ai/run/${model}`
+  const resp = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ prompt, image: imageArray, max_tokens: 2048 }),
+  })
+  if (!resp.ok) {
+    const txt = (await resp.text()).slice(0, 500)
+    throw new Error(`Cloudflare AI ${resp.status}: ${txt}`)
+  }
+  const json = await resp.json() as {
+    success?: boolean
+    result?: { response?: string; description?: string }
+    errors?: Array<{ message?: string }>
+  }
+  if (json.success === false) {
+    throw new Error(`Cloudflare AI failed: ${JSON.stringify(json.errors ?? [])}`)
+  }
+  const text = json.result?.response ?? json.result?.description ?? ""
+  if (!text) throw new Error(`Cloudflare AI: empty response body: ${JSON.stringify(json).slice(0, 200)}`)
+  return { text, engine: `cloudflare-llama-vision` }
+}
+
 export type KnownType =
   | "OFFER_TO_PURCHASE" | "SA_ID_SMART_CARD" | "SA_ID_GREEN_BOOK"
   | "PROOF_OF_ADDRESS" | "BANK_STATEMENT" | "PAYSLIP"
