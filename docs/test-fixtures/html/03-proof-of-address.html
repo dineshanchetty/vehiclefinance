@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Eskom Account Statement — SAMPLE</title>
+  <style>
+    @page { size: A4; margin: 18mm 16mm; }
+    body { font-family: Arial, sans-serif; font-size: 10pt; color: #1a1a1a; max-width: 720px; margin: 0 auto; padding: 16px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0033a0; padding-bottom: 12px; margin-bottom: 16px; }
+    .brand { color: #0033a0; }
+    .brand .logo { font-size: 26pt; font-weight: 900; letter-spacing: -1px; }
+    .brand .tag  { font-size: 8pt; color: #555; letter-spacing: 2px; }
+    .ref { text-align: right; font-size: 9pt; }
+    .ref .num { font-size: 13pt; font-weight: bold; color: #0033a0; }
+    h2 { font-size: 11pt; margin: 18px 0 6px 0; text-transform: uppercase; letter-spacing: 1px; color: #0033a0; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+    .grid { display: grid; grid-template-columns: 160px 1fr; gap: 6px; }
+    .grid .lab { color: #555; font-size: 9pt; }
+    .grid .val { font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th { background: #0033a0; color: white; text-align: left; padding: 5px 8px; font-size: 9pt; }
+    td { padding: 5px 8px; border-bottom: 1px solid #eee; font-size: 9pt; }
+    .total td { font-weight: bold; border-top: 2px solid #1a1a1a; }
+    .stamp { position: absolute; top: 120px; right: 60px; border: 3px solid #c41e3a; padding: 8px 12px; transform: rotate(-12deg); color: #c41e3a; font-weight: bold; font-size: 12pt; opacity: 0.7; letter-spacing: 1px; }
+    footer { font-size: 8pt; color: #888; margin-top: 24px; border-top: 1px solid #eee; padding-top: 8px; }
+  </style>
+</head>
+<body>
+  <div class="stamp">SAMPLE · NOT FOR PAYMENT</div>
+  <div class="header">
+    <div class="brand">
+      <div class="logo">ESKOM</div>
+      <div class="tag">ELECTRICITY · SOUTH AFRICA</div>
+    </div>
+    <div class="ref">
+      <div>Account statement</div>
+      <div class="num">2026-04-30</div>
+      <div>Document date</div>
+    </div>
+  </div>
+
+  <h2>Account holder</h2>
+  <div class="grid">
+    <div class="lab">Account holder name</div>     <div class="val">CHETTY, DINESHAN</div>
+    <div class="lab">Account number</div>          <div class="val">7000 451 289</div>
+    <div class="lab">Premises ID</div>             <div class="val">PREM-119-08812-AIR</div>
+    <div class="lab">Service address</div>         <div class="val">919 Unit 18 Airdlin Place, Airdlin Road, Sunninghill</div>
+    <div class="lab">Suburb</div>                  <div class="val">Sunninghill</div>
+    <div class="lab">City</div>                    <div class="val">Sandton</div>
+    <div class="lab">Postal code</div>             <div class="val">2161</div>
+    <div class="lab">Province</div>                <div class="val">Gauteng</div>
+  </div>
+
+  <h2>Billing summary — April 2026</h2>
+  <table>
+    <tr><th>Description</th><th style="text-align:right">Amount (R)</th></tr>
+    <tr><td>Energy consumption — 412 kWh @ R 2.18</td><td style="text-align:right">898.16</td></tr>
+    <tr><td>Service charge</td><td style="text-align:right">189.50</td></tr>
+    <tr><td>Network capacity charge</td><td style="text-align:right">142.20</td></tr>
+    <tr><td>VAT (15%)</td><td style="text-align:right">184.48</td></tr>
+    <tr class="total"><td>Total due 31 May 2026</td><td style="text-align:right">R 1 414.34</td></tr>
+  </table>
+
+  <p style="margin-top: 16px;">Please use account reference <b>7000451289</b> when paying. This statement also serves as proof of physical address for FICA / RICA / financial services purposes.</p>
+
+  <footer>
+    SAMPLE TEST DOCUMENT — synthetic Eskom statement for WesBank Private Deal POA testing. Real Eskom statements use slightly different formatting. Document date intentionally recent so the bot's "≤ 90 days" check passes.
+  </footer>
+</body>
+</html>

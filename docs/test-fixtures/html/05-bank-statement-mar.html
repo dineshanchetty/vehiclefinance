@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>FNB Cheque Account Statement — Mar 2026</title>
+  <style>
+    @page { size: A4; margin: 12mm 14mm; }
+    body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 9pt; color: #1a1a1a; max-width: 720px; margin: 0 auto; padding: 14px; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 4px solid #0070ba; padding-bottom: 10px; margin-bottom: 14px; }
+    .brand { color: #0070ba; }
+    .brand .logo { font-size: 22pt; font-weight: 900; letter-spacing: -1px; }
+    .brand .tag { font-size: 7pt; color: #555; letter-spacing: 1.5px; text-transform: uppercase; }
+    .ref { text-align: right; font-size: 8pt; line-height: 1.5; }
+    .ref strong { color: #0070ba; font-size: 11pt; }
+    h2 { font-size: 9pt; margin: 12px 0 4px 0; text-transform: uppercase; letter-spacing: 1px; color: #0070ba; }
+    .grid { display: grid; grid-template-columns: 130px 1fr 130px 1fr; gap: 4px 14px; font-size: 8.5pt; margin-bottom: 8px; }
+    .grid .lab { color: #555; } .grid .val { font-weight: 600; }
+    table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 8pt; }
+    th { background: #0070ba; color: white; padding: 4px 6px; text-align: left; font-size: 7.5pt; }
+    th.r, td.r { text-align: right; }
+    td { padding: 3px 6px; border-bottom: 1px solid #f0f0f0; }
+    .credit { color: #008a00; font-weight: 600; } .debit  { color: #b00020; }
+    .summary { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .stat { background: #f5f9fd; border: 1px solid #d0e2f0; padding: 6px 10px; border-radius: 4px; }
+    .stat .lab { font-size: 7pt; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+    .stat .val { font-size: 12pt; font-weight: 700; color: #0070ba; }
+    .stamp { position: absolute; top: 92px; right: 100px; border: 2px solid #c41e3a; padding: 6px 10px; transform: rotate(-10deg); color: #c41e3a; font-weight: bold; font-size: 10pt; opacity: 0.6; letter-spacing: 1px; }
+    footer { font-size: 7.5pt; color: #888; margin-top: 16px; border-top: 1px solid #eee; padding-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="stamp">SAMPLE</div>
+  <div class="header">
+    <div class="brand"><div class="logo">FNB</div><div class="tag">FIRST NATIONAL BANK · A DIVISION OF FIRSTRAND</div></div>
+    <div class="ref">Account statement<br><strong>Statement 03 of 12 · 2026</strong><br>Issued 1 April 2026</div>
+  </div>
+
+  <div class="grid">
+    <div class="lab">Account holder</div>      <div class="val">CHETTY, DINESHAN</div>
+    <div class="lab">ID number</div>           <div class="val">850112 5007 087</div>
+    <div class="lab">Account number</div>      <div class="val">622 410 0019 8</div>
+    <div class="lab">Branch code</div>         <div class="val">250 655</div>
+    <div class="lab">Account type</div>        <div class="val">Cheque (Personal)</div>
+    <div class="lab">Statement period</div>    <div class="val">01 Mar 2026 – 31 Mar 2026</div>
+  </div>
+
+  <h2>Transactions</h2>
+  <table>
+    <tr><th style="width:80px">Date</th><th>Description</th><th class="r" style="width:80px">Credit (R)</th><th class="r" style="width:80px">Debit (R)</th><th class="r" style="width:80px">Balance (R)</th></tr>
+    <tr><td>01 Mar</td><td>Opening balance</td><td></td><td></td><td class="r">12 835.26</td></tr>
+    <tr><td>02 Mar</td><td>Insurance Premium · Outsurance</td><td></td><td class="debit r">-1 250.00</td><td class="r">11 585.26</td></tr>
+    <tr><td>03 Mar</td><td>MTN Top-up</td><td></td><td class="debit r">-349.00</td><td class="r">11 236.26</td></tr>
+    <tr><td>04 Mar</td><td>Salary · CLAIMTEC PTY LTD</td><td class="credit r">28 500.00</td><td></td><td class="r">39 736.26</td></tr>
+    <tr><td>05 Mar</td><td>Checkers · Sunninghill</td><td></td><td class="debit r">-1 624.40</td><td class="r">38 111.86</td></tr>
+    <tr><td>07 Mar</td><td>Sasol Sandton</td><td></td><td class="debit r">-1 142.20</td><td class="r">36 969.66</td></tr>
+    <tr><td>09 Mar</td><td>DSTV Premium subscription</td><td></td><td class="debit r">-899.00</td><td class="r">36 070.66</td></tr>
+    <tr><td>10 Mar</td><td>Discovery Health (medical aid)</td><td></td><td class="debit r">-4 200.00</td><td class="r">31 870.66</td></tr>
+    <tr><td>11 Mar</td><td>EFT in · Freelance project</td><td class="credit r">5 800.00</td><td></td><td class="r">37 670.66</td></tr>
+    <tr><td>14 Mar</td><td>Woolworths · Sandton City</td><td></td><td class="debit r">-2 015.60</td><td class="r">35 655.06</td></tr>
+    <tr><td>16 Mar</td><td>Rent · Property365 (Pty)</td><td></td><td class="debit r">-9 800.00</td><td class="r">25 855.06</td></tr>
+    <tr><td>17 Mar</td><td>Uber rides (weekly)</td><td></td><td class="debit r">-420.00</td><td class="r">25 435.06</td></tr>
+    <tr><td>18 Mar</td><td>Engen Sunninghill (Fuel)</td><td></td><td class="debit r">-1 050.40</td><td class="r">24 384.66</td></tr>
+    <tr><td>20 Mar</td><td>Checkers · Sandton</td><td></td><td class="debit r">-1 920.15</td><td class="r">22 464.51</td></tr>
+    <tr><td>22 Mar</td><td>Gym membership · Virgin Active</td><td></td><td class="debit r">-549.00</td><td class="r">21 915.51</td></tr>
+    <tr><td>24 Mar</td><td>Spotify Premium</td><td></td><td class="debit r">-99.99</td><td class="r">21 815.52</td></tr>
+    <tr><td>25 Mar</td><td>Netflix Standard</td><td></td><td class="debit r">-159.00</td><td class="r">21 656.52</td></tr>
+    <tr><td>26 Mar</td><td>Uber Eats</td><td></td><td class="debit r">-415.00</td><td class="r">21 241.52</td></tr>
+    <tr><td>27 Mar</td><td>Bank service fee</td><td></td><td class="debit r">-115.00</td><td class="r">21 126.52</td></tr>
+    <tr><td>30 Mar</td><td>Vehicle savings transfer (out)</td><td></td><td class="debit r">-8 000.00</td><td class="r">13 126.52</td></tr>
+    <tr><td>31 Mar</td><td>Closing balance</td><td></td><td></td><td class="r"><strong>13 126.52</strong></td></tr>
+  </table>
+
+  <div class="summary">
+    <div class="stat"><div class="lab">Total credits</div><div class="val">R 34 300.00</div></div>
+    <div class="stat"><div class="lab">Total debits</div><div class="val">R 34 008.74</div></div>
+    <div class="stat"><div class="lab">Net inflow</div><div class="val">R 291.26</div></div>
+    <div class="stat"><div class="lab">Net change</div><div class="val">R 291.26</div></div>
+  </div>
+
+  <footer>SAMPLE TEST DOCUMENT — March statement. Includes a R8 000 transfer to vehicle savings on the 30th (shows up as debit, valid behavioural signal).</footer>
+</body>
+</html>

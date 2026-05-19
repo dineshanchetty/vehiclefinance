@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>SA Smart ID Card — SAMPLE</title>
+  <style>
+    @page { size: 86mm 54mm; margin: 0; }
+    html, body { margin: 0; padding: 0; font-family: 'Arial', sans-serif; }
+    .card {
+      width: 86mm; height: 54mm;
+      background: linear-gradient(135deg, #f0e8d8 0%, #e8d8b8 60%, #d8c898 100%);
+      position: relative; padding: 6mm 8mm; color: #1a2647;
+    }
+    .header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      border-bottom: 2px solid #1a2647; padding-bottom: 2mm; margin-bottom: 3mm;
+    }
+    .header .coat { width: 12mm; height: 12mm; background: #1a2647; color: #ffd700;
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 6pt; font-weight: bold; text-align: center; line-height: 1.1; }
+    .header .republic { text-align: center; font-size: 8pt; font-weight: bold; line-height: 1.2; }
+    .header .republic span { display: block; font-size: 6pt; font-weight: normal; }
+    .body { display: grid; grid-template-columns: 28mm 1fr; gap: 4mm; }
+    .photo {
+      width: 28mm; height: 32mm;
+      background: linear-gradient(180deg, #ccc 30%, #999 100%);
+      border: 1px solid #1a2647;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 14pt; font-weight: bold; opacity: 0.7;
+    }
+    .fields { font-size: 6.5pt; line-height: 1.4; }
+    .fields .lab { font-size: 5pt; color: #555; text-transform: uppercase; letter-spacing: 0.5pt; }
+    .fields .val { font-size: 8pt; font-weight: bold; color: #1a2647; margin-bottom: 1mm; }
+    .signature {
+      position: absolute; bottom: 5mm; right: 8mm;
+      font-family: 'Brush Script MT', cursive;
+      font-size: 11pt; color: #1a2647;
+    }
+    .watermark {
+      position: absolute; top: 14mm; left: 30mm;
+      font-size: 32pt; font-weight: bold; color: #1a2647;
+      opacity: 0.05; transform: rotate(-22deg); pointer-events: none;
+    }
+    .sample {
+      position: absolute; top: 1mm; right: 2mm; padding: 1mm 2mm;
+      background: #c41e3a; color: white; font-size: 6pt; font-weight: bold; letter-spacing: 1pt;
+      border-radius: 1mm; transform: rotate(8deg);
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="sample">SAMPLE</div>
+    <div class="watermark">RSA</div>
+    <div class="header">
+      <div class="coat">RSA<br>★</div>
+      <div class="republic">REPUBLIC OF SOUTH AFRICA<br><span>IDENTITY CARD</span></div>
+      <div style="width:12mm"></div>
+    </div>
+    <div class="body">
+      <div class="photo">DC</div>
+      <div class="fields">
+        <div class="lab">Surname</div>
+        <div class="val">CHETTY</div>
+        <div class="lab">Names</div>
+        <div class="val">DINESHAN</div>
+        <div class="lab">Date of birth</div>
+        <div class="val">12 JAN 1985</div>
+        <div class="lab">Identity number</div>
+        <div class="val" style="letter-spacing:0.4pt">8501125007087</div>
+        <div class="lab">Sex / Nationality</div>
+        <div class="val">M / RSA</div>
+        <div class="lab">Country of birth</div>
+        <div class="val">RSA</div>
+      </div>
+    </div>
+    <div class="signature">D. Chetty</div>
+  </div>
+</body>
+</html>
