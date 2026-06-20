@@ -23,7 +23,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
           cache: "pnpm"
 
       - name: Install dependencies
@@ -50,7 +50,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with: { version: 9.15.9 }
       - uses: actions/setup-node@v4
-        with: { node-version: "20", cache: "pnpm" }
+        with: { node-version: "22", cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
@@ -63,7 +63,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with: { version: 9.15.9 }
       - uses: actions/setup-node@v4
-        with: { node-version: "20", cache: "pnpm" }
+        with: { node-version: "22", cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
 
       # Bot tests — optional (no test script yet)
@@ -101,7 +101,7 @@ jobs:
       - uses: pnpm/action-setup@v4
         with: { version: 9.15.9 }
       - uses: actions/setup-node@v4
-        with: { node-version: "20", cache: "pnpm" }
+        with: { node-version: "22", cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
 
       - name: Install Playwright browser (chromium only)
