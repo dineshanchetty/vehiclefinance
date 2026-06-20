@@ -8,7 +8,7 @@ import {
 import { useSession } from '../lib/auth'
 
 /**
- * Sidebar — quieter, denser nav. WesBank navy backdrop with a yellow
+ * Sidebar — quieter, denser nav. Claimtec navy backdrop with a yellow
  * left-stripe accent on the active item. Group headings are small and
  * tracked; the Queues group is collapsible to keep the list short.
  */
@@ -61,7 +61,7 @@ const navGroups: NavGroup[] = [
   },
 ]
 
-// WesBank navy backdrop — gradient from navy-darker to deeper navy.
+// Claimtec navy backdrop — gradient from navy-darker to deeper navy.
 const SIDEBAR_STYLE: React.CSSProperties = {
   background: 'linear-gradient(180deg, #001A3D 0%, #00102B 100%)',
 }
@@ -87,7 +87,7 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
               : 'text-white/70 hover:text-white hover:bg-white/[0.05]'
           }`}
         >
-          <span className={anyChildActive ? 'text-wesbank-yellow' : 'text-white/50 group-hover:text-white/80'}>
+          <span className={anyChildActive ? 'text-claimtec-gold' : 'text-white/50 group-hover:text-white/80'}>
             {item.icon}
           </span>
           <span className="flex-1 text-left">{item.label}</span>
@@ -120,9 +120,9 @@ function NavItemLink({ item, depth = 0 }: { item: NavItem; depth?: number }) {
       {({ isActive }) => (
         <>
           {isActive && (
-            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-wesbank-yellow" aria-hidden />
+            <span className="absolute left-0 top-1.5 bottom-1.5 w-0.5 rounded-r bg-claimtec-gold" aria-hidden />
           )}
-          <span className={isActive ? 'text-wesbank-yellow' : 'text-white/50 group-hover:text-white/80'}>
+          <span className={isActive ? 'text-claimtec-gold' : 'text-white/50 group-hover:text-white/80'}>
             {item.icon}
           </span>
           <span className="flex-1">{item.label}</span>
@@ -179,10 +179,13 @@ export function Sidebar() {
     >
       {/* Brand */}
       <div className="flex items-center gap-2 px-3 pt-3 pb-2.5">
-        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-wesbank-navy-dark to-wesbank-navy ring-1 ring-white/10">
-          <Sparkles className="h-3.5 w-3.5 text-wesbank-yellow" />
+        <div className="flex h-7 w-7 items-center justify-center rounded-md bg-gradient-to-br from-claimtec-forest-2 to-claimtec-forest ring-1 ring-white/10">
+          <Sparkles className="h-3.5 w-3.5 text-claimtec-gold" />
         </div>
-        <p className="text-xs font-bold text-white leading-tight tracking-tight">VehicleFinance</p>
+        <p className="text-xs font-bold text-white leading-tight tracking-tight">
+          claim<span className="text-claimtec-red">Tec</span>
+          <span className="ml-1 text-[10px] font-normal text-white/50">FinOps</span>
+        </p>
       </div>
 
       {/* Search */}
@@ -222,7 +225,7 @@ export function Sidebar() {
           className="flex items-center gap-2.5 rounded-md px-1.5 py-1 hover:bg-white/[0.05] transition-colors"
           title={`v1.0 · ${session.profile?.role ?? 'guest'}`}
         >
-          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-wesbank-navy to-wesbank-navy-dark text-[10px] font-bold text-white ring-1 ring-white/10">
+          <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-claimtec-forest to-claimtec-forest-2 text-[10px] font-bold text-white ring-1 ring-white/10">
             {userInitials}
           </div>
           <div className="min-w-0 flex-1">

@@ -119,7 +119,7 @@ export function NotesAndTasksPanel({ dealId }: { dealId: string }) {
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddNote()
               }}
-              className="flex-1 text-xs rounded-lg border border-gray-200 px-2.5 py-1.5 focus:border-wesbank-navy focus:outline-none resize-none"
+              className="flex-1 text-xs rounded-lg border border-gray-200 px-2.5 py-1.5 focus:border-claimtec-forest focus:outline-none resize-none"
             />
             <button
               type="button"
@@ -165,13 +165,13 @@ export function NotesAndTasksPanel({ dealId }: { dealId: string }) {
               placeholder="Task type / title (e.g. CALL_BUYER, REVIEW_STATEMENTS)"
               value={taskDraft.task_type}
               onChange={(e) => setTaskDraft({ ...taskDraft, task_type: e.target.value })}
-              className="text-xs rounded-lg border border-gray-200 px-2.5 py-1.5 focus:border-wesbank-navy focus:outline-none"
+              className="text-xs rounded-lg border border-gray-200 px-2.5 py-1.5 focus:border-claimtec-forest focus:outline-none"
             />
             <div className="grid grid-cols-2 gap-1.5">
               <select
                 value={taskDraft.priority}
                 onChange={(e) => setTaskDraft({ ...taskDraft, priority: e.target.value as TaskWriteInput['priority'] })}
-                className="text-xs rounded-lg border border-gray-200 px-2 py-1.5 focus:border-wesbank-navy focus:outline-none"
+                className="text-xs rounded-lg border border-gray-200 px-2 py-1.5 focus:border-claimtec-forest focus:outline-none"
               >
                 <option value="LOW">Low</option>
                 <option value="NORMAL">Normal</option>
@@ -182,7 +182,7 @@ export function NotesAndTasksPanel({ dealId }: { dealId: string }) {
                 type="date"
                 value={taskDraft.due_at ?? ''}
                 onChange={(e) => setTaskDraft({ ...taskDraft, due_at: e.target.value || null })}
-                className="text-xs rounded-lg border border-gray-200 px-2 py-1.5 focus:border-wesbank-navy focus:outline-none"
+                className="text-xs rounded-lg border border-gray-200 px-2 py-1.5 focus:border-claimtec-forest focus:outline-none"
               />
             </div>
             <textarea
@@ -190,13 +190,13 @@ export function NotesAndTasksPanel({ dealId }: { dealId: string }) {
               value={taskDraft.notes ?? ''}
               onChange={(e) => setTaskDraft({ ...taskDraft, notes: e.target.value })}
               rows={2}
-              className="text-xs rounded-lg border border-gray-200 px-2.5 py-1.5 focus:border-wesbank-navy focus:outline-none resize-none"
+              className="text-xs rounded-lg border border-gray-200 px-2.5 py-1.5 focus:border-claimtec-forest focus:outline-none resize-none"
             />
             <button
               type="button"
               onClick={handleCreateTask}
               disabled={!taskDraft.task_type.trim() || savingTask}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-wesbank-navy hover:bg-wesbank-navy-dark px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-claimtec-forest hover:bg-claimtec-forest-2 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50"
             >
               {savingTask ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
               Create task

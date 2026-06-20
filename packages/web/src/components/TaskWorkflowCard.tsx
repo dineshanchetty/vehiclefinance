@@ -12,7 +12,7 @@ import { useProfile } from '../lib/auth'
 import type { TaskWithDeal } from '../types/database'
 
 const TONE_BTN: Record<ActionTone, string> = {
-  primary: 'bg-wesbank-navy hover:bg-wesbank-navy-dark text-white',
+  primary: 'bg-claimtec-forest hover:bg-claimtec-forest-2 text-white',
   success: 'bg-emerald-600 hover:bg-emerald-700 text-white',
   danger:  'bg-rose-600    hover:bg-rose-700    text-white',
   warn:    'bg-amber-500   hover:bg-amber-600   text-white',
@@ -21,7 +21,7 @@ const TONE_BTN: Record<ActionTone, string> = {
 
 const PRIORITY_PILL: Record<string, string> = {
   LOW: 'bg-slate-100 text-slate-600',
-  NORMAL: 'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  NORMAL: 'bg-claimtec-forest/10 text-claimtec-forest-2',
   HIGH: 'bg-orange-100 text-orange-800',
   URGENT: 'bg-red-100 text-red-800',
 }
@@ -97,7 +97,7 @@ export function TaskWorkflowCard({ task, onChanged }: Props) {
           {task.deal && (
             <p className="mt-1 text-xs text-gray-500">
               Deal{' '}
-              <Link to={`/deals/${task.deal_id}`} className="font-medium text-wesbank-navy hover:underline">
+              <Link to={`/deals/${task.deal_id}`} className="font-medium text-claimtec-forest hover:underline">
                 {task.deal.deal_number ?? task.deal_id.slice(0, 8)}
               </Link>
               {task.deal.buyer?.full_name && <> · {task.deal.buyer.full_name}</>}
@@ -116,10 +116,10 @@ export function TaskWorkflowCard({ task, onChanged }: Props) {
       </div>
 
       {/* Workflow hint */}
-      <div className="rounded-lg border border-wesbank-navy/10 bg-wesbank-navy/5/40 px-3 py-2.5 mb-3">
-        <p className="text-xs text-wesbank-navy-darker">{wf.hint}</p>
+      <div className="rounded-lg border border-claimtec-forest/10 bg-claimtec-forest/5/40 px-3 py-2.5 mb-3">
+        <p className="text-xs text-claimtec-ink">{wf.hint}</p>
         {task.notes && (
-          <p className="mt-1.5 text-xs text-gray-600 border-t border-wesbank-navy/10 pt-1.5">
+          <p className="mt-1.5 text-xs text-gray-600 border-t border-claimtec-forest/10 pt-1.5">
             <span className="font-semibold text-gray-700">Note:</span> {task.notes}
           </p>
         )}
@@ -243,7 +243,7 @@ function ReasonModal({
               rows={2}
               autoFocus
               placeholder="Brief reason for this action — visible to ops + audit log."
-              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
             />
           </label>
 
@@ -263,7 +263,7 @@ function ReasonModal({
                   value={draftMessage}
                   onChange={(e) => setDraftMessage(e.target.value)}
                   rows={5}
-                  className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:border-wesbank-navy focus:outline-none bg-white"
+                  className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:border-claimtec-forest focus:outline-none bg-white"
                   placeholder="Message to buyer…"
                 />
               )}

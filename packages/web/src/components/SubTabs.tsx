@@ -38,19 +38,19 @@ export function SubTabs({
                 onClick={() => setActiveId(p.id)}
                 className={`subtab-btn flex items-center gap-1.5 h-10 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
-                    ? 'border-wesbank-navy text-gray-900'
+                    ? 'border-claimtec-forest text-gray-900'
                     : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
                 {p.icon && (
-                  <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-wesbank-navy' : 'text-gray-400'}`}>
+                  <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-claimtec-forest' : 'text-gray-400'}`}>
                     {p.icon}
                   </span>
                 )}
                 {p.label}
                 {p.badge != null && p.badge !== '' && p.badge !== 0 && (
                   <span className={`ml-0.5 inline-flex items-center justify-center min-w-[18px] h-[18px] rounded-full px-1.5 text-[10px] font-semibold ${
-                    isActive ? 'bg-wesbank-navy/10 text-wesbank-navy' : 'bg-gray-100 text-gray-500'
+                    isActive ? 'bg-claimtec-forest/10 text-claimtec-forest' : 'bg-gray-100 text-gray-500'
                   }`}>{p.badge}</span>
                 )}
               </button>

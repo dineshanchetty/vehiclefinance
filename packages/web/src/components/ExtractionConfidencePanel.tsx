@@ -12,7 +12,7 @@ interface Props {
 // Map the DB `verification_status` enum onto the UI labels.
 const statusConfig: Record<VerificationStatus, { label: string; cls: string }> = {
   VERIFIED:   { label: 'Accepted',   cls: 'bg-green-100 text-green-800' },
-  OVERRIDDEN: { label: 'Overridden', cls: 'bg-wesbank-navy/10 text-wesbank-navy-dark' },
+  OVERRIDDEN: { label: 'Overridden', cls: 'bg-claimtec-forest/10 text-claimtec-forest-2' },
   PENDING:    { label: 'Pending',    cls: 'bg-gray-100 text-gray-700' },
   MISMATCH:   { label: 'Flagged',    cls: 'bg-red-100 text-red-700' },
 }
@@ -108,8 +108,8 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
           <AlertTriangle className="h-4 w-4 text-amber-600" />
           <span className="text-amber-700">{lowConfidence} low confidence</span>
         </div>
-        <div className="flex items-center gap-2 rounded-lg bg-wesbank-navy/5 border border-wesbank-navy/20 px-3 py-2 text-sm">
-          <span className="text-wesbank-navy-dark">{pending} pending review</span>
+        <div className="flex items-center gap-2 rounded-lg bg-claimtec-forest/5 border border-claimtec-forest/20 px-3 py-2 text-sm">
+          <span className="text-claimtec-forest-2">{pending} pending review</span>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
                   </td>
                   <td className="px-4 py-3 text-gray-700 font-mono text-xs">
                     {row.verification_status === 'OVERRIDDEN'
-                      ? <span className="text-wesbank-navy-dark">{row.customer_confirmed_value}</span>
+                      ? <span className="text-claimtec-forest-2">{row.customer_confirmed_value}</span>
                       : row.extracted_value ?? <span className="italic text-gray-400">not extracted</span>}
                   </td>
                   <td className="px-4 py-3"><ConfidenceBar value={conf} /></td>
@@ -168,7 +168,7 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
                           setOverrideValue(row.customer_confirmed_value ?? row.extracted_value ?? '')
                         }}
                         title="Override"
-                        className="rounded p-1 text-wesbank-navy hover:bg-wesbank-navy/5"
+                        className="rounded p-1 text-claimtec-forest hover:bg-claimtec-forest/5"
                       >
                         <Edit3 className="h-4 w-4" />
                       </button>
@@ -208,12 +208,12 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
               value={overrideValue}
               onChange={(e) => setOverrideValue(e.target.value)}
               placeholder="Enter correct value…"
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setOverrideModal(null)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
-              <button onClick={saveOverride} className="flex items-center gap-2 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark">
+              <button onClick={saveOverride} className="flex items-center gap-2 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2">
                 <Save className="h-4 w-4" /> Save Override
               </button>
             </div>
@@ -236,7 +236,7 @@ export function ExtractionConfidencePanel({ results = [], onAccept, onOverride, 
               onChange={(e) => setFlagReason(e.target.value)}
               placeholder="Reason for flagging…"
               rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">

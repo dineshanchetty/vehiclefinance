@@ -71,13 +71,13 @@ const PHASE_TO_QUEUES: Record<string, string[]> = {
 
 const PRIORITY_PILL: Record<string, string> = {
   LOW: 'bg-slate-100 text-slate-600',
-  NORMAL: 'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  NORMAL: 'bg-claimtec-forest/10 text-claimtec-forest-2',
   HIGH: 'bg-orange-100 text-orange-800',
   URGENT: 'bg-red-100 text-red-800',
 }
 
 const TONE_BTN: Record<ActionTone, string> = {
-  primary: 'bg-wesbank-navy hover:bg-wesbank-navy-dark text-white',
+  primary: 'bg-claimtec-forest hover:bg-claimtec-forest-2 text-white',
   success: 'bg-emerald-600 hover:bg-emerald-700 text-white',
   danger:  'bg-rose-600    hover:bg-rose-700    text-white',
   warn:    'bg-amber-500   hover:bg-amber-600   text-white',
@@ -299,7 +299,7 @@ export function PhaseActionModal({ deal, phaseKey, onClose, onChanged }: Props) 
       <div className="w-full max-w-xl rounded-xl bg-white shadow-xl flex flex-col max-h-[85vh]">
         <div className="flex items-center justify-between border-b border-gray-200 px-5 py-3">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-wesbank-navy">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-claimtec-forest">
               {phaseIdx >= 0 ? `Step ${phaseIdx + 1} of ${PHASES.length}` : 'Phase'}
             </p>
             <h3 className="text-sm font-semibold text-gray-900">{phaseLabel}</h3>
@@ -309,8 +309,8 @@ export function PhaseActionModal({ deal, phaseKey, onClose, onChanged }: Props) 
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
           {/* Hint */}
-          <div className="rounded-lg border border-wesbank-navy/10 bg-wesbank-navy/5/40 px-3 py-2.5">
-            <p className="text-xs text-wesbank-navy-darker">{wf.hint}</p>
+          <div className="rounded-lg border border-claimtec-forest/10 bg-claimtec-forest/5/40 px-3 py-2.5">
+            <p className="text-xs text-claimtec-ink">{wf.hint}</p>
           </div>
 
           {/* Checklist */}
@@ -451,7 +451,7 @@ export function PhaseActionModal({ deal, phaseKey, onClose, onChanged }: Props) 
                         )}
                         <a
                           href={`/queue/${t.queue}`}
-                          className="text-gray-400 hover:text-wesbank-navy"
+                          className="text-gray-400 hover:text-claimtec-forest"
                           title="Open in queue"
                         >
                           <ExternalLink className="h-3 w-3" />
@@ -618,7 +618,7 @@ function ReasonModal({
                 rows={2}
                 autoFocus
                 placeholder="Brief reason — visible in audit log."
-                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+                className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
               />
             </label>
           )}
@@ -639,7 +639,7 @@ function ReasonModal({
                   value={body}
                   onChange={(e) => setBody(e.target.value)}
                   rows={5}
-                  className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:border-wesbank-navy focus:outline-none bg-white"
+                  className="block w-full rounded-lg border border-gray-200 px-3 py-2 text-xs focus:border-claimtec-forest focus:outline-none bg-white"
                 />
               )}
               <p className="text-[10px] text-gray-400">

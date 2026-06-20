@@ -221,7 +221,7 @@ export function VehiclePhotoPanel({
             </button>
             <button
               onClick={() => setOverrideModal(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-wesbank-navy/20 bg-white px-3 py-1.5 text-sm font-medium text-wesbank-navy-dark hover:bg-wesbank-navy/5"
+              className="flex items-center gap-1.5 rounded-lg border border-claimtec-forest/20 bg-white px-3 py-1.5 text-sm font-medium text-claimtec-forest-2 hover:bg-claimtec-forest/5"
             >
               <RefreshCw className="h-4 w-4" /> Override Band
             </button>
@@ -332,7 +332,7 @@ export function VehiclePhotoPanel({
               onChange={(e) => setReuploadReason(e.target.value)}
               placeholder="Reason for re-upload request…"
               rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">
@@ -358,7 +358,7 @@ export function VehiclePhotoPanel({
               onChange={(e) => setEscalateReason(e.target.value)}
               placeholder="Escalation reason…"
               rows={3}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest"
               autoFocus
             />
             <div className="mt-4 flex justify-end gap-2">
@@ -394,14 +394,14 @@ export function VehiclePhotoPanel({
               onChange={(e) => setOverrideNotes(e.target.value)}
               placeholder="Reason for override (required)…"
               rows={2}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy"
+              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest"
             />
             <div className="mt-4 flex justify-end gap-2">
               <button onClick={() => setOverrideModal(false)} className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50">Cancel</button>
               <button
                 disabled={!overrideNotes.trim()}
                 onClick={() => { onOverride?.(overrideBand, overrideNotes); setOverrideModal(false) }}
-                className="flex items-center gap-2 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
               >
                 <Save className="h-4 w-4" /> Save Override
               </button>

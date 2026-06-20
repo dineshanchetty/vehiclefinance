@@ -156,7 +156,7 @@ export function DealList() {
           <button
             onClick={fetchDeals}
             disabled={loading}
-            className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:border-wesbank-navy hover:text-wesbank-navy disabled:opacity-50 transition-colors"
+            className="flex items-center gap-1.5 rounded-md border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-medium text-gray-700 hover:border-claimtec-forest hover:text-claimtec-forest disabled:opacity-50 transition-colors"
           >
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
             Refresh
@@ -209,8 +209,8 @@ export function DealList() {
                   onClick={() => setQuickFilter(id)}
                   className={`px-2.5 py-1 text-xs font-medium rounded-full border transition-colors ${
                     active
-                      ? 'bg-wesbank-navy text-white border-wesbank-navy'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-wesbank-navy hover:text-wesbank-navy'
+                      ? 'bg-claimtec-forest text-white border-claimtec-forest'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-claimtec-forest hover:text-claimtec-forest'
                   }`}
                 >
                   {label}
@@ -227,7 +227,7 @@ export function DealList() {
                 placeholder="Search name, phone, deal #…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-56 rounded-md border border-gray-200 bg-white py-1.5 pl-8 pr-2.5 text-xs placeholder-gray-400 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
+                className="w-56 rounded-md border border-gray-200 bg-white py-1.5 pl-8 pr-2.5 text-xs placeholder-gray-400 focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest/30"
               />
             </div>
 
@@ -236,7 +236,7 @@ export function DealList() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as DealStatus | '')}
-                className="rounded-md border border-gray-200 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-700 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
+                className="rounded-md border border-gray-200 bg-white py-1.5 pl-2 pr-7 text-xs text-gray-700 focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest/30"
               >
                 <option value="">All statuses</option>
                 {DEAL_STATUSES.map((s) => (
@@ -249,13 +249,13 @@ export function DealList() {
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white py-1.5 px-2 text-xs text-gray-700 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
+              className="rounded-md border border-gray-200 bg-white py-1.5 px-2 text-xs text-gray-700 focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest/30"
             />
             <input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="rounded-md border border-gray-200 bg-white py-1.5 px-2 text-xs text-gray-700 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy/30"
+              className="rounded-md border border-gray-200 bg-white py-1.5 px-2 text-xs text-gray-700 focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest/30"
             />
           </div>
         </div>
@@ -291,7 +291,7 @@ export function DealList() {
                   <th
                     key={label}
                     onClick={() => key && toggleSort(key)}
-                    className={`border-b border-gray-200 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500 ${key ? 'cursor-pointer select-none hover:text-wesbank-navy' : ''}`}
+                    className={`border-b border-gray-200 px-4 py-2.5 text-left text-[11px] font-semibold uppercase tracking-wide text-gray-500 ${key ? 'cursor-pointer select-none hover:text-claimtec-forest' : ''}`}
                   >
                     <div className="flex items-center gap-1">
                       {label}
@@ -326,7 +326,7 @@ export function DealList() {
                     onClick={() => navigate(`/deals/${deal.id}`)}
                     className={`cursor-pointer border-b border-gray-100 last:border-0 transition-colors ${
                       idx % 2 === 1 ? 'bg-slate-50/60' : 'bg-white'
-                    } hover:bg-wesbank-navy/[0.04]`}
+                    } hover:bg-claimtec-forest/[0.04]`}
                   >
                     <td className="px-4 py-3 align-top">
                       <span className="font-semibold text-gray-900">{deal.deal_number ?? '—'}</span>
@@ -356,7 +356,7 @@ export function DealList() {
                           <div className="mt-1 flex items-center gap-2">
                             <div className="flex-1 h-1 rounded-full bg-gray-100 overflow-hidden">
                               <div
-                                className={`h-full rounded-full ${pct >= 100 ? 'bg-emerald-500' : 'bg-wesbank-navy'}`}
+                                className={`h-full rounded-full ${pct >= 100 ? 'bg-emerald-500' : 'bg-claimtec-forest'}`}
                                 style={{ width: `${Math.max(pct, 4)}%` }}
                               />
                             </div>
@@ -398,7 +398,7 @@ function MetricCard({
   tone: 'navy' | 'amber' | 'sky' | 'rose'
 }) {
   const iconColor: Record<typeof tone, string> = {
-    navy:  'text-wesbank-navy bg-wesbank-navy/10',
+    navy:  'text-claimtec-forest bg-claimtec-forest/10',
     amber: 'text-amber-600 bg-amber-100',
     sky:   'text-sky-600 bg-sky-100',
     rose:  'text-rose-600 bg-rose-100',

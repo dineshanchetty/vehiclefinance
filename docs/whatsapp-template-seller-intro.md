@@ -16,7 +16,7 @@ direct via Meta Business Manager).
 | **Category** | `UTILITY` (transactional — buyer initiated a financed purchase of seller's vehicle) |
 | **Language** | `en` (English) |
 | **Header** | None |
-| **Footer** | `WesBank Private Deal · Powered by Claimtec` |
+| **Footer** | `Claimtec FinOps` |
 | **Buttons** | Quick reply: `START` · Quick reply: `Not my vehicle` |
 
 ### Body
@@ -25,9 +25,9 @@ direct via Meta Business Manager).
 Hi {{1}} 👋
 
 {{2}} has applied to finance the purchase of your {{3}} for {{4}} through
-WesBank Private Deal.
+Claimtec FinOps.
 
-I'm a WhatsApp assistant from WesBank's broker. I'll guide you through
+I'm a WhatsApp assistant from the bank's broker. I'll guide you through
 your part of the deal — confirming your details, the vehicle, banking
 info for payout, and arranging a roadworthy + technical inspection.
 
@@ -49,16 +49,16 @@ when you're ready.
 > Hi Thabo 👋
 >
 > Dineshan Chetty has applied to finance the purchase of your 2018
-> Volkswagen Golf 7 GTI for R 285,000 through WesBank Private Deal.
+> Volkswagen Golf 7 GTI for R 285,000 through Claimtec FinOps.
 >
-> I'm a WhatsApp assistant from WesBank's broker. I'll guide you through
+> I'm a WhatsApp assistant from the bank's broker. I'll guide you through
 > your part of the deal — confirming your details, the vehicle, banking
 > info for payout, and arranging a roadworthy + technical inspection.
 >
 > It's all done over WhatsApp and takes about 10–15 minutes. Reply START
 > when you're ready.
 >
-> _WesBank Private Deal · Powered by Claimtec_
+> _Claimtec FinOps_
 >
 > [START] [Not my vehicle]
 

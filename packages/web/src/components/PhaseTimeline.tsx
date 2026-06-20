@@ -1,7 +1,7 @@
 import { Check } from 'lucide-react'
 
 /**
- * PhaseTimeline — vertical, journey-style view of the 15 WesBank Private Deal
+ * PhaseTimeline — vertical, journey-style view of the 15 Claimtec FinOps
  * phases. Renders one row per phase with a status circle (completed / current
  * / pending), a connector line, and the phase name + description.
  *
@@ -32,12 +32,12 @@ export const PHASES: PhaseDef[] = [
   { key: 'BANK_STATEMENTS',   name: 'Bank Statements',   milestones: ['bank_statements_uploaded', 'bank_statements_received', 'bank_statements_verified'], description: '3 months of personal bank statements' },
   { key: 'AFFORDABILITY',     name: 'Affordability',     milestones: ['affordability_confirmed', 'affordability_assessed'],      description: 'Income & expenses assessed' },
   { key: 'SELLER_NOTIFY',     name: 'Seller Notify',     milestones: ['seller_notified', 'seller_invited'],                      description: 'Seller invited to confirm details' },
-  { key: 'CREDIT_DECISION',   name: 'Credit Decision',   milestones: ['credit_approved', 'credit_decision_received'],            description: 'WesBank credit team reviews' },
+  { key: 'CREDIT_DECISION',   name: 'Credit Decision',   milestones: ['credit_approved', 'credit_decision_received'],            description: 'Claimtec credit team reviews' },
   { key: 'INSPECTION_REVIEW', name: 'Inspection Review', milestones: ['inspection_passed', 'inspection_reviewed'],               description: 'Roadworthy + technical inspection' },
   { key: 'QUOTE',             name: 'Quote',             milestones: ['quote_accepted'],                                         description: 'Finance quote presented to buyer' },
   { key: 'CONTRACT',          name: 'Contract',          milestones: ['contract_signed'],                                        description: 'Finance agreement signed' },
   { key: 'HANDOVER',          name: 'Handover',          milestones: ['handover_confirmed'],                                     description: 'Buyer collects the vehicle' },
-  { key: 'PAYOUT',            name: 'Payout',            milestones: ['paid_out'],                                               description: 'WesBank pays the seller' },
+  { key: 'PAYOUT',            name: 'Payout',            milestones: ['paid_out'],                                               description: 'Claimtec pays the seller' },
   { key: 'DONE',              name: 'Done',              milestones: [],                                                         description: 'Deal closed' },
 ]
 
@@ -110,7 +110,7 @@ export function PhaseTimeline({ currentPhase, completedMilestones, phaseState, o
                     completed
                       ? 'bg-emerald-600 text-white'
                       : current
-                      ? 'bg-wesbank-yellow text-wesbank-navy ring-2 ring-wesbank-navy animate-pulse'
+                      ? 'bg-claimtec-gold text-claimtec-forest ring-2 ring-claimtec-forest animate-pulse'
                       : 'bg-gray-200 text-gray-400'
                   }`}
                 >
@@ -121,11 +121,11 @@ export function PhaseTimeline({ currentPhase, completedMilestones, phaseState, o
               {/* Right column */}
               <div className="flex-1 min-w-0 pt-0.5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <p className={`text-sm ${current ? 'font-bold text-gray-900' : 'font-medium text-gray-800'} ${clickable ? 'group-hover:text-wesbank-navy-dark' : ''}`}>
+                  <p className={`text-sm ${current ? 'font-bold text-gray-900' : 'font-medium text-gray-800'} ${clickable ? 'group-hover:text-claimtec-forest-2' : ''}`}>
                     {phase.name}
                   </p>
                   {current && (
-                    <span className="rounded-full bg-wesbank-navy/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-wesbank-navy-dark">
+                    <span className="rounded-full bg-claimtec-forest/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-claimtec-forest-2">
                       In progress
                     </span>
                   )}

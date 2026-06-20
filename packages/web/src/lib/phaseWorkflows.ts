@@ -80,14 +80,14 @@ const OFFER_TO_PURCHASE: PhaseWorkflow = {
 }
 
 const PRICE_GATE: PhaseWorkflow = {
-  hint: 'Vehicle price must be ≥ R30,000 to qualify for WesBank Private Deal.',
+  hint: 'Vehicle price must be ≥ R30,000 to qualify for Claimtec FinOps.',
   checklist: ['agreed_price captured on phase_state', 'Price ≥ R30,000', 'Buyer confirmed the price'],
   actions: [
     { id: 'approve_price', label: 'Price OK — proceed to ID', tone: 'success',
       advanceToPhase: 'ID_DOC', markMilestone: 'price_captured',
       auditEventType: 'ops_price_gate_passed' },
     { id: 'price_too_low', label: 'Below R30k — decline', tone: 'danger', requiresReason: true,
-      whatsappTemplate: 'Hi {{first_name}}, this vehicle price falls below WesBank\'s R30,000 minimum for Private Deal: {{reason}}. A consultant will reach out about alternatives.',
+      whatsappTemplate: 'Hi {{first_name}}, this vehicle price falls below Claimtec\'s R30,000 minimum for Private Deal: {{reason}}. A consultant will reach out about alternatives.',
       whatsappTarget: 'buyer',
       setDealStatus: 'DEAL_DECLINED', auditEventType: 'ops_price_too_low' },
   ],
@@ -134,7 +134,7 @@ const BANK_STATEMENTS: PhaseWorkflow = {
       whatsappTemplate: 'Hi {{first_name}} — we couldn\'t accept your bank statements: {{reason}}. Please resend the missing or corrected statements.',
       whatsappTarget: 'buyer', auditEventType: 'ops_bs_resubmit_requested' },
     { id: 'reject_business', label: 'Reject — business account', tone: 'danger', requiresReason: true,
-      whatsappTemplate: 'Hi {{first_name}}, WesBank Private Deal is for personal-account holders only: {{reason}}. We\'ll suggest alternative finance.',
+      whatsappTemplate: 'Hi {{first_name}}, Claimtec FinOps is for personal-account holders only: {{reason}}. We\'ll suggest alternative finance.',
       whatsappTarget: 'buyer',
       setDealStatus: 'DEAL_DECLINED', auditEventType: 'ops_bs_business_rejected' },
   ],
@@ -177,17 +177,17 @@ const SELLER_NOTIFY: PhaseWorkflow = {
 }
 
 const CREDIT_DECISION: PhaseWorkflow = {
-  hint: 'Record the credit decision from WesBank. Approval advances to inspection; decline ends the deal.',
-  checklist: ['WesBank decision received', 'Affordability assessment on file', 'No outstanding flags'],
+  hint: 'Record the credit decision from Claimtec. Approval advances to inspection; decline ends the deal.',
+  checklist: ['Claimtec decision received', 'Affordability assessment on file', 'No outstanding flags'],
   actions: [
     { id: 'credit_approved', label: 'Credit APPROVED', tone: 'success',
       advanceToPhase: 'INSPECTION_REVIEW', markMilestone: 'credit_approved',
       setDealStatus: 'DEAL_APPROVED',
-      whatsappTemplate: 'Great news {{first_name}} 🎉 Your WesBank Private Deal application has been approved! We\'ll arrange the vehicle inspection next.',
+      whatsappTemplate: 'Great news {{first_name}} 🎉 Your Claimtec FinOps application has been approved! We\'ll arrange the vehicle inspection next.',
       whatsappTarget: 'buyer',
       auditEventType: 'ops_credit_approved' },
     { id: 'credit_declined', label: 'Credit DECLINED', tone: 'danger', requiresReason: true,
-      whatsappTemplate: 'Hi {{first_name}}, unfortunately your WesBank Private Deal application wasn\'t approved: {{reason}}. A consultant will reach out to discuss alternatives.',
+      whatsappTemplate: 'Hi {{first_name}}, unfortunately your Claimtec FinOps application wasn\'t approved: {{reason}}. A consultant will reach out to discuss alternatives.',
       whatsappTarget: 'buyer',
       setDealStatus: 'DEAL_DECLINED', auditEventType: 'ops_credit_declined' },
     { id: 'pending', label: 'Mark pending more info', tone: 'warn', requiresReason: true,
@@ -215,8 +215,8 @@ const INSPECTION_REVIEW: PhaseWorkflow = {
 }
 
 const QUOTE: PhaseWorkflow = {
-  hint: 'Prepare and send the WesBank quote. Wait for buyer accept / decline.',
-  checklist: ['Quote prepared in Quote tab', 'Buyer received quote', 'Terms verified with WesBank'],
+  hint: 'Prepare and send the Claimtec quote. Wait for buyer accept / decline.',
+  checklist: ['Quote prepared in Quote tab', 'Buyer received quote', 'Terms verified with Claimtec'],
   actions: [
     { id: 'quote_accepted', label: 'Quote accepted', tone: 'success',
       advanceToPhase: 'CONTRACT', markMilestone: 'quote_accepted',
@@ -257,8 +257,8 @@ const HANDOVER: PhaseWorkflow = {
 }
 
 const PAYOUT: PhaseWorkflow = {
-  hint: 'WesBank pays the seller. Final step before NATIS transfer.',
-  checklist: ['WesBank payout instruction sent', 'Seller bank confirmed receipt'],
+  hint: 'Claimtec pays the seller. Final step before NATIS transfer.',
+  checklist: ['Claimtec payout instruction sent', 'Seller bank confirmed receipt'],
   actions: [
     { id: 'payout_done', label: 'Payout confirmed', tone: 'success',
       advanceToPhase: 'DONE', markMilestone: 'paid_out',

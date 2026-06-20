@@ -159,7 +159,7 @@ export function AffordabilityTab({ deal }: { deal: DealWithRelations }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-12">
-        <RefreshCw className="h-6 w-6 animate-spin text-wesbank-navy/40" />
+        <RefreshCw className="h-6 w-6 animate-spin text-claimtec-forest/40" />
       </div>
     )
   }
@@ -185,7 +185,7 @@ export function AffordabilityTab({ deal }: { deal: DealWithRelations }) {
             <FileText className="mx-auto h-8 w-8 text-gray-300 mb-2" />
             No bank statements extracted yet.
             <div className="mt-2">
-              <Link to={`/deals/${deal.id}`} className="text-wesbank-navy hover:underline">
+              <Link to={`/deals/${deal.id}`} className="text-claimtec-forest hover:underline">
                 View Documents
               </Link>
             </div>
@@ -243,12 +243,12 @@ export function AffordabilityTab({ deal }: { deal: DealWithRelations }) {
           value={rand(aggregate.avgExpenses)}
         />
         <StatCard
-          icon={<Wallet className="h-4 w-4 text-wesbank-navy" />}
+          icon={<Wallet className="h-4 w-4 text-claimtec-forest" />}
           label="Disposable income"
           value={rand(aggregate.disposable)}
         />
         <StatCard
-          icon={<Banknote className="h-4 w-4 text-wesbank-navy" />}
+          icon={<Banknote className="h-4 w-4 text-claimtec-forest" />}
           label="Safe instalment (30%)"
           value={rand(aggregate.safeInstalment)}
           subtle="rounded to nearest R100"
@@ -326,7 +326,7 @@ export function AffordabilityTab({ deal }: { deal: DealWithRelations }) {
               value={overrideIncome}
               onChange={(e) => setOverrideIncome(e.target.value)}
               placeholder={aggregate.avgIncome != null ? String(Math.round(aggregate.avgIncome)) : ''}
-              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
             />
           </label>
           <label className="block">
@@ -337,7 +337,7 @@ export function AffordabilityTab({ deal }: { deal: DealWithRelations }) {
               value={overrideExpenses}
               onChange={(e) => setOverrideExpenses(e.target.value)}
               placeholder={aggregate.avgExpenses != null ? String(Math.round(aggregate.avgExpenses)) : ''}
-              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
             />
           </label>
           <label className="block sm:col-span-2">
@@ -346,7 +346,7 @@ export function AffordabilityTab({ deal }: { deal: DealWithRelations }) {
               value={overrideNotes}
               onChange={(e) => setOverrideNotes(e.target.value)}
               rows={2}
-              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+              className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
             />
           </label>
         </div>
@@ -367,17 +367,17 @@ export function AffordabilityTab({ deal }: { deal: DealWithRelations }) {
       </div>
 
       {/* ── Submit for credit ────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-wesbank-navy/20 bg-wesbank-navy/5/40 p-5 flex items-center justify-between gap-4">
+      <div className="rounded-xl border border-claimtec-forest/20 bg-claimtec-forest/5/40 p-5 flex items-center justify-between gap-4">
         <div>
-          <h3 className="text-sm font-semibold text-wesbank-navy-darker">Ready for credit decision?</h3>
-          <p className="text-xs text-wesbank-navy-dark/80 mt-0.5">
+          <h3 className="text-sm font-semibold text-claimtec-ink">Ready for credit decision?</h3>
+          <p className="text-xs text-claimtec-forest-2/80 mt-0.5">
             Sets status to FNI_REVIEW_PENDING and moves the deal into the CREDIT_DECISION phase.
           </p>
         </div>
         <button
           onClick={handleSubmitForCredit}
           disabled={submitting || submitted}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
         >
           <Send className="h-4 w-4" />
           {submitted ? 'Submitted' : submitting ? 'Submitting…' : 'Submit for credit decision'}
@@ -472,10 +472,10 @@ function ConsolidatedBreakdown({ statements }: { statements: BankStatementExtrac
   const subscriptions = expenses.filter((e) => e.count >= months && months >= 2 && e.total >= 50)
 
   return (
-    <div className="rounded-xl border border-wesbank-navy/20 bg-wesbank-navy/5/30 p-5">
+    <div className="rounded-xl border border-claimtec-forest/20 bg-claimtec-forest/5/30 p-5">
       <div className="flex items-baseline justify-between mb-3">
-        <h3 className="text-sm font-semibold text-wesbank-navy-darker">{months}-Month Consolidated</h3>
-        <span className="text-xs text-wesbank-navy-dark/70">
+        <h3 className="text-sm font-semibold text-claimtec-ink">{months}-Month Consolidated</h3>
+        <span className="text-xs text-claimtec-forest-2/70">
           {rand(totalCredits)} in · {rand(totalDebits)} out
         </span>
       </div>
@@ -536,7 +536,7 @@ function ConsolidatedBreakdown({ statements }: { statements: BankStatementExtrac
       )}
 
       {totalFeeCount > 0 && (
-        <p className="mt-3 text-[11px] text-wesbank-navy-dark/70">
+        <p className="mt-3 text-[11px] text-claimtec-forest-2/70">
           {totalFeeCount} bank fees totalling {rand(totalFees)} — already excluded from category totals above.
         </p>
       )}

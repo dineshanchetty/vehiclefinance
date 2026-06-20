@@ -103,7 +103,7 @@ export function PhaseUpdateModal({
                 <li
                   key={p.key}
                   className={`flex items-center gap-3 rounded-lg border px-3 py-2 transition-colors ${
-                    isCurrent ? 'border-wesbank-navy/30 bg-wesbank-navy/5/40' : 'border-gray-200 hover:bg-gray-50'
+                    isCurrent ? 'border-claimtec-forest/30 bg-claimtec-forest/5/40' : 'border-gray-200 hover:bg-gray-50'
                   }`}
                 >
                   {/* Step number / checkmark */}
@@ -114,7 +114,7 @@ export function PhaseUpdateModal({
                     title={primaryMilestone ? (isDone ? 'Click to un-mark milestone' : 'Click to mark milestone done') : 'No milestone for this phase'}
                     className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full text-[10px] font-semibold transition ${
                       isDone ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                      : isCurrent ? 'bg-wesbank-navy text-white'
+                      : isCurrent ? 'bg-claimtec-forest text-white'
                       : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
                     }`}
                   >
@@ -130,9 +130,9 @@ export function PhaseUpdateModal({
                     disabled={isCurrent || phaseBusy}
                     className="flex-1 text-left disabled:cursor-default"
                   >
-                    <p className={`text-sm font-medium ${isCurrent ? 'text-wesbank-navy-darker' : 'text-gray-900'}`}>
+                    <p className={`text-sm font-medium ${isCurrent ? 'text-claimtec-ink' : 'text-gray-900'}`}>
                       {p.name}
-                      {isCurrent && <span className="ml-2 text-[10px] uppercase tracking-wide rounded-full bg-wesbank-navy/20 text-wesbank-navy-dark px-1.5 py-0.5">current</span>}
+                      {isCurrent && <span className="ml-2 text-[10px] uppercase tracking-wide rounded-full bg-claimtec-forest/20 text-claimtec-forest-2 px-1.5 py-0.5">current</span>}
                       {isDone && !isCurrent && <span className="ml-2 text-[10px] uppercase tracking-wide rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5">done</span>}
                     </p>
                     <p className="text-[11px] text-gray-500">{p.description}</p>

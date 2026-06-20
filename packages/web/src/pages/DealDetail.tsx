@@ -181,7 +181,7 @@ function BuyerTab({
                     </div>
                     <StatusBadge status={doc.status} variant="sm" />
                     {doc.file_url && (
-                      <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-wesbank-navy hover:text-wesbank-navy-dark">
+                      <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-claimtec-forest hover:text-claimtec-forest-2">
                         <ExternalLink className="h-4 w-4" />
                       </a>
                     )}
@@ -332,7 +332,7 @@ function SellerTab({
           <button
             onClick={handleNotify}
             disabled={notifying || !seller?.phone}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-3 py-1.5 text-xs font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
             title={!seller?.phone ? 'Seller phone required' : 'Send WhatsApp intro to the seller'}
           >
             <Send className="h-3.5 w-3.5" />
@@ -374,7 +374,7 @@ function SellerTab({
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-gray-700">Seller Profile</h3>
           {!editing && !isEmpty && (
-            <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 text-xs text-wesbank-navy hover:text-wesbank-navy-dark">
+            <button onClick={() => setEditing(true)} className="inline-flex items-center gap-1 text-xs text-claimtec-forest hover:text-claimtec-forest-2">
               <Pencil className="h-3.5 w-3.5" /> Edit
             </button>
           )}
@@ -419,7 +419,7 @@ function SellerTab({
             )}
 
             <div className="flex items-center gap-2">
-              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50">
+              <button onClick={handleSave} disabled={saving} className="inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-3 py-1.5 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50">
                 <Save className="h-4 w-4" /> {saving ? 'Saving…' : 'Save seller'}
               </button>
               {!isEmpty && (
@@ -471,7 +471,7 @@ function SellerTab({
               </div>
               <StatusBadge status={doc.status} variant="sm" />
               {doc.file_url && (
-                <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-wesbank-navy hover:text-wesbank-navy-dark">
+                <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-claimtec-forest hover:text-claimtec-forest-2">
                   <ExternalLink className="h-4 w-4" />
                 </a>
               )}
@@ -543,7 +543,7 @@ function SellerField({
       <input
         type="text" value={value} onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder} disabled={disabled}
-        className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-wesbank-navy focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
+        className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-claimtec-forest focus:outline-none disabled:bg-gray-50 disabled:text-gray-400"
       />
       {hint && <span className="mt-1 block text-[10px] italic text-gray-400">{hint}</span>}
     </label>
@@ -586,13 +586,13 @@ function SellerDocRow({
         <>
           <StatusBadge status={doc.status} variant="sm" />
           {doc.file_url && (
-            <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-wesbank-navy hover:text-wesbank-navy-dark">
+            <a href={doc.file_url} target="_blank" rel="noreferrer" className="text-claimtec-forest hover:text-claimtec-forest-2">
               <ExternalLink className="h-4 w-4" />
             </a>
           )}
         </>
       ) : (
-        <label className="inline-flex items-center gap-1 cursor-pointer text-xs text-wesbank-navy hover:text-wesbank-navy-dark">
+        <label className="inline-flex items-center gap-1 cursor-pointer text-xs text-claimtec-forest hover:text-claimtec-forest-2">
           <Upload className="h-3.5 w-3.5" />
           {uploading ? 'Uploading…' : 'Upload'}
           <input
@@ -762,7 +762,7 @@ function QuoteTab({
                 <h3 className="text-sm font-semibold text-gray-700">Quote</h3>
                 <StatusBadge status={q.status} />
                 {sentMarker && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-wesbank-navy/5 px-2 py-0.5 text-xs font-medium text-wesbank-navy-dark ring-1 ring-inset ring-wesbank-navy/20">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-claimtec-forest/5 px-2 py-0.5 text-xs font-medium text-claimtec-forest-2 ring-1 ring-inset ring-claimtec-forest/20">
                     <Send className="h-3 w-3" /> Sent to buyer
                   </span>
                 )}
@@ -784,7 +784,7 @@ function QuoteTab({
                     type="button"
                     disabled={busy}
                     onClick={() => handleSend(q)}
-                    className="inline-flex items-center gap-1 rounded-md border border-transparent bg-wesbank-navy px-2 py-1 text-xs font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md border border-transparent bg-claimtec-forest px-2 py-1 text-xs font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
                     title="Send to buyer"
                   >
                     <Send className="h-3.5 w-3.5" /> Send
@@ -846,7 +846,7 @@ function QuoteTab({
       <button
         type="button"
         onClick={() => { setEditing(null); setModalOpen(true) }}
-        className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
+        className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-claimtec-forest px-3 py-1.5 text-sm font-medium text-white hover:bg-claimtec-forest-2"
       >
         <Plus className="h-4 w-4" /> New Quote
       </button>
@@ -959,7 +959,7 @@ function ContractsTab({
           <button
             type="button"
             onClick={() => setShowUpload(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-3 py-1.5 text-sm font-medium text-white hover:bg-claimtec-forest-2"
           >
             <Upload className="h-3.5 w-3.5" /> Upload contract
           </button>
@@ -995,7 +995,7 @@ function ContractsTab({
                           href={c.file_url}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-wesbank-navy hover:text-wesbank-navy-dark"
+                          className="inline-flex items-center gap-1.5 text-sm text-claimtec-forest hover:text-claimtec-forest-2"
                         >
                           <ExternalLink className="h-4 w-4" /> View / Download PDF
                         </a>
@@ -1005,7 +1005,7 @@ function ContractsTab({
                           href={c.signing_link}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 text-sm text-wesbank-navy hover:text-wesbank-navy-dark"
+                          className="inline-flex items-center gap-1.5 text-sm text-claimtec-forest hover:text-claimtec-forest-2"
                         >
                           <ExternalLink className="h-4 w-4" /> Signing link
                         </a>
@@ -1202,7 +1202,7 @@ function InspectionTab({
             </p>
             <button
               onClick={() => setShowSchedule(true)}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2"
             >
               <Plus className="h-4 w-4" /> Schedule one
             </button>
@@ -1235,7 +1235,7 @@ function InspectionTab({
               className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
                 isComplete ? 'bg-green-100 text-green-800'
                   : isFailed ? 'bg-red-100 text-red-800'
-                  : 'bg-wesbank-navy/10 text-wesbank-navy-dark'
+                  : 'bg-claimtec-forest/10 text-claimtec-forest-2'
               }`}
             >
               {inspection.status}
@@ -1258,13 +1258,13 @@ function InspectionTab({
                   value={notesDraft}
                   onChange={(e) => setNotesDraft(e.target.value)}
                   rows={3}
-                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+                  className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
                 />
                 <div className="flex gap-2">
                   <button
                     onClick={handleSaveNotes}
                     disabled={busy}
-                    className="inline-flex items-center gap-1 rounded-md bg-wesbank-navy px-3 py-1.5 text-xs font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-claimtec-forest px-3 py-1.5 text-xs font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
                   >
                     Save
                   </button>
@@ -1283,7 +1283,7 @@ function InspectionTab({
                 </span>
                 <button
                   onClick={() => { setNotesDraft(inspection.notes ?? ''); setEditingNotes(true) }}
-                  className="text-gray-400 hover:text-wesbank-navy"
+                  className="text-gray-400 hover:text-claimtec-forest"
                   aria-label="Edit notes"
                 >
                   <Pencil className="h-3.5 w-3.5" />
@@ -1298,7 +1298,7 @@ function InspectionTab({
             href={inspection.report_url}
             target="_blank"
             rel="noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 text-sm text-wesbank-navy hover:text-wesbank-navy-dark"
+            className="mt-3 inline-flex items-center gap-1.5 text-sm text-claimtec-forest hover:text-claimtec-forest-2"
           >
             <ExternalLink className="h-4 w-4" /> View / download report
           </a>
@@ -1309,7 +1309,7 @@ function InspectionTab({
           {isScheduled && !showResults && (
             <button
               onClick={() => setShowResults(true)}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-3 py-1.5 text-sm font-medium text-white hover:bg-claimtec-forest-2"
             >
               <CheckSquare className="h-4 w-4" /> Record results
             </button>
@@ -1390,7 +1390,7 @@ function ScheduleForm({
             type="date"
             value={schedDate}
             onChange={(e) => setSchedDate(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
           />
         </label>
         <label className="block">
@@ -1400,7 +1400,7 @@ function ScheduleForm({
             value={schedInspector}
             onChange={(e) => setSchedInspector(e.target.value)}
             placeholder="e.g. Hartcon — John Smith"
-            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
           />
         </label>
       </div>
@@ -1411,14 +1411,14 @@ function ScheduleForm({
           onChange={(e) => setSchedNotes(e.target.value)}
           rows={3}
           placeholder="Site address, contact instructions, etc."
-          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
         />
       </label>
       <div className="mt-4 flex gap-2">
         <button
           onClick={onSubmit}
           disabled={busy}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
         >
           {busy ? 'Scheduling…' : 'Schedule'}
         </button>
@@ -1496,7 +1496,7 @@ function ResultsForm({
             type="date"
             value={completed}
             onChange={(e) => setCompleted(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
           />
         </label>
         <label className="block">
@@ -1504,7 +1504,7 @@ function ResultsForm({
           <select
             value={condition}
             onChange={(e) => setCondition(e.target.value)}
-            className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+            className="mt-1 block w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
           >
             <option value="">— select —</option>
             <option value="EXCELLENT">Excellent</option>
@@ -1521,7 +1521,7 @@ function ResultsForm({
           value={damage}
           onChange={(e) => setDamage(e.target.value)}
           rows={2}
-          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
         />
       </label>
 
@@ -1531,7 +1531,7 @@ function ResultsForm({
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={2}
-          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none"
+          className="mt-1 block w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none"
         />
       </label>
 
@@ -1544,7 +1544,7 @@ function ResultsForm({
             type="file"
             accept="application/pdf"
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-            className="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-wesbank-navy/5 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-wesbank-navy-dark hover:file:bg-wesbank-navy/10"
+            className="block w-full text-sm text-gray-700 file:mr-3 file:rounded-md file:border-0 file:bg-claimtec-forest/5 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-claimtec-forest-2 hover:file:bg-claimtec-forest/10"
           />
           {file && (
             <button
@@ -1577,7 +1577,7 @@ function ResultsForm({
         <button
           onClick={onSubmit}
           disabled={busy || passed === null}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
         >
           <Upload className="h-4 w-4" /> {busy ? 'Saving…' : 'Save results'}
         </button>
@@ -1630,7 +1630,7 @@ function NATISTab({
           <button
             disabled={busy}
             onClick={() => wrap(() => createNatisFulfilment(dealId))}
-            className="inline-flex items-center gap-2 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+            className="inline-flex items-center gap-2 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Start fulfilment
           </button>
@@ -1771,7 +1771,7 @@ function NatisStageCard({
 }
 
 const natisInputCls =
-  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy'
+  'w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest'
 
 function NatisFieldLabel({ children }: { children: React.ReactNode }) {
   return <label className="text-xs font-medium text-gray-600 mb-1 block">{children}</label>
@@ -1791,7 +1791,7 @@ function NatisCollectionForm({
   const [name, setName] = useState('')
   const [notes, setNotes] = useState('')
   return (
-    <NatisStageCard title="Mark Collected" icon={<CheckSquare className="h-4 w-4 text-wesbank-navy" />}>
+    <NatisStageCard title="Mark Collected" icon={<CheckSquare className="h-4 w-4 text-claimtec-forest" />}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <NatisFieldLabel>Collection date</NatisFieldLabel>
@@ -1818,7 +1818,7 @@ function NatisCollectionForm({
             collector_name: name.trim(),
             notes: notes.trim() || undefined,
           })}
-          className="rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+          className="rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
         >
           Save collection
         </button>
@@ -1837,7 +1837,7 @@ function NatisTransferForm({
   const [ref, setRef] = useState('')
   const [notes, setNotes] = useState('')
   return (
-    <NatisStageCard title="Mark Transferred (eNaTIS)" icon={<FileSignature className="h-4 w-4 text-wesbank-navy" />}>
+    <NatisStageCard title="Mark Transferred (eNaTIS)" icon={<FileSignature className="h-4 w-4 text-claimtec-forest" />}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <NatisFieldLabel>Transfer date</NatisFieldLabel>
@@ -1864,7 +1864,7 @@ function NatisTransferForm({
             reference_number: ref.trim() || undefined,
             notes: notes.trim() || undefined,
           })}
-          className="rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+          className="rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
         >
           Save transfer
         </button>
@@ -1883,7 +1883,7 @@ function NatisDeliveryForm({
   const [tracking, setTracking] = useState('')
   const [notes, setNotes] = useState('')
   return (
-    <NatisStageCard title="Mark Delivered to Customer" icon={<Truck className="h-4 w-4 text-wesbank-navy" />}>
+    <NatisStageCard title="Mark Delivered to Customer" icon={<Truck className="h-4 w-4 text-claimtec-forest" />}>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div>
           <NatisFieldLabel>Sent date</NatisFieldLabel>
@@ -1910,7 +1910,7 @@ function NatisDeliveryForm({
             courier_tracking: tracking.trim() || undefined,
             notes: notes.trim() || undefined,
           })}
-          className="inline-flex items-center gap-2 rounded-lg bg-wesbank-navy px-4 py-2 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+          className="inline-flex items-center gap-2 rounded-lg bg-claimtec-forest px-4 py-2 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
         >
           <Send className="h-4 w-4" /> Save delivery
         </button>
@@ -1979,7 +1979,7 @@ function TasksTab({
   onEscalate: (id: string) => Promise<void>
 }) {
   const priorityColor: Record<string, string> = {
-    LOW: 'bg-slate-100 text-slate-600', NORMAL: 'bg-wesbank-navy/10 text-wesbank-navy-dark',
+    LOW: 'bg-slate-100 text-slate-600', NORMAL: 'bg-claimtec-forest/10 text-claimtec-forest-2',
     HIGH: 'bg-orange-100 text-orange-800', URGENT: 'bg-red-100 text-red-800',
   }
 
@@ -2018,7 +2018,7 @@ function TasksTab({
               )}
               <div className="flex gap-1 mt-1">
                 {task.status === 'PENDING' && (
-                  <button onClick={() => onClaim(task.id)} className="text-xs text-wesbank-navy-dark hover:underline">Claim</button>
+                  <button onClick={() => onClaim(task.id)} className="text-xs text-claimtec-forest-2 hover:underline">Claim</button>
                 )}
                 {task.status === 'IN_PROGRESS' && (
                   <button onClick={() => onComplete(task.id)} className="text-xs text-green-700 hover:underline">Complete</button>
@@ -2105,7 +2105,7 @@ function AuditTab({ events }: { events: AuditFeedItem[] }) {
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1.5">
                     {ev.actor_type && (
-                      <span className="rounded-full px-1.5 py-0.5 text-xs font-medium bg-wesbank-navy/10 text-wesbank-navy-dark">
+                      <span className="rounded-full px-1.5 py-0.5 text-xs font-medium bg-claimtec-forest/10 text-claimtec-forest-2">
                         {ev.actor_type}
                       </span>
                     )}
@@ -2115,7 +2115,7 @@ function AuditTab({ events }: { events: AuditFeedItem[] }) {
                 <td className="px-4 py-3">
                   <button
                     onClick={() => toggle(ev.id)}
-                    className="text-xs text-wesbank-navy hover:text-wesbank-navy-dark"
+                    className="text-xs text-claimtec-forest hover:text-claimtec-forest-2"
                   >
                     {expanded.has(ev.id) ? 'Hide' : 'View'} details
                   </button>
@@ -2256,7 +2256,7 @@ export function DealDetail() {
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-wesbank-navy/40" />
+        <RefreshCw className="h-8 w-8 animate-spin text-claimtec-forest/40" />
       </div>
     )
   }
@@ -2266,7 +2266,7 @@ export function DealDetail() {
       <div className="flex h-full flex-col items-center justify-center gap-3">
         <AlertCircle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-gray-600">{error ?? 'Deal not found'}</p>
-        <button onClick={() => navigate('/deals')} className="text-sm text-wesbank-navy underline">Back to Deals</button>
+        <button onClick={() => navigate('/deals')} className="text-sm text-claimtec-forest underline">Back to Deals</button>
       </div>
     )
   }
@@ -2301,12 +2301,12 @@ export function DealDetail() {
 
         {/* Title row — deal number + status + reg + agent chips, all on one line */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-          <h1 className="text-lg font-bold text-wesbank-navy">#{deal.deal_number ?? deal.id.slice(0, 8)}</h1>
+          <h1 className="text-lg font-bold text-claimtec-forest">#{deal.deal_number ?? deal.id.slice(0, 8)}</h1>
           <button
             type="button"
             onClick={() => setShowStatusModal(true)}
             title="Click to change status"
-            className="rounded-lg ring-offset-1 hover:ring-2 hover:ring-wesbank-yellow/60 transition"
+            className="rounded-lg ring-offset-1 hover:ring-2 hover:ring-claimtec-gold/60 transition"
           >
             <StatusBadge status={deal.status} />
           </button>
@@ -2353,11 +2353,11 @@ export function DealDetail() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-1.5 h-9 px-3 text-xs font-medium whitespace-nowrap transition-colors border-b-2 ${
                       isActive
-                        ? 'border-wesbank-yellow text-wesbank-navy'
+                        ? 'border-claimtec-gold text-claimtec-forest'
                         : 'border-transparent text-gray-500 hover:text-gray-900'
                     }`}
                   >
-                    <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-wesbank-navy' : 'text-gray-400'}`}>
+                    <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-claimtec-forest' : 'text-gray-400'}`}>
                       {tab.icon}
                     </span>
                     {tab.label}

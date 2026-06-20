@@ -37,15 +37,16 @@ export function LoginPage() {
         {/* Logo */}
         <div className="mb-6 flex flex-col items-center gap-3">
           <div
-            className="flex h-12 w-12 items-center justify-center rounded-xl"
-            style={{ backgroundColor: '#1B4F72' }}
+            className="flex h-12 w-12 items-center justify-center rounded-xl bg-claimtec-forest"
           >
             <Car className="h-6 w-6 text-white" />
           </div>
           <div className="text-center">
-            <h1 className="text-xl font-bold text-gray-900">VehicleFinance</h1>
+            <h1 className="text-xl font-bold text-gray-900">
+              claim<span className="text-claimtec-red">Tec</span>
+            </h1>
             <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-              Operations Portal
+              FinOps · Operations Portal
             </p>
           </div>
         </div>
@@ -77,7 +78,7 @@ export function LoginPage() {
             <button
               type="button"
               onClick={() => { setState('idle'); setEmail('') }}
-              className="mt-4 text-sm font-medium text-wesbank-navy hover:text-wesbank-navy-dark"
+              className="mt-4 text-sm font-medium text-claimtec-forest hover:text-claimtec-forest-2"
             >
               Use a different email
             </button>
@@ -99,8 +100,8 @@ export function LoginPage() {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@vehiclefinance.co.za"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-wesbank-navy focus:outline-none focus:ring-2 focus:ring-wesbank-navy/20"
+                placeholder="you@claimtec.co.za"
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm shadow-sm placeholder-gray-400 focus:border-claimtec-forest focus:outline-none focus:ring-2 focus:ring-claimtec-forest/20"
               />
             </div>
 
@@ -113,7 +114,7 @@ export function LoginPage() {
             <button
               type="submit"
               disabled={state === 'sending' || !email.trim()}
-              className="w-full rounded-lg bg-wesbank-navy-dark py-2.5 text-sm font-semibold text-white hover:bg-wesbank-navy-dark disabled:opacity-50 transition-colors"
+              className="w-full rounded-lg bg-claimtec-forest-2 py-2.5 text-sm font-semibold text-white hover:bg-claimtec-forest-2 disabled:opacity-50 transition-colors"
             >
               {state === 'sending' ? 'Sending…' : 'Send magic link'}
             </button>

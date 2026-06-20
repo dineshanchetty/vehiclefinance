@@ -25,23 +25,23 @@ const ACTOR_TYPES = ['SYSTEM', 'AGENT', 'BUYER', 'SELLER', 'ADMIN', 'BOT']
 
 const actorTypeColor: Record<string, string> = {
   SYSTEM: 'bg-gray-100 text-gray-700',
-  AGENT:  'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  AGENT:  'bg-claimtec-forest/10 text-claimtec-forest-2',
   BUYER:  'bg-green-100 text-green-800',
   SELLER: 'bg-amber-100 text-amber-800',
   ADMIN:  'bg-purple-100 text-purple-800',
-  BOT:    'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  BOT:    'bg-claimtec-forest/10 text-claimtec-forest-2',
 }
 
 const eventTypeColor: Record<string, string> = {
   DEAL_CREATED:         'text-emerald-700 bg-emerald-50',
-  DEAL_STATUS_CHANGED:  'text-wesbank-navy-dark bg-wesbank-navy/5',
+  DEAL_STATUS_CHANGED:  'text-claimtec-forest-2 bg-claimtec-forest/5',
   DOCUMENT_APPROVED:    'text-green-700 bg-green-50',
   DOCUMENT_REJECTED:    'text-red-700 bg-red-50',
   TASK_ESCALATED:       'text-red-700 bg-red-50',
   HUMAN_OVERRIDE:       'text-purple-700 bg-purple-50',
   SYSTEM_ERROR:         'text-red-800 bg-red-100',
   EXTRACTION_FLAGGED:   'text-amber-700 bg-amber-50',
-  AI_EVAL_COMPLETE:     'text-wesbank-navy-dark bg-wesbank-navy/5',
+  AI_EVAL_COMPLETE:     'text-claimtec-forest-2 bg-claimtec-forest/5',
 }
 
 export function AuditLog() {
@@ -122,7 +122,7 @@ export function AuditLog() {
               placeholder="Search deal #, event type, actor…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm placeholder-gray-400 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy"
+              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm placeholder-gray-400 focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest"
             />
           </div>
 
@@ -131,7 +131,7 @@ export function AuditLog() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-7 text-sm text-gray-700 focus:border-wesbank-navy focus:outline-none"
+              className="rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-7 text-sm text-gray-700 focus:border-claimtec-forest focus:outline-none"
             >
               <option value="">All Event Types</option>
               {EVENT_TYPES.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
@@ -140,7 +140,7 @@ export function AuditLog() {
             <select
               value={actorFilter}
               onChange={(e) => setActorFilter(e.target.value)}
-              className="rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-7 text-sm text-gray-700 focus:border-wesbank-navy focus:outline-none"
+              className="rounded-lg border border-gray-200 bg-white py-2 pl-3 pr-7 text-sm text-gray-700 focus:border-claimtec-forest focus:outline-none"
             >
               <option value="">All Actors</option>
               {ACTOR_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
@@ -151,13 +151,13 @@ export function AuditLog() {
             type="date"
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-wesbank-navy focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-claimtec-forest focus:outline-none"
           />
           <input
             type="date"
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-wesbank-navy focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white py-2 px-3 text-sm text-gray-700 focus:border-claimtec-forest focus:outline-none"
           />
         </div>
         <p className="mt-2 text-xs text-gray-400">

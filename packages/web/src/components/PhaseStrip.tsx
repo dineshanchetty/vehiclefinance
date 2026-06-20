@@ -55,8 +55,8 @@ export function PhaseStrip({ currentPhase, completedMilestones, phaseState, onPh
               className="relative flex flex-col items-center disabled:cursor-default group"
             >
               {current ? (
-                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-wesbank-yellow text-wesbank-navy ring-2 ring-wesbank-navy">
-                  <span className="h-1.5 w-1.5 rounded-full bg-wesbank-navy" />
+                <div className="flex h-4 w-4 items-center justify-center rounded-full bg-claimtec-gold text-claimtec-forest ring-2 ring-claimtec-forest">
+                  <span className="h-1.5 w-1.5 rounded-full bg-claimtec-forest" />
                 </div>
               ) : completed ? (
                 <div className="flex h-2.5 w-2.5 items-center justify-center rounded-full bg-emerald-600 text-white">
@@ -66,14 +66,14 @@ export function PhaseStrip({ currentPhase, completedMilestones, phaseState, onPh
                 <div className="h-1.5 w-1.5 rounded-full bg-gray-300 group-hover:bg-gray-400" />
               )}
               {current && currentName && (
-                <span className="absolute top-full mt-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-wesbank-navy">
+                <span className="absolute top-full mt-1.5 whitespace-nowrap text-[10px] font-semibold uppercase tracking-wide text-claimtec-forest">
                   {currentName}
                 </span>
               )}
             </button>
             {idx < PHASES.length - 1 && (
               <div className={`h-px flex-1 mx-1 ${
-                completed && nextCompleted ? 'bg-wesbank-navy' : completed ? 'bg-gradient-to-r from-wesbank-navy to-gray-200' : 'bg-gray-200'
+                completed && nextCompleted ? 'bg-claimtec-forest' : completed ? 'bg-gradient-to-r from-claimtec-forest to-gray-200' : 'bg-gray-200'
               }`} />
             )}
           </li>

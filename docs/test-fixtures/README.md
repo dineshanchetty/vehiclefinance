@@ -1,4 +1,4 @@
-# Test Fixtures — WesBank Private Deal end-to-end run-through
+# Test Fixtures — Claimtec FinOps end-to-end run-through
 
 Sample documents + vehicle photos for testing the full WhatsApp + dashboard flow
 against the deployed Supabase Edge Functions and Azure Static Web App.
@@ -46,7 +46,7 @@ docs/test-fixtures/
 
 ### `01-otp.pdf` — Offer To Purchase
 - Buyer: **CHETTY DINESHAN** · ID **8501125007087** · +27 82 438 4464
-- Seller: **Thabo Sipho Nkosi** · ID **7806155123083** · +27 83 456 7890
+- Seller: **Thabo Sipho Nkosi** · ID **7806155123089** · +27 83 456 7890
 - Vehicle: **2018 Volkswagen Golf 7 GTI** · VIN `WVWZZZAUZJW123456` · Reg `KK 12 LL GP` · Tornado Red · 95 000 km
 - Price: **R 285 000** · Deposit R 25k · Balance to finance **R 260 000**
 - Signed at: Sandton / Johannesburg, 12 May 2026

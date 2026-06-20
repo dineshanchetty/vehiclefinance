@@ -3,9 +3,20 @@
 @tailwind utilities;
 
 :root {
-  --wesbank-navy:   #003478;
-  --wesbank-yellow: #FFC72C;
-  --wesbank-sky:    #0070BA;
+  /* Claimtec brand tokens */
+  --claimtec-forest:        #0F1C17;
+  --claimtec-forest-2:      #16261F;
+  --claimtec-forest-3:      #1D3329;
+  --claimtec-ink:           #0A1410;
+  --claimtec-paper:         #F4F6F3;
+  --claimtec-text:          #F4F6F3;
+  --claimtec-text-dim:      #B8C4BE;
+  --claimtec-text-dimmer:   #7A8C84;
+  --claimtec-red:           #C8423A;
+  --claimtec-red-2:         #E05148;
+  --claimtec-gold:          #C9A96A;
+  --claimtec-sage:          #5A7068;
+  --claimtec-blue-dot:      #2DA7E6;
 }
 
 /* Vehicle carousel — subtle fade as the active angle changes. */
@@ -18,4 +29,3 @@
 /* Normalize icon size inside SubTabs/Overview tab buttons regardless of
    the per-caller h-4/h-5 utility classes. Keeps the bar height consistent. */
 .subtab-icon > svg { width: 0.875rem; height: 0.875rem; }
-

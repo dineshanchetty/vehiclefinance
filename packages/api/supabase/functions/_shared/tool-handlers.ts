@@ -106,6 +106,14 @@ export async function handle_trigger_extraction(input: ToolInput): Promise<ToolR
   const task = await createExtractionTask(document_id)
   const supaUrl = Deno.env.get("SUPABASE_URL")
   const edgeFnUrl = supaUrl ? `${supaUrl}/functions/v1/extract-document` : null
+  // Look up doc_type so we can give the agent a realistic wait-time hint.
+  // Bank statements through Mindee take ~60–90s; everything else 10–20s.
+  let docType: string | null = null
+  try {
+    const sb = getSupabaseClient()
+    const { data } = await sb.from("documents").select("doc_type").eq("id", document_id).maybeSingle()
+    docType = (data?.doc_type as string) ?? null
+  } catch { /* non-fatal */ }
   if (edgeFnUrl) {
     fetch(edgeFnUrl, {
       method: "POST",
@@ -120,9 +128,12 @@ export async function handle_trigger_extraction(input: ToolInput): Promise<ToolR
   } else {
     console.warn("[trigger_extraction] SUPABASE_URL not set — edge function NOT called.")
   }
+  const waitHint = docType === "BANK_STATEMENT"
+    ? "Bank statements are slow — Mindee parses every transaction line. Expected total wait: 60–90 seconds. Call get_extraction_results in 30 seconds. If status is still pending, wait another 20 seconds and call again. Repeat up to 4 times (~90 seconds total) before assuming failure. DO NOT switch to manual capture before the 4th retry."
+    : "Call get_extraction_results in 10–20 seconds. If status is still pending, wait 10 more seconds and retry — up to 3 attempts before assuming failure."
   return {
-    success: true, task_id: task.id,
-    message: "Extraction started. Check results in 10–20 seconds using get_extraction_results.",
+    success: true, task_id: task.id, doc_type: docType,
+    message: `Extraction started. ${waitHint}`,
   }
 }
 
@@ -133,16 +144,26 @@ export async function handle_get_extraction_results(input: ToolInput): Promise<T
   if (result.status !== "extracted") {
     const sb = getSupabaseClient()
     const { data: taskRow } = await sb.from("extraction_tasks")
-      .select("status, error_message, created_at")
+      .select("status, error, created_at")
       .eq("document_id", document_id).order("created_at", { ascending: false })
       .limit(1).maybeSingle()
+    const { data: docRow } = await sb.from("documents")
+      .select("doc_type, error_message").eq("id", document_id).maybeSingle()
     const taskStatus = taskRow?.status ?? result.status ?? "pending"
     if (taskStatus === "failed") {
       return { success: false, status: "failed",
-        error: taskRow?.error_message ?? "Extraction failed. Please try again or contact support." }
+        error: docRow?.error_message ?? taskRow?.error ?? "Extraction failed. Please try again or contact support." }
     }
-    return { success: true, status: taskStatus,
-      message: "Extraction still in progress. Please try again in a moment." }
+    const elapsedSec = taskRow?.created_at
+      ? Math.floor((Date.now() - new Date(taskRow.created_at).getTime()) / 1000)
+      : 0
+    const isBankStatement = docRow?.doc_type === "BANK_STATEMENT"
+    const expectedMax = isBankStatement ? 90 : 30
+    const hint = isBankStatement
+      ? `Bank statement extraction is still running (~${elapsedSec}s elapsed of typical ~60–90s). This is NORMAL — Mindee is parsing every transaction line. Wait another 20 seconds and call get_extraction_results AGAIN. Do NOT fall back to manual capture; do NOT tell the user it failed. If you've already waited ${expectedMax}+ seconds with no result, then and only then treat it as failed.`
+      : `Extraction still running (~${elapsedSec}s elapsed of typical ~10–30s). Wait another 10 seconds and retry get_extraction_results. Do not fall back to manual capture before ${expectedMax}s.`
+    return { success: true, status: taskStatus, elapsed_seconds: elapsedSec, doc_type: docRow?.doc_type ?? null,
+      message: hint }
   }
   return {
     success: true, status: "extracted",
@@ -271,7 +292,7 @@ export async function handle_verify_document_against_buyer(input: ToolInput): Pr
     const accountType = readExtracted(extracted, "account_type")?.toLowerCase() ?? ""
     if (accountType === "business") {
       mismatches.push({ field: "account_type", expected: "personal", actual: "business",
-        reason: "WesBank Private Deal needs a personal bank statement, not a business one." })
+        reason: "Claimtec FinOps needs a personal bank statement, not a business one." })
     }
     const sim = nameSimilarity(buyer.full_name, holderActual)
     if (buyer.full_name && holderActual && sim < 0.4) {
@@ -780,7 +801,7 @@ export async function handle_notify_seller(input: ToolInput): Promise<ToolResult
   } else {
     const intro =
       `Hi ${sellerFirstName}! 👋 ` +
-      `${buyerName} has applied to buy ${vehicleSummary} for ${priceStr} through WesBank Private Deal. ` +
+      `${buyerName} has applied to buy ${vehicleSummary} for ${priceStr} through Claimtec FinOps. ` +
       `I'm here to help you complete your side — done entirely over WhatsApp, ~10–15 minutes. ` +
       `Reply *START* whenever you're ready.`
     await sendTextMessage(sellerRow.phone, intro)
@@ -1037,15 +1058,15 @@ export async function handle_generate_otp_draft(input: ToolInput): Promise<ToolR
     `   ${priceStr}`,
     "",
     "5. CONDITIONS",
-    "   - Sale subject to WesBank Private Deal credit approval.",
+    "   - Sale subject to Claimtec FinOps credit approval.",
     "   - Vehicle to pass roadworthy + technical inspection.",
-    "   - WesBank pays the seller within 1 business day after handover.",
+    "   - The lender pays the seller within 1 business day after handover.",
     "",
     "6. SIGNATURES",
     "   Seller: ______________________   Date: __________",
     "   Buyer:  ______________________   Date: __________",
     "",
-    "*** DRAFT - generated by WesBank Private Deal WhatsApp assistant ***",
+    "*** DRAFT - generated by Claimtec FinOps WhatsApp assistant ***",
   ]
 
   const pdfBytes = buildSimplePdf("OFFER TO PURCHASE (DRAFT)", lines)
@@ -1085,7 +1106,7 @@ export async function handle_send_otp_for_signature(input: ToolInput): Promise<T
   if (!partyRow?.phone) return { success: false, error: `No ${party} phone on deal` }
 
   const url = (doc.storage_path ?? doc.file_url) as string
-  const placeholderUrl = `https://wesbank.example/e-sign/${document_id}`
+  const placeholderUrl = `https://claimtec.example/e-sign/${document_id}`
 
   await sendDocumentMessage(partyRow.phone, url, doc.file_name ?? "otp_draft.pdf",
     "Draft Offer To Purchase for your review.")

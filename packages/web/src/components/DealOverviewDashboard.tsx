@@ -45,14 +45,14 @@ const TONE_PILL: Record<Tone, string> = {
   green: 'bg-green-100 text-green-700',
   amber: 'bg-amber-100 text-amber-700',
   red:   'bg-red-100 text-red-700',
-  blue:  'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  blue:  'bg-claimtec-forest/10 text-claimtec-forest-2',
   gray:  'bg-gray-100 text-gray-600',
 }
 const TONE_DOT: Record<Tone, string> = {
   green: 'bg-green-500',
   amber: 'bg-amber-500',
   red:   'bg-red-500',
-  blue:  'bg-wesbank-navy',
+  blue:  'bg-claimtec-forest',
   gray:  'bg-gray-300',
 }
 
@@ -96,8 +96,8 @@ function TabbedSection({ title, subtitle, icon, panes }: TabbedSectionProps) {
       {/* Combined header + tab bar — one row */}
       <div className="flex items-center gap-3 px-3 pt-2 border-b border-gray-100 overflow-x-auto">
         <div className="flex items-center gap-2 flex-shrink-0 pb-2">
-          <span className="text-wesbank-navy">{icon}</span>
-          <span className="text-xs font-semibold uppercase tracking-wide text-wesbank-navy">{title}</span>
+          <span className="text-claimtec-forest">{icon}</span>
+          <span className="text-xs font-semibold uppercase tracking-wide text-claimtec-forest">{title}</span>
           {subtitle && <span className="text-xs text-gray-400 hidden md:inline">· {subtitle}</span>}
         </div>
         <div className="flex items-center gap-1 ml-auto">
@@ -110,11 +110,11 @@ function TabbedSection({ title, subtitle, icon, panes }: TabbedSectionProps) {
                 onClick={() => setActiveId(p.id)}
                 className={`subtab-btn flex items-center gap-1.5 h-9 px-3 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
                   isActive
-                    ? 'border-wesbank-navy text-gray-900'
+                    ? 'border-claimtec-forest text-gray-900'
                     : 'border-transparent text-gray-500 hover:text-gray-800'
                 }`}
               >
-                <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-wesbank-navy' : 'text-gray-400'}`}>{p.icon}</span>
+                <span className={`subtab-icon inline-flex h-3.5 w-3.5 items-center justify-center ${isActive ? 'text-claimtec-forest' : 'text-gray-400'}`}>{p.icon}</span>
                 {p.label}
                 {p.status && (
                   <span className={`inline-block h-1.5 w-1.5 rounded-full ${TONE_DOT[p.status.tone]}`} />
@@ -138,7 +138,7 @@ function TabbedSection({ title, subtitle, icon, panes }: TabbedSectionProps) {
         <button
           type="button"
           onClick={active.onOpen}
-          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-wesbank-navy hover:underline"
+          className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-claimtec-forest hover:underline"
         >
           Open {active.label.toLowerCase()} <ArrowRight className="h-3 w-3" />
         </button>
@@ -253,7 +253,7 @@ export function DealOverviewDashboard({
         <>
           <Row label="Statements processed" value={`${bsCount} of 3`} />
           <Row label="Vehicle price"        value={fmtMoney(agreedPrice)} />
-          <Row label="Detail"               value={<span className="text-wesbank-navy">Open Affordability →</span>} />
+          <Row label="Detail"               value={<span className="text-claimtec-forest">Open Affordability →</span>} />
         </>
       ),
     },

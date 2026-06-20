@@ -29,8 +29,8 @@ const colorMap: Record<string, string> = {
   // Deal statuses
   LEAD:                 'bg-slate-100 text-slate-700',
   DOCS_PENDING:         'bg-yellow-100 text-yellow-800',
-  DOCS_REVIEW:          'bg-wesbank-navy/10 text-wesbank-navy-dark',
-  FNI_REVIEW:           'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  DOCS_REVIEW:          'bg-claimtec-forest/10 text-claimtec-forest-2',
+  FNI_REVIEW:           'bg-claimtec-forest/10 text-claimtec-forest-2',
   QUOTE_PENDING:        'bg-purple-100 text-purple-800',
   QUOTE_SENT:           'bg-violet-100 text-violet-800',
   QUOTE_ACCEPTED:       'bg-teal-100 text-teal-800',
@@ -46,32 +46,32 @@ const colorMap: Record<string, string> = {
 
   // Generic
   PENDING:              'bg-yellow-100 text-yellow-800',
-  IN_PROGRESS:          'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  IN_PROGRESS:          'bg-claimtec-forest/10 text-claimtec-forest-2',
   COMPLETED:            'bg-green-100 text-green-800',
   ESCALATED:            'bg-red-100 text-red-800',
   APPROVED:             'bg-green-100 text-green-800',
   REJECTED:             'bg-red-100 text-red-800',
-  UPLOADED:             'bg-wesbank-navy/10 text-wesbank-navy-dark',
-  UNDER_REVIEW:         'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  UPLOADED:             'bg-claimtec-forest/10 text-claimtec-forest-2',
+  UNDER_REVIEW:         'bg-claimtec-forest/10 text-claimtec-forest-2',
   EXPIRED:              'bg-gray-200 text-gray-600',
   RE_UPLOAD_REQUESTED:  'bg-orange-100 text-orange-800',
 
   // Contract / Quote
   DRAFT:                'bg-slate-100 text-slate-700',
-  SENT:                 'bg-wesbank-navy/10 text-wesbank-navy-dark',
-  VIEWED:               'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  SENT:                 'bg-claimtec-forest/10 text-claimtec-forest-2',
+  VIEWED:               'bg-claimtec-forest/10 text-claimtec-forest-2',
   SIGNED:               'bg-green-100 text-green-800',
 
   // Inspection / NATIS
   SCHEDULED:            'bg-sky-100 text-sky-800',
   FAILED:               'bg-red-200 text-red-900',
-  SUBMITTED:            'bg-wesbank-navy/10 text-wesbank-navy-dark',
-  PROCESSING:           'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  SUBMITTED:            'bg-claimtec-forest/10 text-claimtec-forest-2',
+  PROCESSING:           'bg-claimtec-forest/10 text-claimtec-forest-2',
   COMPLETE:             'bg-green-100 text-green-800',
 
   // Priority
   LOW:                  'bg-slate-100 text-slate-600',
-  MEDIUM:               'bg-wesbank-navy/10 text-wesbank-navy-dark',
+  MEDIUM:               'bg-claimtec-forest/10 text-claimtec-forest-2',
   HIGH:                 'bg-orange-100 text-orange-800',
   URGENT:               'bg-red-100 text-red-800',
   CRITICAL:             'bg-red-200 text-red-900 font-semibold',

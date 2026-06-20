@@ -224,7 +224,7 @@ export function QuoteFormModal({ dealId, quote, preparedBy, onClose, onSaved }: 
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-wesbank-navy px-3 py-1.5 text-sm font-medium text-white hover:bg-wesbank-navy-dark disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-md border border-transparent bg-claimtec-forest px-3 py-1.5 text-sm font-medium text-white hover:bg-claimtec-forest-2 disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               {isEdit ? 'Save Changes' : 'Create Quote'}
@@ -237,7 +237,7 @@ export function QuoteFormModal({ dealId, quote, preparedBy, onClose, onSaved }: 
 }
 
 const inputCls =
-  'w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-wesbank-navy focus:outline-none focus:ring-1 focus:ring-wesbank-navy'
+  'w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-claimtec-forest focus:outline-none focus:ring-1 focus:ring-claimtec-forest'
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (

@@ -106,7 +106,7 @@ const W_FNI_REVIEW: Record<string, WorkflowDef> = {
   },
   PREPARE_QUOTE: {
     hint: 'Open the Quote tab and create a new quote for the buyer based on the credit decision terms.',
-    checklist: ['Credit decision received', 'Quote terms agreed with WesBank', 'Quote created in Quote tab'],
+    checklist: ['Credit decision received', 'Quote terms agreed with Claimtec', 'Quote created in Quote tab'],
     actions: [
       { id: 'quote_prepared', label: 'Quote ready', tone: 'success', taskStatus: 'COMPLETED', auditEventType: 'quote_prepared' },
     ],

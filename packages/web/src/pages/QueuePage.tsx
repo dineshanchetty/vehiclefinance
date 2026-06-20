@@ -145,7 +145,7 @@ export function QueuePage() {
               {counts.escalated} escalated
             </span>
           )}
-          <span className="rounded-full bg-wesbank-navy/5 px-3 py-1 text-xs font-medium text-wesbank-navy">
+          <span className="rounded-full bg-claimtec-forest/5 px-3 py-1 text-xs font-medium text-claimtec-forest">
             Live
           </span>
         </div>
@@ -155,7 +155,7 @@ export function QueuePage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-wesbank-navy focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-claimtec-forest focus:outline-none"
           >
             <option value="">All Statuses</option>
             <option value="PENDING">Pending</option>
@@ -165,7 +165,7 @@ export function QueuePage() {
           <select
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-wesbank-navy focus:outline-none"
+            className="rounded-lg border border-gray-200 bg-white py-1.5 pl-2.5 pr-6 text-sm text-gray-700 focus:border-claimtec-forest focus:outline-none"
           >
             <option value="">All Priorities</option>
             <option value="CRITICAL">Critical</option>

@@ -92,7 +92,7 @@ function TopBar() {
               <span key={i} className="flex items-center gap-1">
                 {i > 0 && <ChevronRight className="h-3 w-3 text-gray-300" />}
                 {c.to ? (
-                  <Link to={c.to} className="hover:text-wesbank-navy transition-colors">
+                  <Link to={c.to} className="hover:text-claimtec-forest transition-colors">
                     {c.label}
                   </Link>
                 ) : (
@@ -110,7 +110,7 @@ function TopBar() {
           <button
             type="button"
             title="Notifications"
-            className="relative flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-wesbank-navy transition-colors"
+            className="relative flex h-8 w-8 items-center justify-center rounded-md text-gray-500 hover:bg-gray-100 hover:text-claimtec-forest transition-colors"
           >
             <Bell className="h-4 w-4" />
           </button>
@@ -119,14 +119,14 @@ function TopBar() {
             <button
               type="button"
               onClick={() => setMenuOpen((v) => !v)}
-              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-wesbank-navy transition-colors"
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-gray-700 hover:bg-gray-100 hover:text-claimtec-forest transition-colors"
             >
-              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-wesbank-navy text-[10px] font-bold text-white">
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-claimtec-forest text-[10px] font-bold text-white">
                 {(displayName.match(/\b\w/g) ?? ['?']).slice(0, 2).join('').toUpperCase()}
               </span>
               <span className="hidden md:inline max-w-[160px] truncate">{displayName}</span>
               {profile?.role === 'admin' && (
-                <span className="hidden md:inline rounded-full bg-wesbank-yellow/30 px-1.5 py-0.5 text-[10px] font-semibold text-wesbank-navy">
+                <span className="hidden md:inline rounded-full bg-claimtec-gold/30 px-1.5 py-0.5 text-[10px] font-semibold text-claimtec-forest">
                   admin
                 </span>
               )}
@@ -150,7 +150,7 @@ function TopBar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 hover:text-wesbank-navy transition-colors"
+                  className="flex w-full items-center gap-2 border-t border-gray-100 px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50 hover:text-claimtec-forest transition-colors"
                 >
                   <LogOut className="h-4 w-4" /> Sign out
                 </button>
