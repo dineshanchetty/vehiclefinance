@@ -65,7 +65,8 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: "20", cache: "pnpm" }
       - run: pnpm install --frozen-lockfile
-      # Tests are optional per package: skip cleanly if no test script is defined.
+
+      # Bot tests — optional (no test script yet)
       - name: Bot tests
         run: |
           if pnpm --filter @vehiclefinance/bot run --if-present test -- --run 2>/dev/null; then
@@ -73,13 +74,69 @@ jobs:
           else
             echo "bot tests skipped (no test script or no tests)"
           fi
-      - name: Web tests
+
+      # Web tests — REQUIRED. Fail the build on any vitest failure.
+      - name: Web unit tests
+        run: pnpm --filter @vehiclefinance/web run test
+
+      - name: Web coverage report
+        run: pnpm --filter @vehiclefinance/web run test:coverage
+        continue-on-error: true # report-only for now, until thresholds are set
+
+      - name: Upload web coverage as artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-coverage
+          path: packages/web/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  e2e-tests:
+    name: Playwright E2E (unauth + visual-rebrand)
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 8.15.0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: "20", cache: "pnpm" }
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browser (chromium only)
+        run: pnpm --filter @vehiclefinance/web exec playwright install --with-deps chromium
+
+      # Run only the projects that don't require an authenticated session.
+      # The auth-gated specs (dashboard, deal-detail, queue tasks) skip cleanly
+      # when E2E_ADMIN_TOKEN is unset.
+      - name: Run unauth + visual-rebrand specs
         run: |
-          if pnpm --filter @vehiclefinance/web run --if-present test -- --run 2>/dev/null; then
-            echo "web tests ran"
-          else
-            echo "web tests skipped (no test script or no tests)"
-          fi
+          cd packages/web
+          pnpm exec playwright test \
+            e2e/unauth.spec.ts \
+            e2e/visual-rebrand.spec.ts \
+            --project=chromium-unauth \
+            --project=chromium-auth \
+            --reporter=list,html
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/web/e2e/.report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: packages/web/e2e/.test-results/
+          if-no-files-found: ignore
+          retention-days: 7
 
   db-verify:
     # Applies every migration in packages/api/supabase/migrations/ to a fresh
