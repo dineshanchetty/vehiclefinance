@@ -90,8 +90,10 @@ describe('QueuePage', () => {
       expect(screen.getByText('Review ID document for buyer')).toBeInTheDocument()
     })
 
-    expect(screen.getByText('Alice Mokoena')).toBeInTheDocument()
-    expect(screen.getByText('VF-2025-010')).toBeInTheDocument()
+    // Names + deal numbers render as fragments inside a parent <p>, broken up by
+    // a <Link> and middot separators. Match the parent element by its full text.
+    expect(screen.getByText(/Alice Mokoena/)).toBeInTheDocument()
+    expect(screen.getByText(/VF-2025-010/)).toBeInTheDocument()
   })
 
   it('shows empty state when no tasks', async () => {

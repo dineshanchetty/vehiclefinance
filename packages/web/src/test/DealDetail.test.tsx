@@ -107,12 +107,16 @@ describe('DealDetail', () => {
       </MemoryRouter>,
     )
 
+    // Deal number is split across multiple inline elements in the hero.
+    // Use a flexible matcher.
     await waitFor(() => {
-      expect(screen.getByText('VF-2025-042')).toBeInTheDocument()
+      expect(screen.getByText(/VF-2025-042/)).toBeInTheDocument()
     })
 
-    expect(screen.getByText(/Jane Smith/)).toBeInTheDocument()
-    expect(screen.getByText(/Honda Civic/)).toBeInTheDocument()
+    // Name + vehicle appear in multiple regions (hero + sidebar) — assert
+    // at-least-one is rendered.
+    expect(screen.getAllByText(/Jane Smith/).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/Honda Civic/).length).toBeGreaterThan(0)
   })
 
   it('shows error state when deal not found', async () => {
