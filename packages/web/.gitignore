@@ -1,0 +1,12 @@
+# Build output
+dist/
+
+# Test / coverage artifacts
+coverage/
+
+# Playwright artifacts (keep specs, ignore generated output)
+e2e/.auth/
+e2e/.report/
+e2e/.test-results/
+playwright-report/
+test-results/
