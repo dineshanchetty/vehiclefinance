@@ -144,13 +144,15 @@ export function composeUpsellOffer(input: OfferInput): UpsellOffer {
   const ceiling = input.qualifyingCeiling
   const orig = numOrNull(input.originalPrice)
 
-  const opener = orig && orig > ceiling
-    ? `Hi ${first} — your recent vehicle finance application for R${fmt(orig)} wasn't approved at that amount, but there's good news: you pre-qualify for up to *R${fmt(ceiling)}*.`
-    : `Hi ${first} — good news on your vehicle finance: you pre-qualify for up to *R${fmt(ceiling)}*.`
-
-  const message =
-    `${opener}\n\n` +
-    `Here are vehicles in your range on cars.co.za 🚗 — pick one and we'll take your new application straight back to the bank.`
+  // Lead with the good news; frame the decline as a detail, not the headline.
+  const message = orig && orig > ceiling
+    ? `Hi ${first} 👋\n\n` +
+      `Good news about your vehicle finance: you're *pre-qualified for up to R${fmt(ceiling)}*.\n\n` +
+      `Your application for R${fmt(orig)} didn't fit the affordability rules — but the right car at the right price absolutely does. ` +
+      `I've lined up real listings in your range below. Tap one to browse 👇`
+    : `Hi ${first} 👋\n\n` +
+      `Good news about your vehicle finance: you're *pre-qualified for up to R${fmt(ceiling)}*.\n\n` +
+      `I've lined up real listings in your range below. Tap one to browse 👇`
 
   return {
     message,

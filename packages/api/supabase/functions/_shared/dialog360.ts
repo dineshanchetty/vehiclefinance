@@ -139,6 +139,33 @@ export async function sendListMessage(
   await postJson("/messages", payload)
 }
 
+// CTA-URL interactive message — a card with a single tappable URL button.
+// Allowed in-session (inside the 24h customer-service window), unlike carousel
+// templates which are business-initiated marketing templates (gate G2).
+export async function sendCtaUrlMessage(
+  phone: string, body: string, buttonText: string, url: string,
+  header?: string, footer?: string,
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    messaging_product: "whatsapp",
+    recipient_type: "individual",
+    to: phone,
+    type: "interactive",
+    interactive: {
+      type: "cta_url",
+      body: { text: body },
+      action: {
+        name: "cta_url",
+        parameters: { display_text: buttonText, url },
+      },
+    },
+  }
+  const interactive = payload.interactive as Record<string, unknown>
+  if (header) interactive.header = { type: "text", text: header }
+  if (footer) interactive.footer = { text: footer }
+  await postJson("/messages", payload)
+}
+
 export async function sendImageMessage(phone: string, imageUrl: string, caption?: string): Promise<void> {
   await postJson("/messages", {
     messaging_product: "whatsapp", recipient_type: "individual", to: phone,

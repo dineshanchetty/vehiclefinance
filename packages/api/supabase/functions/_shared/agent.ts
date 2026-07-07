@@ -44,7 +44,6 @@ export class VehicleFinanceAgent {
         await sendTextMessage(phone, "You've been opted out. We won't contact you again. — Claimtec")
         await saveMessage(phone, "user", message, { party_type: "buyer" })
         await saveMessage(phone, "assistant", "[opt-out acknowledged]", { party_type: "buyer" })
-        // Best-effort: suppress any recovery lead on this number.
         try {
           const { getSupabaseClient } = await import("./supabase.ts")
           await getSupabaseClient().from("decline_leads")
@@ -52,8 +51,21 @@ export class VehicleFinanceAgent {
         } catch { /* non-fatal */ }
         return
       }
-      await sendTextMessage(phone, holding)
+
       await saveMessage(phone, "user", message, { party_type: "buyer" })
+
+      // Recovery re-engagement (inbound): the customer messaged first, opening a
+      // 24-hour free-form window — so we may reply with their pre-qualified upsell
+      // offer without an approved template. If this number is a priced
+      // affordability-decline lead, run the upsell journey; otherwise hold.
+      if (botMode === "recovery") {
+        try {
+          const reply = await this.tryRecoveryOffer(phone)
+          if (reply) { await saveMessage(phone, "assistant", reply, { party_type: "buyer" }); return }
+        } catch (e) { console.error("[agent] recovery offer failed:", e) }
+      }
+
+      await sendTextMessage(phone, holding)
       await saveMessage(phone, "assistant", holding, { party_type: "buyer" })
       return
     }
@@ -87,6 +99,74 @@ ${stateSnapshot}
     await pruneOldMessages(phone, 100).catch(() => {
       console.warn(`[agent] Failed to prune messages for ${phone}`)
     })
+  }
+
+  // Recovery re-engagement: if this number is a priced affordability-decline
+  // lead, send the pre-qualified upsell offer + band-correct cars.co.za links and
+  // advance the lead to RE_ENGAGED. Returns the sent text, or null if this number
+  // isn't a live upsell lead (caller then falls back to the holding message).
+  private async tryRecoveryOffer(phone: string): Promise<string | null> {
+    const { getSupabaseClient } = await import("./supabase.ts")
+    const { composeUpsellOffer } = await import("./recovery.ts")
+    const supa = getSupabaseClient()
+
+    const { data: lead } = await supa.from("decline_leads")
+      .select("id, full_name, vehicle_make, vehicle_model, vehicle_price, qualifying_ceiling, recovery_status")
+      .eq("phone", phone)
+      .eq("workstream", "A_UPSELL")
+      .not("qualifying_ceiling", "is", null)
+      .in("recovery_status", ["ROUTED", "ENGAGING", "RE_ENGAGED"])
+      .order("created_at", { ascending: false })
+      .limit(1).maybeSingle()
+
+    if (!lead) return null
+
+    // Already re-engaged → a short nudge rather than re-sending the full offer.
+    if (lead.recovery_status === "RE_ENGAGED") {
+      const nudge = "Tap one of the links I sent to browse cars in your range 🚗 — " +
+        "then send me the one you like and I'll take your new application straight back to the bank."
+      await sendTextMessage(phone, nudge)
+      return nudge
+    }
+
+    const offer = composeUpsellOffer({
+      fullName: lead.full_name,
+      originalPrice: lead.vehicle_price,
+      qualifyingCeiling: lead.qualifying_ceiling,
+      make: lead.vehicle_make,
+      model: lead.vehicle_model,
+    })
+
+    // Greeting first…
+    await sendTextMessage(phone, offer.message)
+
+    // …then one CTA-URL card per search band — the card-style experience that's
+    // allowed in-session. (True media carousels are template-only → gate G2.)
+    try {
+      const { sendCtaUrlMessage } = await import("./dialog360.ts")
+      const supaUrl = Deno.env.get("SUPABASE_URL")!
+      const res = await fetch(`${supaUrl}/functions/v1/cars-alternatives`, {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify(offer.searchParams),
+      })
+      if (res.ok) {
+        const results: Array<{ label: string; url: string; hint: string }> =
+          (await res.json()).results ?? []
+        for (const r of results.slice(0, 3)) {
+          await sendCtaUrlMessage(
+            phone,
+            r.hint,                       // body
+            "Browse cars 🚗",             // button
+            r.url,
+            r.label,                      // header
+            "Claimtec · pre-qualified for you",
+          )
+        }
+      }
+    } catch (e) { console.error("[agent] CTA cards failed:", e) }
+
+    await supa.from("decline_leads").update({ recovery_status: "RE_ENGAGED" }).eq("id", lead.id)
+    return offer.message
   }
 
   private async buildStateSnapshot(
