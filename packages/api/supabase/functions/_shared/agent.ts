@@ -24,6 +24,40 @@ export class VehicleFinanceAgent {
   constructor() { this.client = new Anthropic({ apiKey: Deno.env.get("ANTHROPIC_API_KEY") }) }
 
   async processMessage(phone: string, message: string, mediaId?: string): Promise<void> {
+    // ── Recovery-mode switch ─────────────────────────────────────────────────
+    // Absa now runs origination in its own systems, so the old buyer/seller
+    // origination flow (OTP → KYC → affordability) is retired. When BOT_MODE is
+    // "recovery" (or "holding"), inbound messages get a single POPIA-aware
+    // holding / hand-off reply — the origination tool loop never runs. The full
+    // recovery re-engagement (upsell / reactivation) is OUTBOUND and stays gated
+    // behind template approval (G2) + consent (G1); it lands in this mode once
+    // those clear. Fixed responder → deterministic, no LLM cost, no tool risk.
+    const botMode = (Deno.env.get("BOT_MODE") ?? "").toLowerCase()
+    if (botMode === "recovery" || botMode === "holding") {
+      const holding = Deno.env.get("BOT_HOLDING_MESSAGE") ??
+        "Hi 👋 Thanks for your message.\n\n" +
+        "Vehicle finance applications are now handled directly by your bank. " +
+        "If a recent application of yours was declined, we may reach out with options you could qualify for — there's nothing you need to do right now.\n\n" +
+        "You can reply STOP at any time to opt out of contact.\n\n— Claimtec"
+      const lower = (message ?? "").trim().toLowerCase()
+      if (lower === "stop" || lower === "unsubscribe" || lower === "opt out") {
+        await sendTextMessage(phone, "You've been opted out. We won't contact you again. — Claimtec")
+        await saveMessage(phone, "user", message, { party_type: "buyer" })
+        await saveMessage(phone, "assistant", "[opt-out acknowledged]", { party_type: "buyer" })
+        // Best-effort: suppress any recovery lead on this number.
+        try {
+          const { getSupabaseClient } = await import("./supabase.ts")
+          await getSupabaseClient().from("decline_leads")
+            .update({ recovery_status: "OPTED_OUT" }).eq("phone", phone)
+        } catch { /* non-fatal */ }
+        return
+      }
+      await sendTextMessage(phone, holding)
+      await saveMessage(phone, "user", message, { party_type: "buyer" })
+      await saveMessage(phone, "assistant", holding, { party_type: "buyer" })
+      return
+    }
+
     const partyType = await this.resolvePartyType(phone)
     const basePrompt = partyType === "seller" ? SELLER_SYSTEM_PROMPT : BUYER_SYSTEM_PROMPT
     const dealId = await this.resolveDealId(phone, partyType)
