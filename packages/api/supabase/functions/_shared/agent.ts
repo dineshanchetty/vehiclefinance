@@ -140,28 +140,24 @@ ${stateSnapshot}
     // Greeting first…
     await sendTextMessage(phone, offer.message)
 
-    // …then one CTA-URL card per search band — the card-style experience that's
-    // allowed in-session. (True media carousels are template-only → gate G2.)
+    // …then one CTA-URL card per listing — image header when the provider has
+    // one (demo/feed adapters), text header otherwise (deeplink). True media
+    // carousels are template-only → gate G2.
     try {
       const { sendCtaUrlMessage } = await import("./dialog360.ts")
-      const supaUrl = Deno.env.get("SUPABASE_URL")!
-      const res = await fetch(`${supaUrl}/functions/v1/cars-alternatives`, {
-        method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify(offer.searchParams),
-      })
-      if (res.ok) {
-        const results: Array<{ label: string; url: string; hint: string }> =
-          (await res.json()).results ?? []
-        for (const r of results.slice(0, 3)) {
-          await sendCtaUrlMessage(
-            phone,
-            r.hint,                       // body
-            "Browse cars 🚗",             // button
-            r.url,
-            r.label,                      // header
-            "Claimtec · pre-qualified for you",
-          )
-        }
+      const { getListingProvider } = await import("./listings.ts")
+      const provider = getListingProvider((k) => Deno.env.get(k))
+      const listings = await provider.search(offer.searchParams)
+      for (const l of listings.slice(0, 3)) {
+        await sendCtaUrlMessage(
+          phone,
+          `*${l.title}*\n${l.body}`,      // body (title bolded — image headers can't carry text)
+          "Browse cars 🚗",               // button
+          l.url,
+          l.imageUrl ? undefined : l.title, // text header only when no image
+          "Claimtec · pre-qualified for you",
+          l.imageUrl,
+        )
       }
     } catch (e) { console.error("[agent] CTA cards failed:", e) }
 

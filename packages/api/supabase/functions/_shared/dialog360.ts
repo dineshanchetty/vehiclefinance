@@ -145,6 +145,7 @@ export async function sendListMessage(
 export async function sendCtaUrlMessage(
   phone: string, body: string, buttonText: string, url: string,
   header?: string, footer?: string,
+  headerImageUrl?: string,
 ): Promise<void> {
   const payload: Record<string, unknown> = {
     messaging_product: "whatsapp",
@@ -161,7 +162,9 @@ export async function sendCtaUrlMessage(
     },
   }
   const interactive = payload.interactive as Record<string, unknown>
-  if (header) interactive.header = { type: "text", text: header }
+  // Image header takes precedence — renders the card with a photo on top.
+  if (headerImageUrl) interactive.header = { type: "image", image: { link: headerImageUrl } }
+  else if (header) interactive.header = { type: "text", text: header }
   if (footer) interactive.footer = { text: footer }
   await postJson("/messages", payload)
 }
