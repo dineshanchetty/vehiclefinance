@@ -83,8 +83,8 @@ export function RecoveryPage() {
             <StatCard label="Upsell (A)" value={funnel.byWorkstream.A_UPSELL} tone="teal" icon={<TrendingUp className="h-3.5 w-3.5" />} />
             <StatCard label="Reactivation (B)" value={funnel.byWorkstream.B_REACTIVATION} tone="amber" icon={<PhoneOff className="h-3.5 w-3.5" />} />
             <StatCard label="A · priced" value={funnel.aFunnel.priced} tone="sky" />
-            <StatCard label="A · returned" value={funnel.aFunnel.returned} tone="teal" />
-            <StatCard label="A · funded" value={funnel.aFunnel.funded} tone="emerald" />
+            <StatCard label="B · traced" value={funnel.bFunnel.traced} tone="amber" />
+            <StatCard label="Recovered · funded" value={funnel.funded} tone="emerald" />
           </div>
         )}
 
@@ -124,7 +124,7 @@ export function RecoveryPage() {
                 <th className="px-4 py-2.5 font-semibold">Workstream</th>
                 <th className="px-4 py-2.5 font-semibold">Status</th>
                 <th className="px-4 py-2.5 font-semibold">Original</th>
-                <th className="px-4 py-2.5 font-semibold">Qualifies for</th>
+                <th className="px-4 py-2.5 font-semibold">Recovery</th>
                 <th className="px-4 py-2.5 font-semibold">Age</th>
               </tr>
             </thead>
@@ -139,6 +139,7 @@ export function RecoveryPage() {
               )}
               {leads.map((l) => {
                 const uplift = l.workstream === 'A_UPSELL' && l.qualifying_ceiling != null
+                const traced = l.workstream === 'B_REACTIVATION' && l.traced_phone != null
                 return (
                   <tr key={l.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2.5 font-mono text-xs text-claimtec-forest">{l.absa_ref}</td>
@@ -160,6 +161,12 @@ export function RecoveryPage() {
                         <span className="inline-flex items-center gap-1 font-semibold text-claimtec-forest tabular-nums">
                           <ArrowRight className="h-3 w-3 text-emerald-500" />
                           {rand(l.qualifying_ceiling)}
+                        </span>
+                      ) : traced ? (
+                        <span className="inline-flex items-center gap-1 text-xs">
+                          <span className="text-gray-400 line-through tabular-nums">{l.phone ?? '—'}</span>
+                          <ArrowRight className="h-3 w-3 text-emerald-500" />
+                          <span className="font-semibold text-claimtec-forest tabular-nums">+{l.traced_phone}</span>
                         </span>
                       ) : (
                         <span className="text-gray-300">—</span>
