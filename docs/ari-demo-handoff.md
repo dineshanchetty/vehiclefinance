@@ -19,7 +19,7 @@ Hand this file (or the zip) to Ari and he can drive solo.
 
 Ari signs in at the URL above with:
 
-- **Email:** `ari@claimtec.co.za` *(or whatever address the invite was sent to)*
+- **Email:** `ari@hartcon.co.za` *(or whatever address the invite was sent to)*
 - **Password:** set by Ari via the Supabase invitation email
 
 If the invite hasn't been sent yet:
@@ -29,7 +29,7 @@ If the invite hasn't been sent yet:
    INSERT INTO public.profiles (id, email, full_name, role)
    SELECT u.id, u.email, 'Ari', 'admin'
    FROM auth.users u
-   WHERE u.email = 'ari@claimtec.co.za'
+   WHERE u.email = 'ari@hartcon.co.za'
    ON CONFLICT (id) DO UPDATE SET role = EXCLUDED.role, full_name = EXCLUDED.full_name;
    ```
 

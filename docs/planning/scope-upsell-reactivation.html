@@ -1,0 +1,717 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Claimtec — Solution Scope · Decline Upsell &amp; Reactivation</title>
+<style>
+  @page {
+    size: A4;
+    margin: 22mm 18mm 20mm 18mm;
+    @bottom-left {
+      content: "www.claimtec.co.za  ·  +27 82 438 4464  ·  Decline Upsell & Reactivation — Solution Scope";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt; color: #475569;
+    }
+    @bottom-right {
+      content: "Page " counter(page);
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8pt; color: #0E3535; font-weight: 700;
+    }
+  }
+  @page :first { margin: 0; @bottom-left { content: ""; } @bottom-right { content: ""; } }
+  @page section {
+    @top-left {
+      content: "CLAIMTEC  ·  Decline Upsell & Reactivation — Solution Scope";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8.5pt; color: #0E3535; letter-spacing: 0.06em; font-weight: 700;
+    }
+    @top-right {
+      content: "v1.0 · Draft for discussion";
+      font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8.5pt; color: #475569;
+    }
+  }
+
+  :root {
+    --teal: #0E3535; --teal-mid: #2C6E6E; --teal-lt: #F0F4F4;
+    --red: #E63946; --red-lt: #FEE2E2;
+    --ink: #0F172A; --soft: #475569; --grey: #94A3B8;
+    --border: #E2E8F0; --row-alt: #F7F7F8;
+    --emerald: #10B981; --emerald-lt: #D1FAE5;
+    --amber: #F59E0B; --amber-lt: #FEF3C7;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    color: var(--ink);
+    font-size: 10pt; line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  body { background: #fff; }
+
+  /* COVER */
+  .cover {
+    page: first;
+    height: 297mm; width: 210mm;
+    display: grid; grid-template-columns: 120mm 90mm;
+    page-break-after: always;
+  }
+  .cover-l {
+    background: var(--teal); color: #fff;
+    padding: 28mm 14mm 18mm 18mm;
+    border-right: 3mm solid var(--red);
+    display: flex; flex-direction: column;
+  }
+  .cover-l .brand { font-size: 13pt; font-weight: 800; letter-spacing: 0.32em; margin-bottom: 34mm; }
+  .cover-l .eyebrow { font-size: 9pt; font-weight: 800; letter-spacing: 0.32em; color: var(--red); margin-bottom: 4mm; }
+  .cover-l .eyebrow + .eyebrow { margin-bottom: 16mm; }
+  .cover-l h1 { font-size: 27pt; font-weight: 800; line-height: 1.05; margin: 0 0 1mm 0; letter-spacing: -0.01em; color: #fff; }
+  .cover-l h1.accent { color: var(--red); margin-bottom: 14mm; }
+  .cover-l .lede { font-size: 10pt; color: #fff; line-height: 1.55; margin-top: auto; max-width: 92mm; }
+
+  .cover-r { background: #fff; padding: 22mm 12mm 14mm 12mm; }
+  .cover-r .label { font-size: 7.5pt; font-weight: 800; letter-spacing: 0.22em; color: var(--red); margin: 8mm 0 1.5mm 0; text-transform: uppercase; }
+  .cover-r .label:first-child { margin-top: 0; }
+  .cover-r .big { font-size: 16pt; font-weight: 800; color: var(--teal); letter-spacing: -0.01em; line-height: 1.15; }
+  .cover-r .mid { font-size: 11pt; font-weight: 700; color: var(--teal); }
+  .cover-r .small { font-size: 8.5pt; color: var(--soft); }
+  .cover-r .small.ink { color: var(--ink); }
+  .cover-r .small.italic { font-style: italic; color: var(--soft); }
+  .cover-r .rule { border-top: 2px solid var(--red); margin: 10mm 0 0 0; padding-top: 6mm; }
+  .cover-r .contact { color: var(--teal); font-weight: 600; }
+
+  /* SECTIONS */
+  .section { page: section; page-break-before: always; padding-top: 6mm; }
+  .section-head { margin-bottom: 8mm; }
+  .section-eyebrow { font-size: 8.5pt; font-weight: 800; letter-spacing: 0.24em; color: var(--red); margin-bottom: 2mm; text-transform: uppercase; }
+  .section-head h2 { font-size: 26pt; font-weight: 800; color: var(--teal); letter-spacing: -0.02em; margin: 0 0 3mm 0; line-height: 1.05; }
+  .section-head .rule { border-bottom: 2.5px solid var(--red); width: 100%; margin-bottom: 3mm; }
+
+  h3 { font-size: 13pt; font-weight: 800; color: var(--teal); letter-spacing: -0.01em; margin: 7mm 0 2mm 0; page-break-after: avoid; }
+  h4 { font-size: 10.5pt; font-weight: 700; color: var(--teal-mid); margin: 4mm 0 1mm 0; page-break-after: avoid; }
+  p { margin: 0 0 2.4mm 0; text-align: justify; color: var(--ink); }
+  p.muted { color: var(--soft); font-style: italic; font-size: 9pt; }
+  p.lede { font-size: 10.5pt; }
+
+  /* LISTS */
+  ul { margin: 1mm 0 3mm 0; padding-left: 0; list-style: none; }
+  ul li { position: relative; padding: 0.6mm 0 0.6mm 5mm; color: var(--ink); font-size: 9.5pt; }
+  ul li::before { content: "•"; position: absolute; left: 0; top: 0.6mm; color: var(--red); font-weight: 800; }
+  ul li b { color: var(--teal); }
+
+  /* TABLES */
+  table { width: 100%; border-collapse: collapse; margin: 3mm 0 4mm 0; font-size: 9pt; page-break-inside: avoid; }
+  thead th { background: var(--teal); color: #fff; text-align: left; padding: 3mm 3.5mm; font-weight: 700; border: none; }
+  tbody td { padding: 2.8mm 3.5mm; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); color: var(--ink); vertical-align: top; }
+  tbody tr:nth-child(even) td { background: var(--row-alt); }
+  tbody td.k { color: var(--teal); font-weight: 700; }
+  tbody td.n { color: var(--teal); font-weight: 800; text-align: center; }
+  tbody td.r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tbody tr.total td { background: var(--teal-lt); font-weight: 800; color: var(--teal); border-top: 2px solid var(--red); }
+  tbody tr.total td.r { color: var(--teal); font-size: 11pt; }
+
+  /* CALLOUT */
+  .callout {
+    background: var(--teal-lt); border-left: 5px solid var(--red);
+    padding: 5mm 6mm; color: var(--teal); font-weight: 700; font-style: italic;
+    font-size: 10pt; line-height: 1.55; margin: 4mm 0 5mm 0; page-break-inside: avoid;
+  }
+  .callout.alt { border-left-color: var(--teal-mid); }
+
+  /* TWO-COL */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 7mm; margin: 4mm 0 5mm 0; }
+  .panel { background: var(--row-alt); border-left: 4px solid var(--teal); padding: 5mm 6mm; }
+  .panel.red { border-left-color: var(--red); }
+  .panel h4 { font-size: 9pt; font-weight: 800; letter-spacing: 0.18em; color: var(--red); margin: 0 0 3mm 0; text-transform: uppercase; }
+  .panel ul { margin: 0; }
+  .panel ul li { font-size: 9.5pt; padding: 1mm 0 1mm 5mm; }
+  .panel ul li::before { content: "✓"; color: var(--emerald); }
+  .panel.red ul li::before { content: "•"; color: var(--red); }
+
+  /* FLOW STRIP */
+  .flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3mm; margin: 4mm 0 5mm 0; }
+  .flow.four { grid-template-columns: repeat(4, 1fr); }
+  .step { background: #fff; border: 1px solid var(--border); border-radius: 2mm; padding: 4mm 4mm 5mm; }
+  .step .n { display: inline-block; background: var(--red); color: #fff; font-weight: 800; font-size: 8.5pt; padding: 1mm 2.5mm; border-radius: 999px; letter-spacing: 0.06em; }
+  .step .t { font-weight: 800; color: var(--teal); font-size: 10pt; margin-top: 2mm; letter-spacing: -0.01em; }
+  .step .d { font-size: 8.5pt; color: var(--soft); margin-top: 2mm; line-height: 1.45; }
+
+  /* STATUS PILL */
+  .pill { display: inline-block; font-size: 8pt; font-weight: 800; letter-spacing: 0.08em; padding: 0.8mm 2.4mm; border-radius: 999px; text-transform: uppercase; }
+  .pill.emerald { background: var(--emerald-lt); color: #047857; }
+  .pill.amber { background: var(--amber-lt); color: #92400E; }
+  .pill.red { background: var(--red-lt); color: #B91C1C; }
+
+  .end { text-align: center; margin-top: 12mm; color: var(--grey); font-style: italic; font-size: 9pt; letter-spacing: 0.1em; }
+
+  /* SIGNATURES */
+  .signatures { margin-top: 10mm; width: 100%; border-collapse: separate; border-spacing: 8mm 0; }
+  .signatures td { border-top: 2px solid var(--red); padding-top: 4mm; width: 50%; vertical-align: top; font-size: 10pt; }
+  .signatures .h { font-size: 12pt; font-weight: 800; color: var(--teal); margin-bottom: 3mm; }
+  .signatures .line { margin-bottom: 3.5mm; color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <div class="cover-l">
+    <div class="brand">C L A I M T E C</div>
+    <div class="eyebrow">S O L U T I O N &nbsp; S C O P E</div>
+    <div class="eyebrow">C L A I M T E C &nbsp; F I N O P S</div>
+    <h1>Turning a decline</h1>
+    <h1>into a second</h1>
+    <h1 class="accent">chance to lend.</h1>
+    <div class="lede">
+      Two revenue-recovery journeys on the Claimtec FinOps platform: an
+      affordability-decline upsell that offers every declined buyer the vehicle
+      they <i>do</i> qualify for, and a reactivation engine that re-opens the book
+      of applications lost to "unable to contact". This document sets out both
+      journeys, the scope of work, and what we need from the Bank to begin.
+    </div>
+  </div>
+  <div class="cover-r">
+    <div class="label">Prepared for</div>
+    <div class="big">Absa Bank</div>
+    <div class="small italic">Vehicle &amp; Asset Finance</div>
+
+    <div class="label">Attention</div>
+    <div class="mid">Henry Botha</div>
+    <div class="small">[Title]</div>
+    <div class="small contact">[email]</div>
+
+    <div class="label">Prepared by</div>
+    <div class="big">Claimtec (Pty) Ltd</div>
+    <div class="small ink">Reg 2021/632756/07</div>
+    <div class="small ink">B-BBEE Level 1 EME · 135% PPR</div>
+    <div class="small ink">100% Black-owned · CSD registered</div>
+
+    <div class="rule"></div>
+    <div class="label">Document</div>
+    <div class="small ink">Solution Scope · v1.0 (Draft for discussion)</div>
+    <div class="small ink">6 July 2026</div>
+    <div class="small italic">Valid 30 days from issue</div>
+
+    <div class="label" style="margin-top:8mm;">Contact</div>
+    <div class="mid">Dineshan Chetty · MD</div>
+    <div class="small contact">dineshan@claimtec.co.za</div>
+    <div class="small contact">+27 82 438 4464</div>
+  </div>
+</div>
+
+<!-- §01 EXECUTIVE SUMMARY -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">§01 &nbsp;·&nbsp; What we are building. Why it matters to the book.</div>
+    <h2>Executive summary</h2>
+    <div class="rule"></div>
+  </div>
+
+  <p class="lede">Most lenders treat a decline as the end of a conversation. The
+  Claimtec FinOps platform treats it as the start of a better one. This scope adds
+  two journeys that recover revenue the Bank has already paid to originate.</p>
+
+  <p><b>The operating model.</b> Absa continues to originate and decision every
+  application in its own systems — nothing about the Bank's credit process changes.
+  When an application is declined, Absa sends that declined record to Claimtec.
+  Claimtec is the <b>recovery layer</b>: we ingest the declined feed, run each case
+  through the appropriate recovery flow, and hand a re-engaged, re-qualified lead
+  back to Absa to re-originate. Two flows sit on top of that feed:</p>
+
+  <ul>
+    <li><b>Affordability-decline upsell.</b> Absa declines a buyer because the
+    vehicle they chose is beyond their means. We re-engage that buyer, tell them
+    what they <i>can</i> afford, and put an affordable vehicle in front of them —
+    returning a re-qualified lead to Absa for a smaller, fundable deal.</li>
+    <li><b>Can't-contact reactivation.</b> Absa declines an application because it
+    could not reach the applicant. We ingest it, <i>trace fresh contact details from
+    external data sources</i> when the number on file is dead, re-establish contact,
+    and return the applicant — with verified details — to Absa.</li>
+  </ul>
+
+  <div class="callout">
+    Absa originates; Claimtec recovers. Both flows monetise customers the Bank has
+    already acquired and declined — with no change to the Bank's credit policy and
+    no new lead-generation spend.
+  </div>
+
+  <h3>At a glance</h3>
+  <table>
+    <thead><tr><th>Layer</th><th>What the Bank gets</th><th>Dependency</th></tr></thead>
+    <tbody>
+      <tr><td class="k">0 · Decline-feed ingestion</td><td>A secure intake that receives Absa's declined records and routes each to the right recovery flow. The shared front door for both journeys.</td><td><span class="pill amber">Feed spec from Absa</span></td></tr>
+      <tr><td class="k">A · Affordability upsell</td><td>A tracked flow that re-engages affordability-declined buyers and returns re-qualified, affordable leads to Absa.</td><td><span class="pill emerald">None once feed is live</span></td></tr>
+      <tr><td class="k">B · Contact reactivation</td><td>A flow that traces fresh contact details, re-establishes contact, and returns verified applicants to Absa.</td><td><span class="pill amber">Gated — see §06</span></td></tr>
+    </tbody>
+  </table>
+  <p class="muted">Recommended sequencing: stand up the decline-feed intake, then ship
+  Workstream A first — it needs only the feed and proves the recovered-revenue model
+  while the Workstream B tracing and compliance dependencies are cleared.</p>
+</section>
+
+<!-- §02 WHAT WE HEARD -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">§02 &nbsp;·&nbsp; What we heard. What you are buying.</div>
+    <h2>Understanding the brief</h2>
+    <div class="rule"></div>
+  </div>
+
+  <p class="lede">The Bank's ask, in its own terms: use the platform to upsell
+  affordability declines, and to update the contact details of applicants declined
+  because they could not be reached.</p>
+
+  <h3>The problem, quantified</h3>
+  <p>Two segments of the Bank's declined population carry recoverable value that
+  today falls out of the funnel entirely:</p>
+
+  <ul>
+    <li><b>Affordability declines.</b> A buyer qualifies for finance — just not for
+    the vehicle they picked. Today they are declined and lost. In reality they are a
+    fundable customer attached to the wrong asset.</li>
+    <li><b>Unreachable declines.</b> An application is declined solely because the
+    Bank could not make contact — a stale number, a changed email. The credit
+    appetite may be intact; only the contact channel failed.</li>
+  </ul>
+
+  <h3>What "good" looks like</h3>
+  <div class="two-col">
+    <div class="panel">
+      <h4>Claimtec (recovery layer)</h4>
+      <ul>
+        <li>Ingest Absa's declined-application feed</li>
+        <li>Re-engage affordability declines with a pre-qualified offer</li>
+        <li>Show affordable vehicles in the buyer's real band</li>
+        <li>Trace fresh contact details from external data sources</li>
+        <li>Re-contact + refresh details over WhatsApp</li>
+        <li>Return re-qualified leads + verified details to Absa</li>
+        <li>Report the recovery funnel back to the Bank</li>
+      </ul>
+    </div>
+    <div class="panel red">
+      <h4>Absa (unchanged) / out of scope</h4>
+      <ul>
+        <li>Origination &amp; credit decisioning — stays in Absa's systems</li>
+        <li>Re-origination of the leads we return</li>
+        <li>Disbursement &amp; payout</li>
+        <li>Any change to the Bank's credit policy or rules</li>
+        <li>Step-down / restructured finance products</li>
+        <li>Marketing to non-declined populations</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout alt">
+    Claimtec sits between Absa's decline and a second, better-matched application.
+    It does not change who Absa approves — it changes what happens to the customers
+    Absa has already declined, recovering the ones who were always fundable.
+  </div>
+</section>
+
+<!-- §03 THE CUSTOMER JOURNEY -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">§03 &nbsp;·&nbsp; The journey, end to end. Two paths, one platform.</div>
+    <h2>The customer journey</h2>
+    <div class="rule"></div>
+  </div>
+
+  <p class="lede">This is the heart of the engagement — what a declined customer
+  actually experiences, and how each journey returns them to a fundable state.</p>
+
+  <h3>Journey A — the affordability-decline upsell</h3>
+  <p>Absa has declined the buyer for their chosen vehicle on affordability and sent
+  the declined record to Claimtec. Instead of a dead end, we re-engage the buyer,
+  put an affordable vehicle in front of them, and return a re-qualified lead to Absa.</p>
+
+  <div style="margin:4mm 0 5mm 0; padding:6mm 5mm 4mm; background:#FAFBFC; border:1px solid var(--border); border-radius:2mm; page-break-inside:avoid;">
+  <svg viewBox="0 0 1200 440" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Helvetica Neue',Arial,sans-serif;">
+    <defs>
+      <marker id="aTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0E3535"/></marker>
+      <marker id="aRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#E63946"/></marker>
+      <marker id="aEm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#10B981"/></marker>
+    </defs>
+
+    <text x="20" y="30" font-size="13" font-weight="800" fill="#E63946" letter-spacing="2.5">ABSA DECLINES  ·  CLAIMTEC RECOVERS  ·  ABSA RE-ORIGINATES</text>
+
+    <!-- Node 1: Absa decline -->
+    <rect x="20" y="55" width="212" height="80" rx="8" fill="#2C6E6E"/>
+    <text x="38" y="86" font-size="13.5" font-weight="800" fill="#fff">Absa · affordability decline</text>
+    <text x="38" y="106" font-size="10" fill="#CFE3E3">Buyer wanted R 285,000</text>
+    <text x="38" y="123" font-size="10" fill="#CFE3E3">Decline sent to Claimtec</text>
+
+    <!-- Node 2: ingest + re-engage -->
+    <rect x="292" y="55" width="212" height="80" rx="8" fill="#0E3535"/>
+    <text x="310" y="86" font-size="13.5" font-weight="800" fill="#fff">Ingest &amp; re-engage</text>
+    <text x="310" y="106" font-size="10" fill="#94A3B8">WhatsApp to the buyer</text>
+    <text x="310" y="123" font-size="10" fill="#94A3B8">Qualifying ceiling computed</text>
+
+    <!-- Node 3: affordable band -->
+    <rect x="564" y="55" width="212" height="80" rx="8" fill="#0E3535"/>
+    <text x="582" y="86" font-size="13.5" font-weight="800" fill="#fff">Affordable band</text>
+    <text x="582" y="106" font-size="10" fill="#94A3B8">Vehicles ≤ R 182,000</text>
+    <text x="582" y="123" font-size="12" font-weight="800" fill="#fff">Buyer picks one</text>
+
+    <!-- Node 4: lead back to Absa -->
+    <rect x="836" y="55" width="212" height="80" rx="8" fill="#0E3535"/>
+    <text x="854" y="86" font-size="13.5" font-weight="800" fill="#fff">Re-qualified lead</text>
+    <text x="854" y="106" font-size="10" fill="#94A3B8">Returned to Absa at</text>
+    <text x="854" y="123" font-size="12" font-weight="800" fill="#fff">R 182,000</text>
+
+    <!-- Node 5: funded -->
+    <rect x="1000" y="205" width="180" height="80" rx="8" fill="#10B981"/>
+    <text x="1018" y="240" font-size="13.5" font-weight="800" fill="#fff">Absa funds ✓</text>
+    <text x="1018" y="262" font-size="11" fill="#D1FAE5">Recovered deal</text>
+
+    <!-- Dead-end -->
+    <rect x="292" y="305" width="212" height="74" rx="8" fill="#F1F5F9" stroke="#E63946" stroke-width="1.5" stroke-dasharray="5 4"/>
+    <text x="310" y="335" font-size="13" font-weight="800" fill="#B91C1C">Declined — lost</text>
+    <text x="310" y="355" font-size="10" fill="#64748B">The outcome today</text>
+    <text x="310" y="371" font-size="9" font-weight="800" fill="#94A3B8" letter-spacing="1.5">TODAY · NO RECOVERY</text>
+
+    <!-- arrows -->
+    <line x1="232" y1="95" x2="290" y2="95" stroke="#0E3535" stroke-width="2.5" marker-end="url(#aTeal)"/>
+    <line x1="504" y1="95" x2="562" y2="95" stroke="#0E3535" stroke-width="2.5" marker-end="url(#aTeal)"/>
+    <line x1="776" y1="95" x2="834" y2="95" stroke="#0E3535" stroke-width="2.5" marker-end="url(#aTeal)"/>
+    <path d="M 942 135 L 942 180 Q 942 205 962 225 L 998 240" fill="none" stroke="#10B981" stroke-width="2.5" marker-end="url(#aEm)"/>
+    <line x1="398" y1="135" x2="398" y2="303" stroke="#E63946" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#aRed)"/>
+  </svg>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:-1mm;">Figure 1 — Absa declines on affordability (left). Today the buyer is lost (red branch). Claimtec re-engages, matches an affordable vehicle, and returns a re-qualified lead to Absa to fund.</p>
+
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div class="t">Absa declines</div><div class="d">Affordability fails for the chosen vehicle; Absa sends the declined record to Claimtec.</div></div>
+    <div class="step"><span class="n">2</span><div class="t">Re-engaged</div><div class="d">We reach the buyer on WhatsApp and compute their true qualifying ceiling.</div></div>
+    <div class="step"><span class="n">3</span><div class="t">Guided</div><div class="d">Vehicles in the affordable band are surfaced — real listings, in the buyer's range.</div></div>
+    <div class="step"><span class="n">4</span><div class="t">Returned</div><div class="d">The buyer picks an affordable vehicle; a re-qualified lead goes back to Absa.</div></div>
+    <div class="step"><span class="n">5</span><div class="t">Absa funds</div><div class="d">A deal that would have been lost completes — attributed to the upsell journey.</div></div>
+  </div>
+
+  <div class="callout">
+    "You applied for R 285,000 and it was declined — but you pre-qualify for up to
+    R 182,000. Here are cars in your range." One message turns a rejection into a
+    recovered sale.
+  </div>
+
+  <h3>Journey B — the can't-contact reactivation</h3>
+  <p>Absa declined the application only because it could not reach the applicant —
+  the number on file is dead. Re-dialling it is useless, so before we make contact
+  we <b>trace fresh details from external data sources</b>, then re-establish contact,
+  confirm the update, and return the applicant to Absa.</p>
+
+  <div style="margin:4mm 0 5mm 0; padding:6mm 5mm 4mm; background:#FAFBFC; border:1px solid var(--border); border-radius:2mm; page-break-inside:avoid;">
+  <svg viewBox="0 0 1200 660" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Helvetica Neue',Arial,sans-serif;">
+    <defs>
+      <marker id="bTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0E3535"/></marker>
+      <marker id="bEm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#10B981"/></marker>
+      <marker id="bRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#E63946"/></marker>
+    </defs>
+
+    <!-- lane labels -->
+    <text x="20" y="26" font-size="12.5" font-weight="800" fill="#E63946" letter-spacing="2.5">ABSA + DATA SOURCES</text>
+    <text x="450" y="26" font-size="12.5" font-weight="800" fill="#E63946" letter-spacing="2.5">CLAIMTEC PLATFORM</text>
+    <text x="1000" y="26" font-size="12.5" font-weight="800" fill="#E63946" letter-spacing="2.5">BACK TO ABSA</text>
+
+    <!-- dividers -->
+    <line x1="405" y1="40" x2="405" y2="545" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="4 4"/>
+    <line x1="965" y1="40" x2="965" y2="545" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="4 4"/>
+
+    <!-- SOURCE: Absa decline -->
+    <rect x="20" y="80" width="360" height="88" rx="8" fill="#0E3535"/>
+    <text x="42" y="112" font-size="14" font-weight="800" fill="#fff">Absa · non-contactable decline</text>
+    <text x="42" y="134" font-size="10.5" fill="#94A3B8">Name · ID · dead phone / email</text>
+    <text x="42" y="151" font-size="10.5" fill="#94A3B8">Credit appetite may be intact</text>
+
+    <!-- SOURCE: data sources -->
+    <rect x="20" y="255" width="360" height="120" rx="8" fill="#2C6E6E"/>
+    <text x="42" y="285" font-size="14" font-weight="800" fill="#fff">External data sources</text>
+    <text x="42" y="307" font-size="10.5" fill="#CFE3E3">Credit bureaus (TransUnion, Experian,</text>
+    <text x="42" y="323" font-size="10.5" fill="#CFE3E3">XDS, VeriCred)</text>
+    <text x="42" y="343" font-size="10.5" fill="#CFE3E3">Consumer-data &amp; tracing providers</text>
+    <text x="42" y="359" font-size="10.5" fill="#CFE3E3">Telco / number-portability lookups</text>
+
+    <!-- PLATFORM CONTAINER (5 layers) -->
+    <rect x="430" y="55" width="505" height="475" rx="10" fill="#F0F4F4" stroke="#0E3535" stroke-width="2"/>
+
+    <rect x="452" y="76" width="461" height="60" rx="6" fill="#0E3535"/>
+    <text x="472" y="101" font-size="12.5" font-weight="800" fill="#fff">1 · Ingest declined record</text>
+    <text x="472" y="120" font-size="10" fill="#94A3B8">Mapped · de-duplicated · idempotent</text>
+
+    <rect x="452" y="145" width="461" height="60" rx="6" fill="#E63946"/>
+    <text x="472" y="170" font-size="12.5" font-weight="800" fill="#fff">2 · Trace contact details</text>
+    <text x="472" y="189" font-size="10" fill="#FEE2E2">Enrich from data sources when the number is dead</text>
+
+    <rect x="452" y="214" width="461" height="60" rx="6" fill="#2C6E6E"/>
+    <text x="472" y="239" font-size="12.5" font-weight="800" fill="#fff">3 · WhatsApp re-contact</text>
+    <text x="472" y="258" font-size="10" fill="#CFE3E3">Approved template · opt-out honoured</text>
+
+    <rect x="452" y="283" width="461" height="60" rx="6" fill="#2C6E6E"/>
+    <text x="472" y="308" font-size="12.5" font-weight="800" fill="#fff">4 · Detail refresh &amp; validate</text>
+    <text x="472" y="327" font-size="10" fill="#CFE3E3">Phone · email · address confirmed with the customer</text>
+
+    <rect x="452" y="352" width="461" height="60" rx="6" fill="#0E3535"/>
+    <text x="472" y="377" font-size="12.5" font-weight="800" fill="#fff">5 · Return to Absa</text>
+    <text x="472" y="396" font-size="10" fill="#94A3B8">Verified details + willing applicant</text>
+
+    <!-- OUTCOMES -->
+    <rect x="985" y="150" width="195" height="72" rx="6" fill="#10B981"/>
+    <text x="1003" y="181" font-size="12" font-weight="800" fill="#fff">Updated details</text>
+    <text x="1003" y="201" font-size="10" fill="#D1FAE5">Written back to Absa</text>
+
+    <rect x="985" y="300" width="195" height="72" rx="6" fill="#10B981"/>
+    <text x="1003" y="331" font-size="12" font-weight="800" fill="#fff">Applicant returned</text>
+    <text x="1003" y="351" font-size="10" fill="#D1FAE5">Re-originated by Absa</text>
+
+    <!-- COMPLIANCE STRIP -->
+    <rect x="20" y="560" width="1160" height="80" rx="8" fill="#0E3535"/>
+    <text x="42" y="592" font-size="13.5" font-weight="800" fill="#fff">CONSENT &amp; POPIA LAYER</text>
+    <text x="42" y="614" font-size="10.5" fill="#CFE3E3">Data-source lookups + every message audit-logged with lawful basis · opt-out ("STOP") suppresses permanently</text>
+    <rect x="985" y="578" width="175" height="42" rx="21" fill="#E63946"/>
+    <text x="1072" y="604" font-size="11" font-weight="800" fill="#fff" text-anchor="middle">Gates G1–G5</text>
+
+    <!-- arrows -->
+    <line x1="380" y1="115" x2="450" y2="106" stroke="#0E3535" stroke-width="2.5" marker-end="url(#bTeal)"/>
+    <!-- data sources → trace layer: orthogonal route in the gap, avoids clipping the ingest box -->
+    <path d="M 380 315 L 415 315 L 415 175 L 450 175" fill="none" stroke="#E63946" stroke-width="2.5" marker-end="url(#bRed)"/>
+    <line x1="913" y1="313" x2="983" y2="200" stroke="#10B981" stroke-width="2.5" marker-end="url(#bEm)"/>
+    <line x1="913" y1="382" x2="983" y2="336" stroke="#10B981" stroke-width="2.5" marker-end="url(#bEm)"/>
+  </svg>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:-1mm;">Figure 2 — When Absa's number is dead, the platform traces fresh details from external data sources (red step) before re-contacting, then returns verified details and the applicant to Absa. Every step sits on the consent &amp; POPIA layer.</p>
+
+  <div class="flow">
+    <div class="step"><span class="n">1</span><div class="t">Ingested</div><div class="d">Absa's non-contactable decline is received and routed into the reactivation flow.</div></div>
+    <div class="step"><span class="n">2</span><div class="t">Traced</div><div class="d">Fresh contact details are enriched from external data sources when the number is dead.</div></div>
+    <div class="step"><span class="n">3</span><div class="t">Re-contacted</div><div class="d">The assistant reaches the applicant over WhatsApp on an approved template.</div></div>
+    <div class="step"><span class="n">4</span><div class="t">Refreshed</div><div class="d">Phone, email and address are confirmed with the customer and validated.</div></div>
+    <div class="step"><span class="n">5</span><div class="t">Returned</div><div class="d">Verified details and the willing applicant are handed back to Absa.</div></div>
+  </div>
+
+  <h3>Where the two journeys converge</h3>
+  <p>Any Absa decline — affordability or contact — enters the same Claimtec recovery
+  layer and is returned to Absa to re-decision. If a reactivated applicant is then
+  declined on affordability, the upsell journey catches them automatically. The two
+  journeys chain into one continuous path: from any decline, back to a funded deal.</p>
+
+  <div style="margin:4mm 0 3mm 0; padding:6mm 5mm 4mm; background:#FAFBFC; border:1px solid var(--border); border-radius:2mm; page-break-inside:avoid;">
+  <svg viewBox="0 0 1200 340" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;font-family:'Helvetica Neue',Arial,sans-serif;">
+    <defs>
+      <marker id="cTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0E3535"/></marker>
+      <marker id="cEm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#10B981"/></marker>
+      <marker id="cRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#E63946"/></marker>
+    </defs>
+
+    <!-- Absa decline -->
+    <rect x="20" y="105" width="220" height="90" rx="8" fill="#2C6E6E"/>
+    <text x="38" y="140" font-size="13" font-weight="800" fill="#fff">Absa decline</text>
+    <text x="38" y="161" font-size="10" fill="#CFE3E3">Affordability or</text>
+    <text x="38" y="177" font-size="10" fill="#CFE3E3">non-contactable</text>
+
+    <!-- Claimtec recovery -->
+    <rect x="330" y="95" width="300" height="110" rx="8" fill="#0E3535"/>
+    <text x="352" y="130" font-size="14" font-weight="800" fill="#fff">Claimtec recovery layer</text>
+    <text x="352" y="152" font-size="10.5" fill="#94A3B8">Ingest · trace · re-engage</text>
+    <text x="352" y="169" font-size="10.5" fill="#94A3B8">· re-qualify to affordable</text>
+
+    <!-- Returned to Absa -->
+    <rect x="715" y="105" width="215" height="90" rx="8" fill="#0E3535"/>
+    <text x="733" y="140" font-size="13" font-weight="800" fill="#fff">Returned to Absa</text>
+    <text x="733" y="161" font-size="10" fill="#94A3B8">Re-decisioned with</text>
+    <text x="733" y="177" font-size="10" fill="#94A3B8">fresh details / amount</text>
+
+    <!-- Absa funds -->
+    <rect x="1000" y="105" width="180" height="90" rx="8" fill="#10B981"/>
+    <text x="1018" y="145" font-size="14" font-weight="800" fill="#fff">Absa funds ✓</text>
+    <text x="1018" y="167" font-size="10" fill="#D1FAE5">Recovered deal</text>
+
+    <!-- arrows -->
+    <line x1="240" y1="150" x2="328" y2="150" stroke="#0E3535" stroke-width="2.5" marker-end="url(#cTeal)"/>
+    <line x1="630" y1="150" x2="713" y2="150" stroke="#0E3535" stroke-width="2.5" marker-end="url(#cTeal)"/>
+    <line x1="930" y1="150" x2="998" y2="150" stroke="#10B981" stroke-width="2.5" marker-end="url(#cEm)"/>
+    <!-- loop back: affordability re-decline → upsell -->
+    <path d="M 822 195 L 822 265 L 480 265 L 480 207" fill="none" stroke="#E63946" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#cRed)"/>
+    <text x="560" y="285" font-size="10.5" font-weight="800" fill="#E63946">If re-declined on affordability → the upsell journey catches it</text>
+  </svg>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:-1mm;">Figure 3 — One recovery layer serves both decline types and returns leads to Absa. A reactivated applicant re-declined on affordability loops back into the upsell journey (red).</p>
+
+  <div class="callout">
+    The commercial case is the compounding effect: reactivation refills the top of
+    the funnel with customers the Bank had written off, and the upsell catches those
+    who still can't afford their first choice. Every declined customer gets exactly
+    one more, well-matched chance to become a funded deal — and the Bank sees each
+    step of that recovery, measured and attributable.
+  </div>
+
+  <h3>What Absa sees</h3>
+  <p>Across both journeys the platform reports a single recovery funnel — from the
+  moment Absa declines or flags a customer unreachable, through tracing, re-contact
+  and re-qualification, to a lead returned and funded. That funnel is the number this
+  engagement is measured on, and it is visible to Absa's recovery team in real time
+  on the Claimtec operator dashboard.</p>
+</section>
+
+<!-- §04 WORKSTREAM A SCOPE -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">§04 &nbsp;·&nbsp; Phases. Sign-off criteria on every one.</div>
+    <h2>Scope — Workstream A</h2>
+    <div class="rule"></div>
+  </div>
+
+  <h3>Layer 0 · Decline-feed ingestion (shared)</h3>
+  <p>Both journeys begin with the same front door: a secure intake that receives
+  Absa's declined records, normalises and de-duplicates them, and routes each case
+  by decline reason — affordability into Journey A, non-contactable into Journey B.
+  This layer is built once and serves both workstreams.</p>
+  <table>
+    <thead><tr><th>Phase</th><th>Deliverable</th><th>Sign-off criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="k">L0 · Decline-feed intake</td><td>A secure endpoint that receives Absa's declined-application feed, maps and de-duplicates it, and routes each record by decline reason.</td><td>A test batch of declined records is ingested, correctly routed by reason, and idempotent on re-run.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Journey A · affordability upsell</h3>
+  <p class="lede">Once the feed is live, the upsell flow carries no further external
+  dependency. Delivered in four phases, each invoiced against its sign-off criteria.</p>
+
+  <table>
+    <thead><tr><th>Phase</th><th>Deliverable</th><th>Sign-off criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="k">A1 · Qualifying-band engine</td><td>The platform converts the declined application into a concrete maximum qualifying vehicle price, using Absa's rate and term matrix.</td><td>For a given income profile, the platform states a correct affordable ceiling.</td></tr>
+      <tr><td class="k">A2 · Re-engage &amp; offer</td><td>The buyer is re-contacted on WhatsApp with a pre-qualified offer — the qualifying amount plus vehicles filtered to that band.</td><td>A declined buyer receives their qualifying amount and band-correct vehicle options.</td></tr>
+      <tr><td class="k">A3 · Return to Absa</td><td>The buyer selects an affordable vehicle; a re-qualified lead is packaged and returned to Absa to re-originate, linked to the original application.</td><td>A declined case produces a linked, affordable lead handed back to Absa.</td></tr>
+      <tr><td class="k">A4 · Upsell reporting</td><td>An operator view of the upsell funnel — ingested, engaged, returned, funded — with an export back to Absa.</td><td>The dashboard shows the upsell funnel; a periodic export produces per-case outcomes.</td></tr>
+    </tbody>
+  </table>
+
+  <p class="muted">Phase A1 depends on Absa supplying its rate/term matrix so the
+  qualifying-ceiling calculation reflects real product terms rather than an assumption.</p>
+</section>
+
+<!-- §05 WORKSTREAM B SCOPE -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">§05 &nbsp;·&nbsp; Phases. Sign-off criteria on every one.</div>
+    <h2>Scope — Workstream B</h2>
+    <div class="rule"></div>
+  </div>
+
+  <p class="lede">Can't-contact reactivation. Built on the shared decline-feed
+  intake (Layer 0) and delivered in five phases behind a set of compliance gates
+  (§06). The defining new capability is contact tracing — enriching dead contact
+  details from external data sources before any outbound message is attempted.</p>
+
+  <table>
+    <thead><tr><th>Phase</th><th>Deliverable</th><th>Sign-off criteria</th></tr></thead>
+    <tbody>
+      <tr><td class="k">B1 · Reason routing</td><td>Non-contactable declines from the Layer 0 intake are routed into the reactivation flow with their original context preserved.</td><td>Non-contactable records land in the reactivation queue, correctly separated from affordability declines.</td></tr>
+      <tr><td class="k">B2 · Contact tracing &amp; enrichment</td><td>An enrichment step that queries accredited external data sources — credit bureaus, consumer-data and tracing providers, telco lookups — to obtain fresh, verified contact details when the number on file is dead.</td><td>For a test set with stale numbers, the platform returns candidate fresh contact details with a confidence and source trail.</td></tr>
+      <tr><td class="k">B3 · Outbound campaign engine</td><td>A throttled, opt-out-aware engine that re-contacts the traced applicant on an approved template and tracks every send.</td><td>The engine sends to a test cohort, tracks delivery and reply, honours opt-out — every send audit-logged with its lawful basis.</td></tr>
+      <tr><td class="k">B4 · Detail-refresh flow</td><td>On reply, the assistant confirms and updates phone, email and address with the customer, validating each as captured.</td><td>A replying applicant has verified, updated contact details captured.</td></tr>
+      <tr><td class="k">B5 · Return &amp; reporting</td><td>Verified details and willing applicants are handed back to Absa; the reactivation funnel is reported per campaign — ingested, traced, contacted, updated, returned.</td><td>Updated details are returned to Absa and the funnel is visible per campaign.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout alt">
+    Contact tracing (B2) is what makes reactivation work at scale. A dead number is
+    a dead end without it; with it, the Bank reaches applicants it had genuinely lost.
+  </div>
+</section>
+
+<!-- §06 DEPENDENCIES & COMPLIANCE -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">§06 &nbsp;·&nbsp; What we pin down. What we need from you.</div>
+    <h2>Dependencies &amp; compliance</h2>
+    <div class="rule"></div>
+  </div>
+
+  <p class="lede">Both journeys move the platform from inbound — where the customer
+  messages first — to outbound, where we message first. That is a compliance gate,
+  not a technical one, and it defines the critical path for Workstream B.</p>
+
+  <h3>Compliance gates</h3>
+  <table>
+    <thead><tr><th>Gate</th><th>What it is</th><th>Owner</th></tr></thead>
+    <tbody>
+      <tr><td class="k">G1 · Consent confirmation</td><td>Written confirmation that the consent captured at original application covers re-contact <b>and</b> tracing/enrichment via external data sources. Blocks all outbound and all lookups.</td><td>Absa legal</td></tr>
+      <tr><td class="k">G2 · Message templates</td><td>Two to three WhatsApp templates submitted for approval — reactivation opener, detail-confirm, opt-out acknowledgement.</td><td>Claimtec + Absa</td></tr>
+      <tr><td class="k">G3 · Data agreement</td><td>A data-processing agreement covering the declined feed and the enriched contact data, both bulk personal information under POPIA.</td><td>Absa + Claimtec</td></tr>
+      <tr><td class="k">G4 · Decline-feed spec</td><td>How Absa sends declined records to Claimtec — transport, authentication, field mapping, cadence, and the decline-reason codes that drive routing.</td><td>Absa</td></tr>
+      <tr><td class="k">G5 · Data-source access</td><td>Access to the tracing/enrichment sources — via Absa's existing bureau relationships where possible, or Claimtec-held agreements — with the lawful basis for each lookup.</td><td>Absa + Claimtec</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    G1 is the cheapest gate to get wrong and the most expensive to get wrong late.
+    No outbound message is sent until the Bank's legal team has confirmed the consent
+    basis in writing.
+  </div>
+
+  <h3>What we need from Absa</h3>
+  <ul>
+    <li><b>Decline feed.</b> How Absa sends declined records to Claimtec — transport, fields, cadence, and the decline-reason codes that route each case (gate G4).</li>
+    <li><b>Rate &amp; term matrix.</b> The rates and terms per risk band, so the qualifying-ceiling calculation (A1) reflects real product terms.</li>
+    <li><b>Consent scope, in writing.</b> Confirmation that application consent covers both re-contact and data-source tracing (gate G1).</li>
+    <li><b>Data-source position.</b> Which bureaus / tracing providers Absa already holds agreements with, so enrichment runs under existing relationships where possible (gate G5).</li>
+    <li><b>Volume &amp; cadence.</b> How many declines per month, split by reason — this sizes the messaging tier, the enrichment budget, and infrastructure.</li>
+    <li><b>Return path &amp; success definition.</b> How re-qualified leads and refreshed details return to Absa, and whether success is measured on updated details, returned leads, or funded deals.</li>
+  </ul>
+
+  <h3>Assumptions</h3>
+  <ul>
+    <li>Absa continues to originate and decision every application; Claimtec operates only on declined records Absa sends, and returns leads for Absa to re-originate.</li>
+    <li>WhatsApp remains the primary contact channel; the messaging provider and number are reused.</li>
+    <li>Enrichment lookups are billed as a pass-through where a data source charges per query; these are indicative and separate from the fixed phase fees.</li>
+    <li>Commercials for each phase are presented as fixed fees against the sign-off criteria above, in an accompanying quotation.</li>
+  </ul>
+</section>
+
+<!-- §07 ACCEPTANCE -->
+<section class="section">
+  <div class="section-head">
+    <div class="section-eyebrow">§07 &nbsp;·&nbsp; One signature each. We start with what's unblocked.</div>
+    <h2>Next steps &amp; acceptance</h2>
+    <div class="rule"></div>
+  </div>
+
+  <p>Acceptance of this scope authorises Claimtec to stand up the decline-feed
+  intake and begin Workstream A once the feed is available, and to open the five
+  compliance gates for Workstream B in parallel. A phased quotation with fixed fees
+  accompanies this document.</p>
+
+  <h3>Immediate next steps</h3>
+  <div class="flow four">
+    <div class="step"><span class="n">1</span><div class="t">Accept scope</div><div class="d">Sign below to confirm the two journeys and their phasing.</div></div>
+    <div class="step"><span class="n">2</span><div class="t">Open the gates</div><div class="d">Absa legal starts G1; both parties start G2–G5 and the feed spec.</div></div>
+    <div class="step"><span class="n">3</span><div class="t">Build A</div><div class="d">Feed intake + upsell begin as soon as the feed spec lands.</div></div>
+    <div class="step"><span class="n">4</span><div class="t">Sequence B</div><div class="d">Reactivation + tracing begin as each gate clears.</div></div>
+  </div>
+
+  <table class="signatures">
+    <tr>
+      <td>
+        <div class="h">For Absa Bank</div>
+        <div class="line">Name:&nbsp;&nbsp; ___________________________________</div>
+        <div class="line">Designation:&nbsp;&nbsp; _____________________________</div>
+        <div class="line">Signature:&nbsp;&nbsp; _______________________________</div>
+        <div class="line">Date:&nbsp;&nbsp; ___________________________________</div>
+      </td>
+      <td>
+        <div class="h">For Claimtec (Pty) Ltd</div>
+        <div class="line">Name:&nbsp;&nbsp; Dineshan Chetty</div>
+        <div class="line">Designation:&nbsp;&nbsp; Managing Director</div>
+        <div class="line">Signature:&nbsp;&nbsp; _______________________________</div>
+        <div class="line">Date:&nbsp;&nbsp; ___________________________________</div>
+      </td>
+    </tr>
+  </table>
+
+  <div style="margin-top:14mm; text-align:center; color:var(--soft); font-size:9.5pt;">
+    Claimtec  ·  Dineshan Chetty  ·  <a href="mailto:dineshan@claimtec.co.za" style="color:var(--teal);text-decoration:none;font-weight:700;">dineshan@claimtec.co.za</a><br>
+    <span style="font-style:italic;">Thank you for the opportunity. We look forward to recovering this revenue with you.</span>
+  </div>
+
+  <div class="end">— END OF SOLUTION SCOPE —</div>
+</section>
+
+</body>
+</html>
