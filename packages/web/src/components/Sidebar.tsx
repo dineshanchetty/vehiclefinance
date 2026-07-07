@@ -3,7 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import {
   LayoutDashboard, FileText, ChevronDown, ClipboardList,
   Camera, Calculator, Wrench, FileSignature, CheckSquare, Car,
-  AlertCircle, ScrollText, Search, Users, Sparkles,
+  AlertCircle, ScrollText, Search, Users, Sparkles, RotateCcw,
 } from 'lucide-react'
 import { useSession } from '../lib/auth'
 
@@ -43,8 +43,9 @@ const navGroups: NavGroup[] = [
   {
     heading: 'Workspace',
     items: [
-      { label: 'Dashboard', path: '/',      icon: <LayoutDashboard className="h-4 w-4" /> },
-      { label: 'Deals',     path: '/deals', icon: <Users className="h-4 w-4" /> },
+      { label: 'Dashboard', path: '/',         icon: <LayoutDashboard className="h-4 w-4" /> },
+      { label: 'Deals',     path: '/deals',    icon: <Users className="h-4 w-4" /> },
+      { label: 'Recovery',  path: '/recovery', icon: <RotateCcw className="h-4 w-4" /> },
     ],
   },
   {

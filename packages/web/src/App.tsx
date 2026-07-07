@@ -11,6 +11,7 @@ import { QueuePage } from './pages/QueuePage'
 import { AuditLog } from './pages/AuditLog'
 import { LoginPage } from './pages/LoginPage'
 import { ExtractionReview } from './pages/ExtractionReview'
+import { RecoveryPage } from './pages/RecoveryPage'
 import { supabase } from './lib/supabase'
 
 // ── Top bar with title, breadcrumb, bell, and user menu ───────────────────────
@@ -224,6 +225,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <QueuePage />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/recovery"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <RecoveryPage />
             </Layout>
           </ProtectedRoute>
         }

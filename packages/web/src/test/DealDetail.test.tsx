@@ -15,6 +15,9 @@ const STUB_DEAL: DealWithRelations = {
   assigned_fni_analyst: null,
   assigned_seller_agent: null,
   notes: null,
+  current_phase: '',
+  phase_state: {},
+  completed_milestones: [],
   created_at: '2025-01-01T00:00:00Z',
   updated_at: '2025-01-02T00:00:00Z',
   buyer: {
@@ -30,6 +33,7 @@ const STUB_DEAL: DealWithRelations = {
     id: 's1', deal_id: 'deal-1', full_name: 'John Doe',
     id_number: null, phone: '+27811111111', email: null,
     consent_status: true, consent_timestamp: null,
+    bank_account_number: null, bank_name: null, physical_address: null,
     created_at: '', updated_at: '',
   },
   vehicle: {

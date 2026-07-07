@@ -17,6 +17,8 @@ const baseDeal: DealWithRelations & {
   assigned_fni_analyst: null,
   assigned_seller_agent: null,
   notes: null,
+  current_phase: '',
+  completed_milestones: [],
   created_at: new Date(Date.now() - 86_400_000 * 3).toISOString(),
   updated_at: new Date().toISOString(),
   buyer: {

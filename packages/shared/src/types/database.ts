@@ -1,6 +1,3 @@
-// Auto-generated from the live Supabase project (sahvfsoclzgsuewbiiah) on 2026-04-17.
-// Do not edit by hand — regenerate with `pnpm gen:types`.
-
 export type Json =
   | string
   | number
@@ -340,34 +337,159 @@ export type Database = {
         Row: {
           assigned_fni_analyst: string | null
           assigned_seller_agent: string | null
+          completed_milestones: string[]
           created_at: string
+          current_phase: string
           deal_number: string | null
           id: string
           notes: string | null
+          phase_state: Json
           status: Database["public"]["Enums"]["deal_status"]
           updated_at: string
         }
         Insert: {
           assigned_fni_analyst?: string | null
           assigned_seller_agent?: string | null
+          completed_milestones?: string[]
           created_at?: string
+          current_phase?: string
           deal_number?: string | null
           id?: string
           notes?: string | null
+          phase_state?: Json
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
         }
         Update: {
           assigned_fni_analyst?: string | null
           assigned_seller_agent?: string | null
+          completed_milestones?: string[]
           created_at?: string
+          current_phase?: string
           deal_number?: string | null
           id?: string
           notes?: string | null
+          phase_state?: Json
           status?: Database["public"]["Enums"]["deal_status"]
           updated_at?: string
         }
         Relationships: []
+      }
+      decline_leads: {
+        Row: {
+          absa_ref: string
+          consent_basis: string | null
+          created_at: string
+          decline_reason: Database["public"]["Enums"]["decline_reason"]
+          decline_reason_raw: string | null
+          deposit_amount: number | null
+          disposable_income: number | null
+          email: string | null
+          full_name: string | null
+          funded_at: string | null
+          id: string
+          id_number: string | null
+          monthly_income: number | null
+          phone: string | null
+          physical_address: string | null
+          qualifying_ceiling: number | null
+          raw_payload: Json | null
+          recovery_deal_id: string | null
+          recovery_status: Database["public"]["Enums"]["recovery_status"]
+          returned_at: string | null
+          routed_at: string | null
+          source: string
+          trace_confidence: number | null
+          trace_source: string | null
+          traced_address: string | null
+          traced_email: string | null
+          traced_phone: string | null
+          updated_at: string
+          vehicle_make: string | null
+          vehicle_model: string | null
+          vehicle_price: number | null
+          vehicle_year: number | null
+          workstream: Database["public"]["Enums"]["recovery_workstream"]
+        }
+        Insert: {
+          absa_ref: string
+          consent_basis?: string | null
+          created_at?: string
+          decline_reason: Database["public"]["Enums"]["decline_reason"]
+          decline_reason_raw?: string | null
+          deposit_amount?: number | null
+          disposable_income?: number | null
+          email?: string | null
+          full_name?: string | null
+          funded_at?: string | null
+          id?: string
+          id_number?: string | null
+          monthly_income?: number | null
+          phone?: string | null
+          physical_address?: string | null
+          qualifying_ceiling?: number | null
+          raw_payload?: Json | null
+          recovery_deal_id?: string | null
+          recovery_status?: Database["public"]["Enums"]["recovery_status"]
+          returned_at?: string | null
+          routed_at?: string | null
+          source?: string
+          trace_confidence?: number | null
+          trace_source?: string | null
+          traced_address?: string | null
+          traced_email?: string | null
+          traced_phone?: string | null
+          updated_at?: string
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_price?: number | null
+          vehicle_year?: number | null
+          workstream?: Database["public"]["Enums"]["recovery_workstream"]
+        }
+        Update: {
+          absa_ref?: string
+          consent_basis?: string | null
+          created_at?: string
+          decline_reason?: Database["public"]["Enums"]["decline_reason"]
+          decline_reason_raw?: string | null
+          deposit_amount?: number | null
+          disposable_income?: number | null
+          email?: string | null
+          full_name?: string | null
+          funded_at?: string | null
+          id?: string
+          id_number?: string | null
+          monthly_income?: number | null
+          phone?: string | null
+          physical_address?: string | null
+          qualifying_ceiling?: number | null
+          raw_payload?: Json | null
+          recovery_deal_id?: string | null
+          recovery_status?: Database["public"]["Enums"]["recovery_status"]
+          returned_at?: string | null
+          routed_at?: string | null
+          source?: string
+          trace_confidence?: number | null
+          trace_source?: string | null
+          traced_address?: string | null
+          traced_email?: string | null
+          traced_phone?: string | null
+          updated_at?: string
+          vehicle_make?: string | null
+          vehicle_model?: string | null
+          vehicle_price?: number | null
+          vehicle_year?: number | null
+          workstream?: Database["public"]["Enums"]["recovery_workstream"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decline_leads_recovery_deal_id_fkey"
+            columns: ["recovery_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       documents: {
         Row: {
@@ -375,6 +497,8 @@ export type Database = {
           created_at: string
           deal_id: string
           doc_type: Database["public"]["Enums"]["document_type"] | null
+          error_message: string | null
+          extracted_at: string | null
           file_name: string | null
           file_size: number | null
           file_url: string | null
@@ -382,6 +506,7 @@ export type Database = {
           mime_type: string | null
           party: Database["public"]["Enums"]["party_type"] | null
           status: string
+          storage_path: string | null
           upload_timestamp: string
         }
         Insert: {
@@ -389,6 +514,8 @@ export type Database = {
           created_at?: string
           deal_id: string
           doc_type?: Database["public"]["Enums"]["document_type"] | null
+          error_message?: string | null
+          extracted_at?: string | null
           file_name?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -396,6 +523,7 @@ export type Database = {
           mime_type?: string | null
           party?: Database["public"]["Enums"]["party_type"] | null
           status?: string
+          storage_path?: string | null
           upload_timestamp?: string
         }
         Update: {
@@ -403,6 +531,8 @@ export type Database = {
           created_at?: string
           deal_id?: string
           doc_type?: Database["public"]["Enums"]["document_type"] | null
+          error_message?: string | null
+          extracted_at?: string | null
           file_name?: string | null
           file_size?: number | null
           file_url?: string | null
@@ -410,6 +540,7 @@ export type Database = {
           mime_type?: string | null
           party?: Database["public"]["Enums"]["party_type"] | null
           status?: string
+          storage_path?: string | null
           upload_timestamp?: string
         }
         Relationships: [
@@ -434,7 +565,10 @@ export type Database = {
           document_id: string
           extracted_value: string | null
           field_name: string
+          flagged: boolean
           id: string
+          low_confidence_fields: string[] | null
+          model_used: string | null
           source_location: Json | null
           verification_status: Database["public"]["Enums"]["verification_status"]
         }
@@ -449,7 +583,10 @@ export type Database = {
           document_id: string
           extracted_value?: string | null
           field_name: string
+          flagged?: boolean
           id?: string
+          low_confidence_fields?: string[] | null
+          model_used?: string | null
           source_location?: Json | null
           verification_status?: Database["public"]["Enums"]["verification_status"]
         }
@@ -464,7 +601,10 @@ export type Database = {
           document_id?: string
           extracted_value?: string | null
           field_name?: string
+          flagged?: boolean
           id?: string
+          low_confidence_fields?: string[] | null
+          model_used?: string | null
           source_location?: Json | null
           verification_status?: Database["public"]["Enums"]["verification_status"]
         }
@@ -750,6 +890,30 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          full_name: string | null
+          id: string
+          role: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          full_name?: string | null
+          id: string
+          role?: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          full_name?: string | null
+          id?: string
+          role?: string
+        }
+        Relationships: []
+      }
       quotes: {
         Row: {
           accepted_at: string | null
@@ -820,6 +984,8 @@ export type Database = {
       }
       sellers: {
         Row: {
+          bank_account_number: string | null
+          bank_name: string | null
           consent_status: boolean
           consent_timestamp: string | null
           created_at: string
@@ -829,9 +995,12 @@ export type Database = {
           id: string
           id_number: string | null
           phone: string
+          physical_address: string | null
           updated_at: string
         }
         Insert: {
+          bank_account_number?: string | null
+          bank_name?: string | null
           consent_status?: boolean
           consent_timestamp?: string | null
           created_at?: string
@@ -841,9 +1010,12 @@ export type Database = {
           id?: string
           id_number?: string | null
           phone: string
+          physical_address?: string | null
           updated_at?: string
         }
         Update: {
+          bank_account_number?: string | null
+          bank_name?: string | null
           consent_status?: boolean
           consent_timestamp?: string | null
           created_at?: string
@@ -853,6 +1025,7 @@ export type Database = {
           id?: string
           id_number?: string | null
           phone?: string
+          physical_address?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1354,7 +1527,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_ops_agent: { Args: never; Returns: boolean }
     }
     Enums: {
       condition_band: "EXCELLENT" | "GOOD" | "FAIR" | "POOR" | "SEVERE"
@@ -1408,6 +1581,7 @@ export type Database = {
         | "DEAL_ON_HOLD"
         | "SELLER_CONFIRMATION_PENDING"
         | "SELLER_CONFIRMED"
+      decline_reason: "AFFORDABILITY" | "NON_CONTACTABLE" | "OTHER"
       document_type:
         | "SA_ID_SMART_CARD"
         | "SA_ID_GREEN_BOOK"
@@ -1419,6 +1593,7 @@ export type Database = {
         | "SETTLEMENT_LETTER"
         | "VEHICLE_PHOTO"
         | "OTHER"
+        | "OFFER_TO_PURCHASE"
       natis_status:
         | "COLLECTION_PENDING"
         | "COLLECTED"
@@ -1455,6 +1630,18 @@ export type Database = {
         | "DECLINED"
         | "EXPIRED"
         | "REVISED"
+      recovery_status:
+        | "NEW"
+        | "ROUTED"
+        | "TRACING"
+        | "ENGAGING"
+        | "RE_ENGAGED"
+        | "RETURNED"
+        | "FUNDED"
+        | "OPTED_OUT"
+        | "UNREACHABLE"
+        | "CLOSED"
+      recovery_workstream: "A_UPSELL" | "B_REACTIVATION" | "NONE"
       signature_status:
         | "PENDING"
         | "SENT"
@@ -1649,6 +1836,7 @@ export const Constants = {
         "SELLER_CONFIRMATION_PENDING",
         "SELLER_CONFIRMED",
       ],
+      decline_reason: ["AFFORDABILITY", "NON_CONTACTABLE", "OTHER"],
       document_type: [
         "SA_ID_SMART_CARD",
         "SA_ID_GREEN_BOOK",
@@ -1660,6 +1848,7 @@ export const Constants = {
         "SETTLEMENT_LETTER",
         "VEHICLE_PHOTO",
         "OTHER",
+        "OFFER_TO_PURCHASE",
       ],
       natis_status: [
         "COLLECTION_PENDING",
@@ -1700,6 +1889,19 @@ export const Constants = {
         "EXPIRED",
         "REVISED",
       ],
+      recovery_status: [
+        "NEW",
+        "ROUTED",
+        "TRACING",
+        "ENGAGING",
+        "RE_ENGAGED",
+        "RETURNED",
+        "FUNDED",
+        "OPTED_OUT",
+        "UNREACHABLE",
+        "CLOSED",
+      ],
+      recovery_workstream: ["A_UPSELL", "B_REACTIVATION", "NONE"],
       signature_status: [
         "PENDING",
         "SENT",

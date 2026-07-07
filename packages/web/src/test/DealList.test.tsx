@@ -16,6 +16,9 @@ const STUB_DEALS: DealWithRelations[] = [
     assigned_fni_analyst: null,
     assigned_seller_agent: null,
     notes: null,
+    current_phase: '',
+    phase_state: {},
+    completed_milestones: [],
     created_at: '2025-01-01T00:00:00Z',
     updated_at: '2025-01-02T00:00:00Z',
     buyer: {
@@ -31,6 +34,7 @@ const STUB_DEALS: DealWithRelations[] = [
       id: 's1', deal_id: 'deal-1', full_name: 'Test Seller',
       id_number: null, phone: '+27900000000', email: null,
       consent_status: false, consent_timestamp: null,
+      bank_account_number: null, bank_name: null, physical_address: null,
       created_at: '', updated_at: '',
     },
     vehicle: {
