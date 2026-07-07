@@ -4,14 +4,10 @@ import { LogOut, User, Bell, ChevronRight, ChevronDown } from 'lucide-react'
 import { AuthProvider, useSession } from './lib/auth'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Sidebar } from './components/Sidebar'
-import { Dashboard } from './pages/Dashboard'
-import { DealList } from './pages/DealList'
-import { DealDetail } from './pages/DealDetail'
-import { QueuePage } from './pages/QueuePage'
 import { AuditLog } from './pages/AuditLog'
 import { LoginPage } from './pages/LoginPage'
-import { ExtractionReview } from './pages/ExtractionReview'
 import { RecoveryPage } from './pages/RecoveryPage'
+import { RecoveryLeadDetail } from './pages/RecoveryLeadDetail'
 import { supabase } from './lib/supabase'
 
 // ── Top bar with title, breadcrumb, bell, and user menu ───────────────────────
@@ -22,38 +18,18 @@ function usePageCrumbs(): { title: string; crumbs: Crumb[] } {
   const { pathname } = useLocation()
   const params = useParams()
 
-  if (pathname === '/' || pathname === '') {
-    return { title: 'Dashboard', crumbs: [{ label: 'Dashboard' }] }
+  if (pathname === '/' || pathname === '' || pathname === '/recovery') {
+    return { title: 'Recovery', crumbs: [{ label: 'Recovery' }] }
   }
-  if (pathname === '/deals') {
-    return { title: 'Deals', crumbs: [{ label: 'Deals' }] }
-  }
-  if (pathname.startsWith('/deals/')) {
+  if (pathname.startsWith('/recovery/')) {
     const id = params.id ?? pathname.split('/').pop() ?? ''
     return {
-      title: id ? `Deal ${id}` : 'Deal',
-      crumbs: [{ label: 'Deals', to: '/deals' }, { label: id || 'Detail' }],
-    }
-  }
-  if (pathname.startsWith('/queue/')) {
-    const name = (params.queueName ?? pathname.split('/').pop() ?? '')
-      .replace(/^Q_/, '')
-      .replace(/_/g, ' ')
-      .toLowerCase()
-      .replace(/\b\w/g, (c) => c.toUpperCase())
-    return {
-      title: name || 'Queue',
-      crumbs: [{ label: 'Queues' }, { label: name || 'Queue' }],
+      title: 'Lead',
+      crumbs: [{ label: 'Recovery', to: '/recovery' }, { label: id ? id.slice(0, 8) : 'Detail' }],
     }
   }
   if (pathname === '/audit') {
     return { title: 'Audit Log', crumbs: [{ label: 'Audit Log' }] }
-  }
-  if (pathname.startsWith('/extraction/')) {
-    return {
-      title: 'Extraction Review',
-      crumbs: [{ label: 'Extraction' }, { label: 'Review' }],
-    }
   }
   return { title: '', crumbs: [] }
 }
@@ -188,43 +164,16 @@ function AppRoutes() {
       {/* Public */}
       <Route path="/login" element={<LoginPage />} />
 
-      {/* Protected — require ops_agent or admin role */}
+      {/* Protected — require ops_agent or admin role.
+          This app is now the recovery platform: Absa originates + declines in
+          its own systems; we ingest and run the recovery workstreams. The old
+          origination surface (Deals, Queues, doc/extraction review) is retired. */}
       <Route
         path="/"
         element={
           <ProtectedRoute>
             <Layout>
-              <Dashboard />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/deals"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <DealList />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/deals/:id"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <DealDetail />
-            </Layout>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/queue/:queueName"
-        element={
-          <ProtectedRoute>
-            <Layout>
-              <QueuePage />
+              <RecoveryPage />
             </Layout>
           </ProtectedRoute>
         }
@@ -240,21 +189,21 @@ function AppRoutes() {
         }
       />
       <Route
-        path="/audit"
+        path="/recovery/:id"
         element={
           <ProtectedRoute>
             <Layout>
-              <AuditLog />
+              <RecoveryLeadDetail />
             </Layout>
           </ProtectedRoute>
         }
       />
       <Route
-        path="/extraction/:documentId"
+        path="/audit"
         element={
           <ProtectedRoute>
             <Layout>
-              <ExtractionReview />
+              <AuditLog />
             </Layout>
           </ProtectedRoute>
         }

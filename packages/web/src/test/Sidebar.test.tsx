@@ -41,25 +41,13 @@ describe('Sidebar', () => {
     expect(screen.getByText('FinOps')).toBeInTheDocument()
   })
 
-  it('renders Workspace items', () => {
+  it('renders Workspace items (recovery-only nav)', () => {
     harness()
-    expect(screen.getByRole('link', { name: /dashboard/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /deals/i })).toBeInTheDocument()
-  })
-
-  it('renders the Queues collapsible group', async () => {
-    harness('/queue/Q_BUYER_DOC_REVIEW') // active path auto-expands the group
-    // Doc Review is one of the queue children
-    expect(screen.getByRole('link', { name: /doc review/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /photo review/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /escalations/i })).toBeInTheDocument()
-  })
-
-  it('Queues group toggles open/closed on click', async () => {
-    harness('/') // not on a queue path — defaults closed
-    expect(screen.queryByRole('link', { name: /doc review/i })).not.toBeInTheDocument()
-    await userEvent.click(screen.getByRole('button', { name: /queues/i }))
-    expect(screen.getByRole('link', { name: /doc review/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /recovery/i })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /audit log/i })).toBeInTheDocument()
+    // Origination surface is retired — no Deals / Queues nav.
+    expect(screen.queryByRole('link', { name: /deals/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /queues/i })).not.toBeInTheDocument()
   })
 
   it('search filter narrows down items', async () => {
@@ -68,8 +56,8 @@ describe('Sidebar', () => {
     await userEvent.type(search, 'audit')
     // Audit Log should remain
     expect(screen.getByRole('link', { name: /audit log/i })).toBeInTheDocument()
-    // Dashboard should be filtered out
-    expect(screen.queryByRole('link', { name: /^dashboard$/i })).not.toBeInTheDocument()
+    // Recovery should be filtered out
+    expect(screen.queryByRole('link', { name: /recovery/i })).not.toBeInTheDocument()
   })
 
   it('shows "no matches" when filter has zero hits', async () => {
@@ -103,10 +91,10 @@ describe('Sidebar', () => {
     expect(screen.getByText(/^guest$/i)).toBeInTheDocument()
   })
 
-  it('Dashboard link has correct href', () => {
+  it('Recovery link has correct href', () => {
     harness()
-    const dash = screen.getByRole('link', { name: /dashboard/i })
-    expect(dash).toHaveAttribute('href', '/')
+    const rec = screen.getByRole('link', { name: /recovery/i })
+    expect(rec).toHaveAttribute('href', '/recovery')
   })
 
   it('Audit Log link has correct href', () => {

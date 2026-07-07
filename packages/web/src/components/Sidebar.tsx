@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  LayoutDashboard, FileText, ChevronDown, ClipboardList,
-  Camera, Calculator, Wrench, FileSignature, CheckSquare, Car,
-  AlertCircle, ScrollText, Search, Users, Sparkles, RotateCcw,
+  ChevronDown, ScrollText, Search, Sparkles, RotateCcw,
 } from 'lucide-react'
 import { useSession } from '../lib/auth'
 
@@ -27,31 +25,13 @@ interface NavGroup {
   items: NavItem[]
 }
 
-const queueItems: NavItem[] = [
-  { label: 'Doc Review',    path: '/queue/Q_BUYER_DOC_REVIEW',     icon: <FileText className="h-4 w-4" /> },
-  { label: 'Photo Review',  path: '/queue/Q_SELLER_PHOTO_REVIEW',  icon: <Camera className="h-4 w-4" /> },
-  { label: 'F&I Review',    path: '/queue/Q_FNI_REVIEW',           icon: <Search className="h-4 w-4" /> },
-  { label: 'Quote Prep',    path: '/queue/Q_FNI_QUOTE_PREP',       icon: <Calculator className="h-4 w-4" /> },
-  { label: 'Inspections',   path: '/queue/Q_HARTCON_INSPECTION',   icon: <Wrench className="h-4 w-4" /> },
-  { label: 'Contracts',     path: '/queue/Q_SELLER_CONTRACT',      icon: <FileSignature className="h-4 w-4" /> },
-  { label: 'Approvals',     path: '/queue/Q_DEAL_APPROVAL',        icon: <CheckSquare className="h-4 w-4" /> },
-  { label: 'NATIS',         path: '/queue/Q_NATIS_FULFILMENT',     icon: <Car className="h-4 w-4" /> },
-  { label: 'Escalations',   path: '/queue/Q_HUMAN_ESCALATION',     icon: <AlertCircle className="h-4 w-4" /> },
-]
-
+// This app is now the recovery platform. Origination (Deals, Queues, doc/photo
+// review) is handled in Absa's own systems and has been retired from the nav.
 const navGroups: NavGroup[] = [
   {
     heading: 'Workspace',
     items: [
-      { label: 'Dashboard', path: '/',         icon: <LayoutDashboard className="h-4 w-4" /> },
-      { label: 'Deals',     path: '/deals',    icon: <Users className="h-4 w-4" /> },
       { label: 'Recovery',  path: '/recovery', icon: <RotateCcw className="h-4 w-4" /> },
-    ],
-  },
-  {
-    heading: 'Operations',
-    items: [
-      { label: 'Queues', icon: <ClipboardList className="h-4 w-4" />, children: queueItems, defaultCollapsed: true },
     ],
   },
   {

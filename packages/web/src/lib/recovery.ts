@@ -34,8 +34,14 @@ export interface DeclineLead {
   disposable_income: number | null
   qualifying_ceiling: number | null
   traced_phone: string | null
+  traced_email: string | null
+  traced_address: string | null
   trace_source: string | null
+  trace_confidence: number | null
+  consent_basis: string | null
   recovery_deal_id: string | null
+  raw_payload: Record<string, unknown> | null
+  routed_at: string | null
   created_at: string
   updated_at: string
 }
@@ -57,6 +63,16 @@ export interface ListLeadsOptions {
   status?: RecoveryStatus
   reason?: DeclineReason
   limit?: number
+}
+
+export async function getDeclineLead(id: string): Promise<DeclineLead | null> {
+  const { data, error } = await supabase
+    .from('decline_leads')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+  if (error) throw error
+  return (data as DeclineLead | null) ?? null
 }
 
 export async function listDeclineLeads(opts: ListLeadsOptions = {}): Promise<DeclineLead[]> {

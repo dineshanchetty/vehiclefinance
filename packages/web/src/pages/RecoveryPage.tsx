@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { RefreshCw, AlertCircle, TrendingUp, PhoneOff, ArrowRight } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import {
@@ -33,6 +34,7 @@ const WS_LABEL: Record<RecoveryWorkstream, string> = {
 
 // ─── page ─────────────────────────────────────────────────────────────────────
 export function RecoveryPage() {
+  const navigate = useNavigate()
   const [leads, setLeads] = useState<DeclineLead[]>([])
   const [funnel, setFunnel] = useState<RecoveryFunnel | null>(null)
   const [loading, setLoading] = useState(true)
@@ -141,7 +143,11 @@ export function RecoveryPage() {
                 const uplift = l.workstream === 'A_UPSELL' && l.qualifying_ceiling != null
                 const traced = l.workstream === 'B_REACTIVATION' && l.traced_phone != null
                 return (
-                  <tr key={l.id} className="hover:bg-gray-50">
+                  <tr
+                    key={l.id}
+                    onClick={() => navigate(`/recovery/${l.id}`)}
+                    className="cursor-pointer hover:bg-gray-50"
+                  >
                     <td className="px-4 py-2.5 font-mono text-xs text-claimtec-forest">{l.absa_ref}</td>
                     <td className="px-4 py-2.5">
                       <div className="font-medium text-gray-900">{l.full_name ?? '—'}</div>
