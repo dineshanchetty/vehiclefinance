@@ -60,7 +60,7 @@ export class VehicleFinanceAgent {
       // affordability-decline lead, run the upsell journey; otherwise hold.
       if (botMode === "recovery") {
         try {
-          const reply = await this.tryRecoveryOffer(phone)
+          const reply = await this.tryRecoveryOffer(phone, message ?? "")
           if (reply) { await saveMessage(phone, "assistant", reply, { party_type: "buyer" }); return }
         } catch (e) { console.error("[agent] recovery offer failed:", e) }
       }
@@ -102,10 +102,12 @@ ${stateSnapshot}
   }
 
   // Recovery re-engagement: if this number is a priced affordability-decline
-  // lead, send the pre-qualified upsell offer + band-correct cars.co.za links and
-  // advance the lead to RE_ENGAGED. Returns the sent text, or null if this number
-  // isn't a live upsell lead (caller then falls back to the holding message).
-  private async tryRecoveryOffer(phone: string): Promise<string | null> {
+  // lead, run the upsell journey:
+  //   ROUTED/ENGAGING → send offer + vehicle cards            → RE_ENGAGED
+  //   RE_ENGAGED      → interpret their reply as a car choice → RETURNED
+  // Returns the sent text, or null if this number isn't a live upsell lead
+  // (caller then falls back to the holding message).
+  private async tryRecoveryOffer(phone: string, inbound: string): Promise<string | null> {
     const { getSupabaseClient } = await import("./supabase.ts")
     const { composeUpsellOffer } = await import("./recovery.ts")
     const supa = getSupabaseClient()
@@ -121,10 +123,59 @@ ${stateSnapshot}
 
     if (!lead) return null
 
-    // Already re-engaged → a short nudge rather than re-sending the full offer.
+    // Re-engaged: interpret the reply as a vehicle choice against the same
+    // listing set we offered (deterministic keyword/ordinal match — no LLM).
     if (lead.recovery_status === "RE_ENGAGED") {
-      const nudge = "Tap one of the links I sent to browse cars in your range 🚗 — " +
-        "then send me the one you like and I'll take your new application straight back to the bank."
+      const { getListingProvider } = await import("./listings.ts")
+      const provider = getListingProvider((k) => Deno.env.get(k))
+      const listings = (await provider.search({
+        make: lead.vehicle_make ?? undefined,
+        model: lead.vehicle_model ?? undefined,
+        min_price: Math.max(0, Math.floor((lead.qualifying_ceiling as number) * 0.55 / 1000) * 1000),
+        max_price: lead.qualifying_ceiling as number,
+      })).slice(0, 3)
+
+      const text = (inbound ?? "").toLowerCase()
+      let chosen: { title: string; url: string } | null = null
+
+      // Ordinals: "1", "first", "2", "second", …
+      const ordinal =
+        /\b(1|one|first)\b/.test(text) ? 0 :
+        /\b(2|two|second)\b/.test(text) ? 1 :
+        /\b(3|three|third)\b/.test(text) ? 2 : -1
+      if (ordinal >= 0 && listings[ordinal]) chosen = listings[ordinal]
+
+      // Model/make keywords from the card titles ("golf", "tiguan", "polo"…)
+      if (!chosen) {
+        for (const l of listings) {
+          const tokens = l.title.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 3)
+          if (tokens.some((t) => text.includes(t))) { chosen = l; break }
+        }
+      }
+
+      if (chosen) {
+        const first = (lead.full_name ?? "").trim().split(/\s+/)[0] || "there"
+        const confirm =
+          `Great choice, ${first} — *${chosen.title}* 🎉\n\n` +
+          `I'm sending your pre-qualified application for this vehicle back to the bank now. ` +
+          `They'll confirm the final approval and be in touch to complete the deal.\n\n` +
+          `Nothing more you need to do — we'll keep you posted. ✅`
+        await sendTextMessage(phone, confirm)
+        // Record the chosen vehicle in raw_payload (read-modify-write; no schema churn).
+        const { data: cur } = await supa.from("decline_leads")
+          .select("raw_payload").eq("id", lead.id).maybeSingle()
+        const payload = { ...(cur?.raw_payload ?? {}), chosen_vehicle: { title: chosen.title, url: chosen.url, chosen_at: new Date().toISOString() } }
+        await supa.from("decline_leads").update({
+          recovery_status: "RETURNED",
+          returned_at: new Date().toISOString(),
+          raw_payload: payload,
+        }).eq("id", lead.id)
+        return confirm
+      }
+
+      const nudge =
+        "Which one would you like? Reply with the car's name (e.g. *the Golf*) " +
+        "or just the number — *1*, *2* or *3* 🚗"
       await sendTextMessage(phone, nudge)
       return nudge
     }
