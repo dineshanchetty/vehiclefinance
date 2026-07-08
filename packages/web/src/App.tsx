@@ -8,6 +8,7 @@ import { AuditLog } from './pages/AuditLog'
 import { LoginPage } from './pages/LoginPage'
 import { RecoveryPage } from './pages/RecoveryPage'
 import { RecoveryLeadDetail } from './pages/RecoveryLeadDetail'
+import { ReportsPage } from './pages/ReportsPage'
 import { supabase } from './lib/supabase'
 
 // ── Top bar with title, breadcrumb, bell, and user menu ───────────────────────
@@ -27,6 +28,9 @@ function usePageCrumbs(): { title: string; crumbs: Crumb[] } {
       title: 'Lead',
       crumbs: [{ label: 'Recovery', to: '/recovery' }, { label: id ? id.slice(0, 8) : 'Detail' }],
     }
+  }
+  if (pathname === '/reports') {
+    return { title: 'Reports', crumbs: [{ label: 'Reports' }] }
   }
   if (pathname === '/audit') {
     return { title: 'Audit Log', crumbs: [{ label: 'Audit Log' }] }
@@ -194,6 +198,16 @@ function AppRoutes() {
           <ProtectedRoute>
             <Layout>
               <RecoveryLeadDetail />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/reports"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ReportsPage />
             </Layout>
           </ProtectedRoute>
         }

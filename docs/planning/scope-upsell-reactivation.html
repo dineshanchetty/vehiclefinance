@@ -23,7 +23,7 @@
       font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8.5pt; color: #0E3535; letter-spacing: 0.06em; font-weight: 700;
     }
     @top-right {
-      content: "v1.0 · Draft for discussion";
+      content: "v1.1 · Updated with delivery status";
       font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 8.5pt; color: #475569;
     }
   }
@@ -185,8 +185,8 @@
 
     <div class="rule"></div>
     <div class="label">Document</div>
-    <div class="small ink">Solution Scope · v1.0 (Draft for discussion)</div>
-    <div class="small ink">6 July 2026</div>
+    <div class="small ink">Solution Scope · v1.1 (Updated with delivery status)</div>
+    <div class="small ink">7 July 2026</div>
     <div class="small italic">Valid 30 days from issue</div>
 
     <div class="label" style="margin-top:8mm;">Contact</div>
@@ -244,6 +244,22 @@
   <p class="muted">Recommended sequencing: stand up the decline-feed intake, then ship
   Workstream A first — it needs only the feed and proves the recovered-revenue model
   while the Workstream B tracing and compliance dependencies are cleared.</p>
+
+  <h3>Delivery status — 7 July 2026</h3>
+  <p>Since this scope was first tabled, Claimtec has <b>built and deployed the
+  platform foundation</b>. The following is live on Claimtec infrastructure today
+  and can be demonstrated end-to-end:</p>
+  <table>
+    <thead><tr><th>Component</th><th>Status</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="k">Layer 0 · decline intake</td><td><span class="pill emerald">LIVE</span></td><td>Secure batch endpoint; de-duplicates on the Absa reference; routes by decline reason. Interim feed contract documented — ready for Absa's integration team to map to.</td></tr>
+      <tr><td class="k">Journey A · upsell</td><td><span class="pill emerald">LIVE</span></td><td>Affordability engine prices the qualifying ceiling; the WhatsApp journey sends the pre-qualified offer as <b>vehicle cards (photo, price, browse button)</b>; the customer replies with their choice and the lead is returned to the Bank. Demonstrated end-to-end on a live handset.</td></tr>
+      <tr><td class="k">Journey B · tracing</td><td><span class="pill emerald">LIVE (stub)</span></td><td>Pipeline live behind a provider interface with a stub data source; real bureau / tracing providers plug in once access is granted (gate G5). Outbound contact held for gates G1/G2.</td></tr>
+      <tr><td class="k">Recovery dashboard</td><td><span class="pill emerald">LIVE</span></td><td>Recovery pipeline view, per-lead journey detail (timeline, pricing / tracing outcome, consent), and an <b>operations report</b>: feed health, funnel conversion per journey, stall &amp; failure alerts, median time-to-return.</td></tr>
+      <tr><td class="k">Vehicle listing source</td><td><span class="pill amber">DEMO</span></td><td>Vehicle cards run on a pluggable listing interface — currently cars.co.za deep links (production) or a curated demo inventory with images (demonstrations). A WeBuyCars / AutoTrader / cars.co.za inventory feed slots in without rework once a partnership lands.</td></tr>
+      <tr><td class="k">Origination bot</td><td><span class="pill amber">RETIRED</span></td><td>The previous WhatsApp origination flow is switched off in line with the operating model — Absa originates; Claimtec recovers. Inbound messages receive a POPIA-aware holding reply with STOP / opt-out handling.</td></tr>
+    </tbody>
+  </table>
 </section>
 
 <!-- §02 WHAT WE HEARD -->

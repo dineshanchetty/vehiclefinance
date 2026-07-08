@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
-  ChevronDown, ScrollText, Search, Sparkles, RotateCcw,
+  ChevronDown, ScrollText, Search, Sparkles, RotateCcw, BarChart3,
 } from 'lucide-react'
 import { useSession } from '../lib/auth'
 
@@ -37,7 +37,8 @@ const navGroups: NavGroup[] = [
   {
     heading: 'Insights',
     items: [
-      { label: 'Audit Log', path: '/audit', icon: <ScrollText className="h-4 w-4" /> },
+      { label: 'Reports',   path: '/reports', icon: <BarChart3 className="h-4 w-4" /> },
+      { label: 'Audit Log', path: '/audit',   icon: <ScrollText className="h-4 w-4" /> },
     ],
   },
 ]
