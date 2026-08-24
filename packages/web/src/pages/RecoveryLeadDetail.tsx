@@ -2,10 +2,10 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   ArrowLeft, TrendingUp, PhoneOff, CheckCircle2, Phone,
-  Building2, ShieldCheck, ArrowRight,
+  Building2, ShieldCheck, ArrowRight, MessageSquare, Bot,
 } from 'lucide-react'
 import { format } from 'date-fns'
-import { getDeclineLead, type DeclineLead } from '../lib/recovery'
+import { getDeclineLead, getLeadConversation, type DeclineLead, type ConversationMessage } from '../lib/recovery'
 
 function rand(n: number | null | undefined): string {
   if (n == null) return '—'
@@ -31,6 +31,7 @@ const STEP_LABEL: Record<string, string> = {
 export function RecoveryLeadDetail() {
   const { id } = useParams<{ id: string }>()
   const [lead, setLead] = useState<DeclineLead | null>(null)
+  const [convo, setConvo] = useState<ConversationMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -38,7 +39,11 @@ export function RecoveryLeadDetail() {
     let live = true
     setLoading(true); setError(null)
     getDeclineLead(id!)
-      .then((l) => { if (live) setLead(l) })
+      .then((l) => {
+        if (!live) return
+        setLead(l)
+        if (l?.phone) getLeadConversation(l.phone).then((c) => { if (live) setConvo(c) }).catch(() => {})
+      })
       .catch((e) => { if (live) setError(e instanceof Error ? e.message : 'Failed to load') })
       .finally(() => { if (live) setLoading(false) })
     return () => { live = false }
@@ -133,6 +138,39 @@ export function RecoveryLeadDetail() {
             </div>
           </Card>
         )}
+
+        {/* WhatsApp conversation — the journey, live */}
+        <Card
+          title={`Conversation ${convo.length ? `(${convo.length})` : ''}`}
+          icon={<MessageSquare className="h-4 w-4 text-emerald-600" />}
+        >
+          {convo.length === 0 ? (
+            <p className="text-xs text-gray-400">No messages yet — the journey starts when the customer is contacted.</p>
+          ) : (
+            <div className="rounded-lg bg-[#ECE5DD] p-3 max-h-96 overflow-y-auto space-y-1.5">
+              {convo.map((m) => {
+                const outbound = m.role === 'assistant'
+                const isFollowup = m.tool_use && (m.tool_use as { source?: string }).source === 'recovery-followup'
+                return (
+                  <div key={m.id} className={`flex ${outbound ? 'justify-end' : 'justify-start'}`}>
+                    <div className={`max-w-[78%] rounded-lg px-2.5 py-1.5 text-xs shadow-sm ${
+                      outbound ? 'bg-[#DCF8C6] text-gray-900' : 'bg-white text-gray-900'}`}>
+                      {outbound && (
+                        <div className="flex items-center gap-1 text-[9px] font-semibold text-emerald-700 mb-0.5">
+                          <Bot className="h-2.5 w-2.5" /> {isFollowup ? 'Claimtec · auto follow-up' : 'Claimtec'}
+                        </div>
+                      )}
+                      <div className="whitespace-pre-wrap">{m.content}</div>
+                      <div className="text-[9px] text-gray-400 text-right mt-0.5">
+                        {new Date(m.created_at).toLocaleString('en-ZA', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Card>
 
         {/* Original decline record */}
         <Card title="Decline record from Absa" icon={<Building2 className="h-4 w-4 text-gray-500" />}>

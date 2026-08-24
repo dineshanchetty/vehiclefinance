@@ -212,6 +212,55 @@ export async function getRecoveryReport(): Promise<RecoveryReport> {
   return computeRecoveryReport((data ?? []) as ReportRow[])
 }
 
+export interface ConversationMessage {
+  id: string
+  role: string
+  content: string
+  created_at: string
+  tool_use: Record<string, unknown> | null
+}
+
+/** The WhatsApp thread for a lead, oldest→newest, for the admin timeline. */
+export async function getLeadConversation(phone: string): Promise<ConversationMessage[]> {
+  const { data, error } = await supabase
+    .from('conversation_messages')
+    .select('id, role, content, created_at, tool_use')
+    .eq('phone', phone)
+    .order('created_at', { ascending: true })
+    .limit(200)
+  if (error) throw error
+  return (data ?? []) as ConversationMessage[]
+}
+
+export interface NewLeadInput {
+  full_name: string
+  phone: string
+  decline_reason: string
+  id_number?: string
+  email?: string
+  vehicle_make?: string
+  vehicle_model?: string
+  vehicle_year?: string | number
+  vehicle_price?: string | number
+  deposit_amount?: string | number
+  monthly_income?: string | number
+  disposable_income?: string | number
+}
+
+/** Create + fully process a lead via the admin edge function (prices A / traces B). */
+export async function createLead(input: NewLeadInput): Promise<DeclineLead> {
+  const { data, error } = await supabase.functions.invoke('admin-create-lead', { body: input })
+  if (error) {
+    // Surface the function's own error message when present.
+    const ctx = (error as unknown as { context?: { body?: string } }).context
+    throw new Error(ctx?.body ? tryMsg(ctx.body) : error.message)
+  }
+  return (data as { lead: DeclineLead }).lead
+}
+function tryMsg(body: string): string {
+  try { return JSON.parse(body).error ?? body } catch { return body }
+}
+
 export async function getDeclineLead(id: string): Promise<DeclineLead | null> {
   const { data, error } = await supabase
     .from('decline_leads')
