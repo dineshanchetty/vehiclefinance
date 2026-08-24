@@ -126,9 +126,8 @@ ${stateSnapshot}
     // Re-engaged: interpret the reply as a vehicle choice against the same
     // listing set we offered (deterministic keyword/ordinal match — no LLM).
     if (lead.recovery_status === "RE_ENGAGED") {
-      const { getListingProvider } = await import("./listings.ts")
-      const provider = getListingProvider((k) => Deno.env.get(k))
-      const listings = (await provider.search({
+      const { searchListingsResilient } = await import("./listings.ts")
+      const listings = (await searchListingsResilient((k) => Deno.env.get(k), {
         make: lead.vehicle_make ?? undefined,
         model: lead.vehicle_model ?? undefined,
         min_price: Math.max(0, Math.floor((lead.qualifying_ceiling as number) * 0.55 / 1000) * 1000),
@@ -196,9 +195,8 @@ ${stateSnapshot}
     // carousels are template-only → gate G2.
     try {
       const { sendCtaUrlMessage } = await import("./dialog360.ts")
-      const { getListingProvider } = await import("./listings.ts")
-      const provider = getListingProvider((k) => Deno.env.get(k))
-      const listings = await provider.search(offer.searchParams)
+      const { searchListingsResilient } = await import("./listings.ts")
+      const listings = await searchListingsResilient((k) => Deno.env.get(k), offer.searchParams)
       for (const l of listings.slice(0, 3)) {
         await sendCtaUrlMessage(
           phone,

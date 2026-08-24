@@ -123,8 +123,19 @@ export class AutoTradeProvider implements ListingProvider {
     if (!this.token) throw new Error("AUTOTRADE_API_TOKEN not set — cannot query the vehicle source.")
   }
 
+  // The source sometimes captures the lazy-load spinner instead of the photo
+  // (…/loader-blue-*.svg). Only accept a URL that's a real hosted image, so a
+  // card never shows a broken spinner.
+  private realImage(url: string | null): string | undefined {
+    if (!url) return undefined
+    if (url.includes("/loader") || url.endsWith(".svg")) return undefined
+    if (/img\.autotrader\.co\.za/.test(url) || /\.(jpe?g|png|webp)(\?|$)/i.test(url)) return url
+    return undefined
+  }
+
   async search(q: ListingQuery): Promise<Listing[]> {
-    const params = new URLSearchParams({ active: "true", limit: "12" })
+    // Pull a wide-ish page so we can prefer cars that actually have a photo.
+    const params = new URLSearchParams({ active: "true", limit: "40" })
     if (q.make) params.set("make", q.make)
     if (q.model) params.set("model", q.model)
     if (q.max_price) params.set("max_price", String(Math.round(q.max_price)))
@@ -135,22 +146,58 @@ export class AutoTradeProvider implements ListingProvider {
     if (!res.ok) throw new Error(`AutoTrade API ${res.status}`)
     const vehicles = (await res.json()) as VehicleOut[]
 
-    // Respect the band floor client-side (the API filters max, not min), prefer
-    // same-make, and take the three best-value in band.
+    // Respect the band floor client-side (the API filters max, not min).
     const inBand = vehicles.filter((v) =>
       v.price != null && v.price <= q.max_price && v.price >= Math.min(q.min_price, q.max_price * 0.4))
-    const sameMake = q.make ? inBand.filter((v) => v.make?.toLowerCase() === q.make!.toLowerCase()) : []
-    const picks = [...sameMake, ...inBand.filter((v) => !sameMake.includes(v))].slice(0, 3)
 
-    return picks.map((v) => {
+    // Rank: real photo first, then same-make, then cheapest — so the three we
+    // show are the most presentable, in-brand, best-value cars in band.
+    const ranked = inBand
+      .map((v) => ({ v, img: this.realImage(v.image_url), sameMake: q.make ? v.make?.toLowerCase() === q.make.toLowerCase() : false }))
+      .sort((a, b) =>
+        (b.img ? 1 : 0) - (a.img ? 1 : 0) ||
+        (b.sameMake ? 1 : 0) - (a.sameMake ? 1 : 0) ||
+        (a.v.price ?? 9e9) - (b.v.price ?? 9e9))
+      .slice(0, 3)
+
+    return ranked.map(({ v, img }) => {
       const title = [v.year, v.make, v.model, v.variant].filter(Boolean).join(" ") || "Vehicle"
       const bits = [
         v.price != null ? fmt(v.price) : null,
         v.mileage_km != null ? `${v.mileage_km.toLocaleString()} km` : null,
         v.transmission, v.city,
       ].filter(Boolean)
-      return { title, body: bits.join(" · "), url: v.url, imageUrl: v.image_url ?? undefined }
+      return { title, body: bits.join(" · "), url: v.url, imageUrl: img }
     })
+  }
+}
+
+// ── resilient search (demo-safe) ─────────────────────────────────────────────
+// Live inventory sources can cold-start slowly (30s+). For a WhatsApp reply we
+// need cards fast or not at all. This wraps the configured provider with a hard
+// timeout and falls back to the always-instant demo inventory, so the customer
+// always sees cards quickly — the real source is used whenever it's warm.
+export async function searchListingsResilient(
+  getEnv: (k: string) => string | undefined,
+  query: ListingQuery,
+  timeoutMs = 8000,
+): Promise<Listing[]> {
+  let provider: ListingProvider
+  try { provider = getListingProvider(getEnv) }
+  catch { provider = new DemoInventoryProvider() }
+
+  const demo = () => new DemoInventoryProvider().search(query).catch(() => [])
+
+  try {
+    const listings = await Promise.race([
+      provider.search(query),
+      new Promise<Listing[]>((_, rej) => setTimeout(() => rej(new Error("listing source timeout")), timeoutMs)),
+    ])
+    if (listings.length) return listings
+    return provider.name === "demo" ? listings : await demo() // empty band → demo
+  } catch (e) {
+    console.error(`[listings] ${provider.name} failed (${(e as Error).message}) — falling back to demo`)
+    return provider.name === "demo" ? [] : await demo()
   }
 }
 
