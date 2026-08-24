@@ -97,6 +97,63 @@ export class DemoInventoryProvider implements ListingProvider {
   }
 }
 
+// ── AutoTrade provider ────────────────────────────────────────────────────────
+// Real inventory from the Vehicle Sourcing API — actual listings with photos,
+// prices and URLs. GET /api/vehicles filtered to the customer's band, mapped to
+// our card shape. This is the production provider once a token is configured.
+//   AUTOTRADE_API_URL   (default https://autotrade-api.nom-nom.workers.dev)
+//   AUTOTRADE_API_TOKEN (bearer — required; without it the provider errors)
+
+interface VehicleOut {
+  id: number; year: number | null; make: string | null; model: string | null
+  variant: string | null; price: number | null; mileage_km: number | null
+  transmission: string | null; fuel_type: string | null; condition: string | null
+  seller_type: string | null; province: string | null; city: string | null
+  url: string; image_url: string | null
+}
+
+export class AutoTradeProvider implements ListingProvider {
+  readonly name = "autotrade"
+  private base: string
+  private token: string
+
+  constructor(getEnv: (k: string) => string | undefined) {
+    this.base = (getEnv("AUTOTRADE_API_URL") ?? "https://autotrade-api.nom-nom.workers.dev").replace(/\/$/, "")
+    this.token = getEnv("AUTOTRADE_API_TOKEN") ?? ""
+    if (!this.token) throw new Error("AUTOTRADE_API_TOKEN not set — cannot query the vehicle source.")
+  }
+
+  async search(q: ListingQuery): Promise<Listing[]> {
+    const params = new URLSearchParams({ active: "true", limit: "12" })
+    if (q.make) params.set("make", q.make)
+    if (q.model) params.set("model", q.model)
+    if (q.max_price) params.set("max_price", String(Math.round(q.max_price)))
+
+    const res = await fetch(`${this.base}/api/vehicles?${params}`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    })
+    if (!res.ok) throw new Error(`AutoTrade API ${res.status}`)
+    const vehicles = (await res.json()) as VehicleOut[]
+
+    // Respect the band floor client-side (the API filters max, not min), prefer
+    // same-make, and take the three best-value in band.
+    const inBand = vehicles.filter((v) =>
+      v.price != null && v.price <= q.max_price && v.price >= Math.min(q.min_price, q.max_price * 0.4))
+    const sameMake = q.make ? inBand.filter((v) => v.make?.toLowerCase() === q.make!.toLowerCase()) : []
+    const picks = [...sameMake, ...inBand.filter((v) => !sameMake.includes(v))].slice(0, 3)
+
+    return picks.map((v) => {
+      const title = [v.year, v.make, v.model, v.variant].filter(Boolean).join(" ") || "Vehicle"
+      const bits = [
+        v.price != null ? fmt(v.price) : null,
+        v.mileage_km != null ? `${v.mileage_km.toLocaleString()} km` : null,
+        v.transmission, v.city,
+      ].filter(Boolean)
+      return { title, body: bits.join(" · "), url: v.url, imageUrl: v.image_url ?? undefined }
+    })
+  }
+}
+
 // ── selection ────────────────────────────────────────────────────────────────
 
 export function getListingProvider(getEnv: (k: string) => string | undefined): ListingProvider {
@@ -107,12 +164,12 @@ export function getListingProvider(getEnv: (k: string) => string | undefined): L
       return new DeepLinkProvider(getEnv("SUPABASE_URL") ?? "")
     case "demo":
       return new DemoInventoryProvider()
-    // case "webuycars":  return new WeBuyCarsProvider(getEnv)   // partnership/API
-    // case "autotrader": return new AutoTraderProvider(getEnv)  // partnership/API
+    case "autotrade":
+      return new AutoTradeProvider(getEnv)
     default:
       throw new Error(
-        `Listing provider "${name}" is not configured. Available: deeplink, demo. ` +
-        `Real inventory-feed adapters plug in once a partnership/API agreement lands.`,
+        `Listing provider "${name}" is not configured. Available: deeplink, demo, autotrade. ` +
+        `Other inventory-feed adapters plug in once a partnership/API agreement lands.`,
       )
   }
 }
