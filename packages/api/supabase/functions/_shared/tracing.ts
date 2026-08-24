@@ -87,24 +87,15 @@ export class VerifyNowProvider implements TraceProvider {
   constructor(getEnv: (k: string) => string | undefined) {
     this.base = (getEnv("VERIFYNOW_API_URL") ?? "https://www.verifynow.co.za/api/external").replace(/\/$/, "")
     this.key = getEnv("VERIFYNOW_API_KEY") ?? ""
-    this.mode = (getEnv("VERIFYNOW_MODE") ?? "test").toLowerCase()
+    // "sandbox" = free test data; "production" = real, billed traces.
+    this.mode = (getEnv("VERIFYNOW_MODE") ?? "sandbox").toLowerCase()
     if (!this.key) throw new Error("VERIFYNOW_API_KEY not set — cannot run a bureau trace.")
   }
 
-  // Recursively collect string values from the response, so we find contact
-  // details regardless of the exact key names VerifyNow uses.
-  private collectStrings(o: unknown, out: string[] = []): string[] {
-    if (o == null) return out
-    if (typeof o === "string") { out.push(o); return out }
-    if (Array.isArray(o)) { for (const x of o) this.collectStrings(x, out); return out }
-    if (typeof o === "object") { for (const v of Object.values(o)) this.collectStrings(v, out); return out }
-    return out
-  }
-
   private normPhone(s: string): string | null {
-    const d = s.replace(/[^\d]/g, "")
-    if (/^0[6-8]\d{8}$/.test(d)) return "27" + d.slice(1)        // 0XX… → 27XX…
-    if (/^27[6-8]\d{8}$/.test(d)) return d                        // already E.164-ish
+    const d = (s ?? "").replace(/[^\d]/g, "")
+    if (/^0[6-8]\d{8}$/.test(d)) return "27" + d.slice(1)   // 0XX… mobile → 27XX…
+    if (/^27[6-8]\d{8}$/.test(d)) return d
     return null
   }
 
@@ -122,30 +113,34 @@ export class VerifyNowProvider implements TraceProvider {
       body: JSON.stringify({ reportType: "consumer_trace", idNumber, mode: this.mode }),
     })
     if (!res.ok) throw new Error(`VerifyNow ${res.status}: ${(await res.text()).slice(0, 200)}`)
-    const data = await res.json()
+    const data = await res.json() as {
+      results?: { consumer_trace?: {
+        deceased?: string
+        contact_numbers?: Array<{ type?: string; number?: string }>
+        addresses?: Array<{ type?: string; address_line_1?: string; postal_code?: string }>
+      } }
+    }
+    const t = data.results?.consumer_trace
+    if (!t) return []
+    if ((t.deceased ?? "").toUpperCase() === "Y") return [] // don't contact a deceased consumer
 
-    // Prefer the ContactData block if present; else scan the whole payload.
-    const contactBlock = (data?.ContactData ?? data?.contactData ?? data?.data?.ContactData ?? data)
-    const strings = this.collectStrings(contactBlock)
+    const nums = t.contact_numbers ?? []
+    // Prefer a CELL number, then any other mobile-shaped number.
+    const cell = nums.find((n) => (n.type ?? "").toUpperCase() === "CELL" && this.normPhone(n.number ?? ""))
+    const anyMobile = nums.map((n) => this.normPhone(n.number ?? "")).find((p): p is string => !!p)
+    const phone = (cell ? this.normPhone(cell.number ?? "") : null) ?? anyMobile ?? undefined
 
-    const phones = [...new Set(strings.map((s) => this.normPhone(s)).filter((p): p is string => !!p))]
-    const emails = [...new Set(strings.filter((s) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)))]
-    // Address: pull a plausible one from the full payload's AddressData if present.
-    const addrStrings = this.collectStrings(data?.AddressData ?? data?.addressData ?? [])
-    const address = addrStrings.find((s) => s.length > 12 && /\d/.test(s) && /[a-z]/i.test(s))
+    const resi = (t.addresses ?? []).find((a) => (a.type ?? "").toUpperCase() === "RESIDENTIAL") ?? (t.addresses ?? [])[0]
+    const address = resi
+      ? [resi.address_line_1, resi.postal_code].filter(Boolean).join(", ")
+      : undefined
 
-    // A trace with a phone is a strong hit; VerifyNow is a bureau, so confidence
-    // is high. If a match-score field exists, prefer it.
-    const scoreStr = this.collectStrings(data?.DefiniteMatchData ?? {}).find((s) => /^\d{1,3}(\.\d+)?$/.test(s))
-    const score = scoreStr ? Math.min(1, Number(scoreStr) / 100) : null
-
-    if (!phones.length && !emails.length) return []
+    if (!phone && !address) return []
     return [{
-      phone: phones[0],
-      email: emails[0],
+      phone,
       address,
-      source: `verifynow${this.mode === "test" ? "-test" : ""}`,
-      confidence: score ?? 0.92,
+      source: this.mode === "production" ? "verifynow" : "verifynow-sandbox",
+      confidence: 0.92, // bureau match on a strong identifier
     }]
   }
 }
