@@ -41,11 +41,18 @@ Deno.test("getTraceProvider — defaults to stub", () => {
   assertEquals(getTraceProvider((k) => (k === "TRACE_PROVIDER" ? "stub" : undefined)).name, "stub")
 })
 
-Deno.test("getTraceProvider — unknown provider fails loudly (not silently)", () => {
-  let threw = false
-  try { getTraceProvider((k) => (k === "TRACE_PROVIDER" ? "transunion" : undefined)) }
-  catch (e) { threw = true; assert((e as Error).message.includes("G5")) }
-  assert(threw, "expected an unconfigured real provider to throw")
+Deno.test("getTraceProvider — verifynow needs a key, unknown fails loudly", () => {
+  // verifynow is a known provider but requires a key → throws without one.
+  let noKey = false
+  try { getTraceProvider((k) => (k === "TRACE_PROVIDER" ? "verifynow" : undefined)) }
+  catch (e) { noKey = true; assert((e as Error).message.includes("VERIFYNOW_API_KEY")) }
+  assert(noKey, "verifynow without a key should throw")
+
+  // A genuinely unknown provider throws with the available list.
+  let unknown = false
+  try { getTraceProvider((k) => (k === "TRACE_PROVIDER" ? "acme-bureau" : undefined)) }
+  catch (e) { unknown = true; assert((e as Error).message.includes("Available")) }
+  assert(unknown, "unknown provider should throw")
 })
 
 Deno.test("bestCandidate — picks highest confidence", () => {
